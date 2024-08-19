@@ -7,6 +7,7 @@ members = [
     "co-circom/co-circom",
     "co-circom/co-groth16",
     "co-circom/co-plonk",
+    "co-noir/co-acvm",
     "mpc-core",
     "mpc-net",
     "tests",
