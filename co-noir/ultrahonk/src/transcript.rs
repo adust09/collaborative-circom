@@ -67,6 +67,10 @@ where
         }
     }
 
+    pub(super) fn add(&mut self, data: impl AsRef<[u8]>) {
+        self.digest.update(data);
+    }
+
     pub(super) fn get_challenge(self) -> P::ScalarField {
         let bytes = self.digest.finalize();
         P::ScalarField::from_be_bytes_mod_order(&bytes)
