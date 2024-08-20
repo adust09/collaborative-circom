@@ -10,10 +10,15 @@ license.workspace = true
 rust-version.workspace = true
 
 [dependencies]
-mpc-core.workspace = true
-ark-ff.workspace = true
+acir = { version = "0.49.0", git = "https://github.com/noir-lang/noir/", tag = "v0.33.0", package = "acir" }
+acvm = { version = "0.49.0", git = "https://github.com/noir-lang/noir/", tag = "v0.33.0", package = "acvm" }
 ark-ec.workspace = true
-acvm = { version = "0.49.0", git = "https://github.com/AztecProtocol/aztec-packages/", package = "acvm" }
-acir = { version = "0.49.0", git = "https://github.com/AztecProtocol/aztec-packages/", package = "acir" }
+ark-ff.workspace = true
+eyre.workspace = true
+mpc-core.workspace = true
+noirc-abi = { version = "0.33.0", git = "https://github.com/noir-lang/noir/", tag = "v0.33.0", package = "noirc_abi" }
+noirc-artifacts = { version = "0.33.0", git = "https://github.com/noir-lang/noir/", tag = "v0.33.0", package = "noirc_artifacts" }
+serde_json.workspace = true
 thiserror.workspace = true
+toml.workspace = true
 tracing.workspace = true
