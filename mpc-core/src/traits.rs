@@ -208,7 +208,7 @@ pub trait PrimeFieldMpcProtocol<F: PrimeField> {
 /// A trait representing the MPC operations required for extending the secret-shared Noir witness in MPC.
 /// The operations are generic over public and private (i.e., secret-shared) inputs.
 pub trait NoirWitnessExtensionProtocol<F: PrimeField>: PrimeFieldMpcProtocol<F> {
-    /// A type representing the values encountered during Circom compilation. It should at least containt public field elements and shared values.
+    /// A type representing the values encountered during Circom compilation. It should at least contain public field elements and shared values.
     type AcvmType: Clone + Default + fmt::Debug + fmt::Display + From<Self::FieldShare> + From<F>;
 
     /// Returns F::zero() as a ACVM-type. The default implementation uses the `Default` trait. If `Default` does not return 0, this function has to be overwritten.
