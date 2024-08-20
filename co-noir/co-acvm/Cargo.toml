@@ -10,4 +10,9 @@ license.workspace = true
 rust-version.workspace = true
 
 [dependencies]
+mpc-core.workspace = true
+ark-ff.workspace = true
+ark-ec.workspace = true
 acvm = { version = "0.49.0", git = "https://github.com/AztecProtocol/aztec-packages/", package = "acvm" }
+acir = { version = "0.49.0", git = "https://github.com/AztecProtocol/aztec-packages/", package = "acir" }
+thiserror.workspace = true
