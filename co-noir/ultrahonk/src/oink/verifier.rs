@@ -1,6 +1,7 @@
 use crate::oink::prover::HonkProofError;
 use crate::transcript::{self, Keccak256Transcript, Transcript};
 use crate::types::VerifyingKey;
+use crate::NUM_ALPHAS;
 use ark_ec::{pairing::Pairing, Group};
 use ark_ff::{BigInt, Field};
 use std::marker::PhantomData;
@@ -9,7 +10,7 @@ struct OinkOutput<P: Pairing> {
     relation_parameters: RelationParameters<P>,
     commitments: WitnessComms<P>,
     public_inputs: Vec<P::ScalarField>, //?
-    alphas: PhantomData<P>,
+    alphas: [P::ScalarField; NUM_ALPHAS],
 }
 
 struct OinkVerifier<P: Pairing> {
@@ -52,9 +53,9 @@ impl<P: Pairing> OinkVerifier<P> {
         let alphas = self.generate_alphas_round();
 
         OinkOutput {
-            relation_parameters: self.relation_parameters,
-            commitments: self.witness_comms,
-            public_inputs: self.public_inputs,
+            relation_parameters: &self.relation_parameters,
+            commitments: &self.witness_comms,
+            public_inputs: &self.public_inputs,
             alphas,
         }
     }
@@ -151,14 +152,18 @@ impl<P: Pairing> OinkVerifier<P> {
         self.transcript.add_point(self.witness_comms.z_perm.into());
     }
 
-    fn generate_alphas_round(&self) -> PhantomData<P> {
-        // tracing::trace!("generating (verifying) alphas round");
-        // let mut alphas = RelationSeparator::default();
-        // alphas.iter_mut().enumerate().for_each(|(idx, alpha)| {
-        //     *alpha = self.transcript.get_dummy("alpha_idx");
-        // });
-        // alphas
-        todo!();
+    fn generate_alphas_round(&mut self) -> [P::ScalarField; NUM_ALPHAS] {
+        tracing::trace!("generating (verifying) alphas round");
+        let mut alphas: [P::ScalarField; NUM_ALPHAS] = [P::ScalarField::default(); NUM_ALPHAS];
+        let mut transcript = Keccak256Transcript::<P>::default();
+        std::mem::swap(&mut transcript, &mut self.transcript);
+        alphas[0] = transcript.get_challenge();
+        for idx in 1..NUM_ALPHAS {
+            let mut transcript = Keccak256Transcript::<P>::default();
+            transcript.add_scalar(alphas[idx - 1]);
+            alphas[idx] = transcript.get_challenge();
+        }
+        alphas
     }
 }
 

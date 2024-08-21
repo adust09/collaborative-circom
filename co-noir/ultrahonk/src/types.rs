@@ -1,3 +1,4 @@
+use crate::NUM_ALPHAS;
 use ark_ec::pairing::Pairing;
 
 pub struct ProverCrs<P: Pairing> {
