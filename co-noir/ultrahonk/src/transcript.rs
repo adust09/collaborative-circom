@@ -75,4 +75,15 @@ where
         let bytes = self.digest.finalize();
         P::ScalarField::from_be_bytes_mod_order(&bytes)
     }
+
+    // this is a dummy function
+    pub(super) fn get_dummy(&self, keyword: &str) -> ChallengeReturn<P> {
+        todo!();
+    }
+}
+
+//DUMMY
+enum ChallengeReturn<P: Pairing> {
+    ScalarField(P::ScalarField),
+    U32(u32),
 }
