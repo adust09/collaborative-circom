@@ -18,6 +18,8 @@ pub struct Polynomials<P: Pairing> {
     pub w_l: Vec<P::ScalarField>,
     pub w_r: Vec<P::ScalarField>,
     pub w_o: Vec<P::ScalarField>,
+    pub lookup_read_counts: Vec<P::ScalarField>,
+    pub lookup_read_tags: Vec<P::ScalarField>,
 }
 
 pub struct Challenges<P: Pairing> {
@@ -29,9 +31,12 @@ pub struct Challenges<P: Pairing> {
 // pub struct WitnessEntities<P: Pairing> {}
 
 pub struct WitnessCommitments<P: Pairing> {
-    pub w_l_comm: P::G1,
-    pub w_r_comm: P::G1,
-    pub w_o_comm: P::G1,
+    pub w_l: P::G1,
+    pub w_r: P::G1,
+    pub w_o: P::G1,
+    pub w_4: P::G1,
+    pub lookup_read_counts: P::G1,
+    pub lookup_read_tags: P::G1,
 }
 pub struct ProverMemory<P: Pairing> {
     pub w_4: Vec<P::ScalarField>,
@@ -42,9 +47,12 @@ pub struct ProverMemory<P: Pairing> {
 impl<P: Pairing> Default for WitnessCommitments<P> {
     fn default() -> Self {
         Self {
-            w_l_comm: Default::default(),
-            w_r_comm: Default::default(),
-            w_o_comm: Default::default(),
+            w_l: Default::default(),
+            w_r: Default::default(),
+            w_o: Default::default(),
+            w_4: Default::default(),
+            lookup_read_counts: Default::default(),
+            lookup_read_tags: Default::default(),
         }
     }
 }

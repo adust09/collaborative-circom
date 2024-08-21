@@ -74,16 +74,16 @@ impl<P: Pairing> Plonk<P> {
         // Commit to the first three wire polynomials of the instance
         // We only commit to the fourth wire polynomial after adding memory records
 
-        self.memory.witness_commitments.w_l_comm =
+        self.memory.witness_commitments.w_l =
             Self::commit(&proving_key.polynomials.w_l, &proving_key.crs)?;
-        self.memory.witness_commitments.w_r_comm =
+        self.memory.witness_commitments.w_r =
             Self::commit(&proving_key.polynomials.w_r, &proving_key.crs)?;
-        self.memory.witness_commitments.w_o_comm =
+        self.memory.witness_commitments.w_o =
             Self::commit(&proving_key.polynomials.w_o, &proving_key.crs)?;
 
-        transcript.add_point(self.memory.witness_commitments.w_l_comm.into());
-        transcript.add_point(self.memory.witness_commitments.w_r_comm.into());
-        transcript.add_point(self.memory.witness_commitments.w_o_comm.into());
+        transcript.add_point(self.memory.witness_commitments.w_l.into());
+        transcript.add_point(self.memory.witness_commitments.w_r.into());
+        transcript.add_point(self.memory.witness_commitments.w_o.into());
 
         // Round is done since ultra_honk is no goblin flavor
         Ok(())
@@ -94,7 +94,7 @@ impl<P: Pairing> Plonk<P> {
         &mut self,
         transcript_inout: &mut Keccak256Transcript<P>,
         proving_key: &ProvingKey<P>,
-    ) {
+    ) -> HonkProofResult<()> {
         let mut transcript = Keccak256Transcript::<P>::default();
         std::mem::swap(&mut transcript, transcript_inout);
 
@@ -112,6 +112,18 @@ impl<P: Pairing> Plonk<P> {
 
         // The memory record values are computed at the indicated indices as
         // w4 = w3 * eta^3 + w2 * eta^2 + w1 * eta + read_write_flag;
+
+        debug_assert_eq!(
+            proving_key.polynomials.w_l.len(),
+            proving_key.polynomials.w_r.len()
+        );
+        debug_assert_eq!(
+            proving_key.polynomials.w_l.len(),
+            proving_key.polynomials.w_o.len()
+        );
+        self.memory
+            .w_4
+            .resize(proving_key.polynomials.w_l.len(), P::ScalarField::zero());
 
         // Compute read record values
         for gate_idx in proving_key.memory_read_records.iter() {
@@ -133,8 +145,19 @@ impl<P: Pairing> Plonk<P> {
         }
 
         // Commit to lookup argument polynomials and the finalized (i.e. with memory records) fourth wire polynomial
+        self.memory.witness_commitments.lookup_read_counts = Self::commit(
+            &proving_key.polynomials.lookup_read_counts,
+            &proving_key.crs,
+        )?;
+        self.memory.witness_commitments.lookup_read_tags =
+            Self::commit(&proving_key.polynomials.lookup_read_tags, &proving_key.crs)?;
+        self.memory.witness_commitments.w_4 = Self::commit(&self.memory.w_4, &proving_key.crs)?;
 
-        todo!()
+        transcript_inout.add_point(self.memory.witness_commitments.lookup_read_counts.into());
+        transcript_inout.add_point(self.memory.witness_commitments.lookup_read_tags.into());
+        transcript_inout.add_point(self.memory.witness_commitments.w_4.into());
+
+        Ok(())
     }
 
     pub fn prove(
@@ -149,19 +172,7 @@ impl<P: Pairing> Plonk<P> {
         // Compute first three wire commitments
         self.execute_wire_commitments_round(&mut transcript, &proving_key)?;
         // Compute sorted list accumulator and commitment
-        self.execute_sorted_list_accumulator_round(&mut transcript, &proving_key);
-
-        debug_assert_eq!(
-            proving_key.polynomials.w_l.len(),
-            proving_key.polynomials.w_r.len()
-        );
-        debug_assert_eq!(
-            proving_key.polynomials.w_l.len(),
-            proving_key.polynomials.w_o.len()
-        );
-        self.memory
-            .w_4
-            .resize(proving_key.polynomials.w_l.len(), P::ScalarField::zero());
+        self.execute_sorted_list_accumulator_round(&mut transcript, &proving_key)?;
 
         Ok(())
     }
