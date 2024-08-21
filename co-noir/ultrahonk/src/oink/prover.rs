@@ -46,39 +46,61 @@ impl<P: Pairing> Plonk<P> {
         // w4 = w3 * eta^3 + w2 * eta^2 + w1 * eta + read_write_flag;
 
         debug_assert_eq!(
-            proving_key.polynomials.w_l.len(),
-            proving_key.polynomials.w_r.len()
+            proving_key.polynomials.witness.w_l.len(),
+            proving_key.polynomials.witness.w_r.len()
         );
         debug_assert_eq!(
-            proving_key.polynomials.w_l.len(),
-            proving_key.polynomials.w_o.len()
+            proving_key.polynomials.witness.w_l.len(),
+            proving_key.polynomials.witness.w_o.len()
         );
-        self.memory
-            .w_4
-            .resize(proving_key.polynomials.w_l.len(), P::ScalarField::zero());
+        self.memory.w_4.resize(
+            proving_key.polynomials.witness.w_l.len(),
+            P::ScalarField::zero(),
+        );
 
         // Compute read record values
         for gate_idx in proving_key.memory_read_records.iter() {
             let gate_idx = *gate_idx as usize;
             let target = &mut self.memory.w_4[gate_idx];
-            *target += proving_key.polynomials.w_l[gate_idx] * self.memory.challenges.eta_1
-                + proving_key.polynomials.w_r[gate_idx] * self.memory.challenges.eta_2
-                + proving_key.polynomials.w_o[gate_idx] * self.memory.challenges.eta_3;
+            *target += proving_key.polynomials.witness.w_l[gate_idx] * self.memory.challenges.eta_1
+                + proving_key.polynomials.witness.w_r[gate_idx] * self.memory.challenges.eta_2
+                + proving_key.polynomials.witness.w_o[gate_idx] * self.memory.challenges.eta_3;
         }
 
         // Compute write record values
         for gate_idx in proving_key.memory_write_records.iter() {
             let gate_idx = *gate_idx as usize;
             let target = &mut self.memory.w_4[gate_idx];
-            *target += proving_key.polynomials.w_l[gate_idx] * self.memory.challenges.eta_1
-                + proving_key.polynomials.w_r[gate_idx] * self.memory.challenges.eta_2
-                + proving_key.polynomials.w_o[gate_idx] * self.memory.challenges.eta_3
+            *target += proving_key.polynomials.witness.w_l[gate_idx] * self.memory.challenges.eta_1
+                + proving_key.polynomials.witness.w_r[gate_idx] * self.memory.challenges.eta_2
+                + proving_key.polynomials.witness.w_o[gate_idx] * self.memory.challenges.eta_3
                 + P::ScalarField::one();
         }
     }
 
-    fn compute_logderivative_inverses(&mut self) {
-        todo!()
+    fn compute_logderivative_inverses(&mut self, proving_key: &ProvingKey<P>) {
+        debug_assert_eq!(
+            proving_key.polynomials.precomputed.q_lookup.len(),
+            proving_key.circuit_size as usize
+        );
+        debug_assert_eq!(
+            proving_key.polynomials.witness.lookup_read_tags.len(),
+            proving_key.circuit_size as usize
+        );
+
+        for (q_lookup, lookup_read_tag) in proving_key
+            .polynomials
+            .precomputed
+            .q_lookup
+            .iter()
+            .zip(proving_key.polynomials.witness.lookup_read_tags.iter())
+        {
+            if q_lookup.is_one() && lookup_read_tag.is_one() {
+                todo!();
+            }
+        }
+
+        todo!();
     }
 
     // Add circuit size public input size and public inputs to transcript
@@ -115,11 +137,11 @@ impl<P: Pairing> Plonk<P> {
         // We only commit to the fourth wire polynomial after adding memory records
 
         self.memory.witness_commitments.w_l =
-            Self::commit(&proving_key.polynomials.w_l, &proving_key.crs)?;
+            Self::commit(&proving_key.polynomials.witness.w_l, &proving_key.crs)?;
         self.memory.witness_commitments.w_r =
-            Self::commit(&proving_key.polynomials.w_r, &proving_key.crs)?;
+            Self::commit(&proving_key.polynomials.witness.w_r, &proving_key.crs)?;
         self.memory.witness_commitments.w_o =
-            Self::commit(&proving_key.polynomials.w_o, &proving_key.crs)?;
+            Self::commit(&proving_key.polynomials.witness.w_o, &proving_key.crs)?;
 
         transcript.add_point(self.memory.witness_commitments.w_l.into());
         transcript.add_point(self.memory.witness_commitments.w_r.into());
@@ -155,11 +177,13 @@ impl<P: Pairing> Plonk<P> {
 
         // Commit to lookup argument polynomials and the finalized (i.e. with memory records) fourth wire polynomial
         self.memory.witness_commitments.lookup_read_counts = Self::commit(
-            &proving_key.polynomials.lookup_read_counts,
+            &proving_key.polynomials.witness.lookup_read_counts,
             &proving_key.crs,
         )?;
-        self.memory.witness_commitments.lookup_read_tags =
-            Self::commit(&proving_key.polynomials.lookup_read_tags, &proving_key.crs)?;
+        self.memory.witness_commitments.lookup_read_tags = Self::commit(
+            &proving_key.polynomials.witness.lookup_read_tags,
+            &proving_key.crs,
+        )?;
         self.memory.witness_commitments.w_4 = Self::commit(&self.memory.w_4, &proving_key.crs)?;
 
         transcript_inout.add_point(self.memory.witness_commitments.lookup_read_counts.into());
@@ -187,7 +211,7 @@ impl<P: Pairing> Plonk<P> {
 
         transcript_inout.add_scalar(self.memory.challenges.gamma);
 
-        self.compute_logderivative_inverses();
+        self.compute_logderivative_inverses(proving_key);
 
         todo!();
         // Round is done since ultra_honk is no goblin flavor

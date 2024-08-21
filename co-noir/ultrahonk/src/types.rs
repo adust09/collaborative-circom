@@ -15,11 +15,23 @@ pub struct ProvingKey<P: Pairing> {
 }
 
 pub struct Polynomials<P: Pairing> {
-    pub w_l: Vec<P::ScalarField>,
-    pub w_r: Vec<P::ScalarField>,
-    pub w_o: Vec<P::ScalarField>,
-    pub lookup_read_counts: Vec<P::ScalarField>,
-    pub lookup_read_tags: Vec<P::ScalarField>,
+    pub witness: WitnessEntities<P>,
+    pub precomputed: PrecomputedEntities<P>,
+}
+
+pub struct WitnessEntities<P: Pairing> {
+    pub w_l: Vec<P::ScalarField>, // column 0
+    pub w_r: Vec<P::ScalarField>, // column 1
+    pub w_o: Vec<P::ScalarField>, // column 2
+    // pub w_4: Vec<P::ScalarField>, // column 3 -> computed by prover
+    // pub z_perm : Vec<P::ScalarField>, // column 4 (???)
+    // pub lookup_inverses: Vec<P::ScalarField>,    // column 5 -> computed by prover
+    pub lookup_read_counts: Vec<P::ScalarField>, // column 6
+    pub lookup_read_tags: Vec<P::ScalarField>,   // column 7
+}
+
+pub struct PrecomputedEntities<P: Pairing> {
+    pub q_lookup: Vec<P::ScalarField>, // column 10
 }
 
 pub struct Challenges<P: Pairing> {
@@ -37,11 +49,13 @@ pub struct WitnessCommitments<P: Pairing> {
     pub w_r: P::G1,
     pub w_o: P::G1,
     pub w_4: P::G1,
+    pub lookup_inverses: P::G1,
     pub lookup_read_counts: P::G1,
     pub lookup_read_tags: P::G1,
 }
 pub struct ProverMemory<P: Pairing> {
-    pub w_4: Vec<P::ScalarField>,
+    pub w_4: Vec<P::ScalarField>,             // column 3
+    pub lookup_inverses: Vec<P::ScalarField>, // column 5
     pub witness_commitments: WitnessCommitments<P>,
     pub challenges: Challenges<P>,
 }
@@ -53,6 +67,7 @@ impl<P: Pairing> Default for WitnessCommitments<P> {
             w_r: Default::default(),
             w_o: Default::default(),
             w_4: Default::default(),
+            lookup_inverses: Default::default(),
             lookup_read_counts: Default::default(),
             lookup_read_tags: Default::default(),
         }
