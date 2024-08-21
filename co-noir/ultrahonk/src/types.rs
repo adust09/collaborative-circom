@@ -58,3 +58,11 @@ pub struct PrecomputedEntities<F: PrimeField> {
     pub table_3: Vec<F>,  // column 21
     pub table_4: Vec<F>,  // column 22
 }
+
+pub struct VerifyingKey<P: Pairing> {
+    pub crs: ProverCrs<P>,
+    pub circuit_size: u32,
+    pub num_public_inputs: u32,
+    pub pub_inputs_offset: u32,
+    pub polynomials: Polynomials<P>,
+}
