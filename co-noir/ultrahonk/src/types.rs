@@ -26,6 +26,8 @@ pub struct Challenges<P: Pairing> {
     pub eta_1: P::ScalarField,
     pub eta_2: P::ScalarField,
     pub eta_3: P::ScalarField,
+    pub beta: P::ScalarField,
+    pub gamma: P::ScalarField,
 }
 
 // pub struct WitnessEntities<P: Pairing> {}
@@ -63,6 +65,8 @@ impl<P: Pairing> Default for Challenges<P> {
             eta_1: Default::default(),
             eta_2: Default::default(),
             eta_3: Default::default(),
+            beta: Default::default(),
+            gamma: Default::default(),
         }
     }
 }

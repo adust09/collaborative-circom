@@ -34,6 +34,53 @@ impl<P: Pairing> Plonk<P> {
         }
     }
 
+    fn commit(poly: &[P::ScalarField], crs: &ProverCrs<P>) -> HonkProofResult<P::G1> {
+        if poly.len() > crs.monomials.len() {
+            return Err(HonkProofError::CrsTooSmall);
+        }
+        Ok(P::G1::msm_unchecked(&crs.monomials, poly))
+    }
+
+    fn compute_w4(&mut self, proving_key: &ProvingKey<P>) {
+        // The memory record values are computed at the indicated indices as
+        // w4 = w3 * eta^3 + w2 * eta^2 + w1 * eta + read_write_flag;
+
+        debug_assert_eq!(
+            proving_key.polynomials.w_l.len(),
+            proving_key.polynomials.w_r.len()
+        );
+        debug_assert_eq!(
+            proving_key.polynomials.w_l.len(),
+            proving_key.polynomials.w_o.len()
+        );
+        self.memory
+            .w_4
+            .resize(proving_key.polynomials.w_l.len(), P::ScalarField::zero());
+
+        // Compute read record values
+        for gate_idx in proving_key.memory_read_records.iter() {
+            let gate_idx = *gate_idx as usize;
+            let target = &mut self.memory.w_4[gate_idx];
+            *target += proving_key.polynomials.w_l[gate_idx] * self.memory.challenges.eta_1
+                + proving_key.polynomials.w_r[gate_idx] * self.memory.challenges.eta_2
+                + proving_key.polynomials.w_o[gate_idx] * self.memory.challenges.eta_3;
+        }
+
+        // Compute write record values
+        for gate_idx in proving_key.memory_write_records.iter() {
+            let gate_idx = *gate_idx as usize;
+            let target = &mut self.memory.w_4[gate_idx];
+            *target += proving_key.polynomials.w_l[gate_idx] * self.memory.challenges.eta_1
+                + proving_key.polynomials.w_r[gate_idx] * self.memory.challenges.eta_2
+                + proving_key.polynomials.w_o[gate_idx] * self.memory.challenges.eta_3
+                + P::ScalarField::one();
+        }
+    }
+
+    fn compute_logderivative_inverses(&mut self) {
+        todo!()
+    }
+
     // Add circuit size public input size and public inputs to transcript
     fn execute_preamble_round(
         transcript: &mut Keccak256Transcript<P>,
@@ -54,13 +101,6 @@ impl<P: Pairing> Plonk<P> {
             transcript.add_scalar(*public_input);
         }
         Ok(())
-    }
-
-    fn commit(poly: &[P::ScalarField], crs: &ProverCrs<P>) -> HonkProofResult<P::G1> {
-        if poly.len() > crs.monomials.len() {
-            return Err(HonkProofError::CrsTooSmall);
-        }
-        Ok(P::G1::msm_unchecked(&crs.monomials, poly))
     }
 
     // Compute first three wire commitments
@@ -95,6 +135,7 @@ impl<P: Pairing> Plonk<P> {
         transcript_inout: &mut Keccak256Transcript<P>,
         proving_key: &ProvingKey<P>,
     ) -> HonkProofResult<()> {
+        // Get the challenges and refresh the transcript
         let mut transcript = Keccak256Transcript::<P>::default();
         std::mem::swap(&mut transcript, transcript_inout);
 
@@ -110,39 +151,7 @@ impl<P: Pairing> Plonk<P> {
 
         transcript_inout.add_scalar(self.memory.challenges.eta_3);
 
-        // The memory record values are computed at the indicated indices as
-        // w4 = w3 * eta^3 + w2 * eta^2 + w1 * eta + read_write_flag;
-
-        debug_assert_eq!(
-            proving_key.polynomials.w_l.len(),
-            proving_key.polynomials.w_r.len()
-        );
-        debug_assert_eq!(
-            proving_key.polynomials.w_l.len(),
-            proving_key.polynomials.w_o.len()
-        );
-        self.memory
-            .w_4
-            .resize(proving_key.polynomials.w_l.len(), P::ScalarField::zero());
-
-        // Compute read record values
-        for gate_idx in proving_key.memory_read_records.iter() {
-            let gate_idx = *gate_idx as usize;
-            let target = &mut self.memory.w_4[gate_idx];
-            *target += proving_key.polynomials.w_l[gate_idx] * self.memory.challenges.eta_1
-                + proving_key.polynomials.w_r[gate_idx] * self.memory.challenges.eta_2
-                + proving_key.polynomials.w_o[gate_idx] * self.memory.challenges.eta_3;
-        }
-
-        // Compute write record values
-        for gate_idx in proving_key.memory_write_records.iter() {
-            let gate_idx = *gate_idx as usize;
-            let target = &mut self.memory.w_4[gate_idx];
-            *target += proving_key.polynomials.w_l[gate_idx] * self.memory.challenges.eta_1
-                + proving_key.polynomials.w_r[gate_idx] * self.memory.challenges.eta_2
-                + proving_key.polynomials.w_o[gate_idx] * self.memory.challenges.eta_3
-                + P::ScalarField::one();
-        }
+        self.compute_w4(proving_key);
 
         // Commit to lookup argument polynomials and the finalized (i.e. with memory records) fourth wire polynomial
         self.memory.witness_commitments.lookup_read_counts = Self::commit(
@@ -160,6 +169,31 @@ impl<P: Pairing> Plonk<P> {
         Ok(())
     }
 
+    // Fiat-Shamir: beta & gamma
+    fn execute_log_derivative_inverse_round(
+        &mut self,
+        transcript_inout: &mut Keccak256Transcript<P>,
+        proving_key: &ProvingKey<P>,
+    ) -> HonkProofResult<()> {
+        // Get the challenges and refresh the transcript
+        let mut transcript = Keccak256Transcript::<P>::default();
+        std::mem::swap(&mut transcript, transcript_inout);
+
+        self.memory.challenges.beta = transcript.get_challenge();
+
+        let mut transcript = Keccak256Transcript::<P>::default();
+        transcript.add_scalar(self.memory.challenges.beta);
+        self.memory.challenges.gamma = transcript.get_challenge();
+
+        transcript_inout.add_scalar(self.memory.challenges.gamma);
+
+        self.compute_logderivative_inverses();
+
+        todo!();
+        // Round is done since ultra_honk is no goblin flavor
+        Ok(())
+    }
+
     pub fn prove(
         mut self,
         proving_key: ProvingKey<P>,
@@ -173,6 +207,8 @@ impl<P: Pairing> Plonk<P> {
         self.execute_wire_commitments_round(&mut transcript, &proving_key)?;
         // Compute sorted list accumulator and commitment
         self.execute_sorted_list_accumulator_round(&mut transcript, &proving_key)?;
+        // Fiat-Shamir: beta & gamma
+        self.execute_log_derivative_inverse_round(&mut transcript, &proving_key)?;
 
         Ok(())
     }
