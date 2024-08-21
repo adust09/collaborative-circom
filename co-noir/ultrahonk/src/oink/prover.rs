@@ -3,7 +3,8 @@ use crate::{
     types::{ProverCrs, ProverMemory, ProvingKey},
 };
 use ark_ec::{pairing::Pairing, VariableBaseMSM};
-use ark_ff::{One, Zero};
+use ark_ff::{Field, One, Zero};
+use itertools::izip;
 use std::{io, marker::PhantomData};
 
 type HonkProofResult<T> = std::result::Result<T, HonkProofError>;
@@ -78,6 +79,51 @@ impl<P: Pairing> Plonk<P> {
         }
     }
 
+    fn compute_read_term(&self, proving_key: &ProvingKey<P>, i: usize) -> P::ScalarField {
+        let gamma = &self.memory.challenges.gamma;
+        let eta_1 = &self.memory.challenges.eta_1;
+        let eta_2 = &self.memory.challenges.eta_2;
+        let eta_3 = &self.memory.challenges.eta_3;
+        let w_1 = &proving_key.polynomials.witness.w_l[i];
+        let w_2 = &proving_key.polynomials.witness.w_r[i];
+        let w_3 = &proving_key.polynomials.witness.w_o[i];
+        let w_1_shift = &proving_key.polynomials.shifted.w_l[i];
+        let w_2_shift = &proving_key.polynomials.shifted.w_r[i];
+        let w_3_shift = &proving_key.polynomials.shifted.w_o[i];
+        let table_index = &proving_key.polynomials.precomputed.q_o[i];
+        let negative_column_1_step_size = &proving_key.polynomials.precomputed.q_r[i];
+        let negative_column_2_step_size = &proving_key.polynomials.precomputed.q_m[i];
+        let negative_column_3_step_size = &proving_key.polynomials.precomputed.q_c[i];
+
+        // The wire values for lookup gates are accumulators structured in such a way that the differences w_i -
+        // step_size*w_i_shift result in values present in column i of a corresponding table. See the documentation in
+        // method get_lookup_accumulators() in  for a detailed explanation.
+        let derived_table_entry_1 = *w_1 + gamma + *negative_column_1_step_size * w_1_shift;
+        let derived_table_entry_2 = *w_2 + *negative_column_2_step_size * w_2_shift;
+        let derived_table_entry_3 = *w_3 + *negative_column_3_step_size * w_3_shift;
+
+        // (w_1 + \gamma q_2*w_1_shift) + η(w_2 + q_m*w_2_shift) + η₂(w_3 + q_c*w_3_shift) + η₃q_index.
+        // deg 2 or 3
+        derived_table_entry_1
+            + derived_table_entry_2 * eta_1
+            + derived_table_entry_3 * eta_2
+            + *table_index * eta_3
+    }
+
+    // Compute table_1 + gamma + table_2 * eta + table_3 * eta_2 + table_4 * eta_3
+    fn compute_write_term(&self, proving_key: &ProvingKey<P>, i: usize) -> P::ScalarField {
+        let gamma = &self.memory.challenges.gamma;
+        let eta_1 = &self.memory.challenges.eta_1;
+        let eta_2 = &self.memory.challenges.eta_2;
+        let eta_3 = &self.memory.challenges.eta_3;
+        let table_1 = &proving_key.polynomials.precomputed.table_1[i];
+        let table_2 = &proving_key.polynomials.precomputed.table_2[i];
+        let table_3 = &proving_key.polynomials.precomputed.table_3[i];
+        let table_4 = &proving_key.polynomials.precomputed.table_4[i];
+
+        *table_1 + gamma + *table_2 * eta_1 + *table_3 * eta_2 + *table_4 * eta_3
+    }
+
     fn compute_logderivative_inverses(&mut self, proving_key: &ProvingKey<P>) {
         debug_assert_eq!(
             proving_key.polynomials.precomputed.q_lookup.len(),
@@ -87,20 +133,34 @@ impl<P: Pairing> Plonk<P> {
             proving_key.polynomials.witness.lookup_read_tags.len(),
             proving_key.circuit_size as usize
         );
+        self.memory
+            .lookup_inverses
+            .resize(proving_key.circuit_size as usize, P::ScalarField::zero());
 
-        for (q_lookup, lookup_read_tag) in proving_key
-            .polynomials
-            .precomputed
-            .q_lookup
-            .iter()
-            .zip(proving_key.polynomials.witness.lookup_read_tags.iter())
+        const READ_TERMS: usize = 1;
+        const WRITE_TERMS: usize = 1;
+        // 1 + polynomial degree of this relation
+        const LENGTH: usize = 5; // both subrelations are degree 4
+
+        for (i, (q_lookup, lookup_read_tag)) in izip!(
+            proving_key.polynomials.precomputed.q_lookup.iter(),
+            proving_key.polynomials.witness.lookup_read_tags.iter(),
+        )
+        .enumerate()
         {
-            if q_lookup.is_one() && lookup_read_tag.is_one() {
-                todo!();
+            if !(q_lookup.is_one() || lookup_read_tag.is_one()) {
+                continue;
             }
+
+            // READ_TERMS and WRITE_TERMS are 1, so we skip the loop
+            let read_term = self.compute_read_term(proving_key, i);
+            let write_term = self.compute_write_term(proving_key, i);
+            self.memory.lookup_inverses[i] = read_term * write_term;
         }
 
-        todo!();
+        for inv in self.memory.lookup_inverses.iter_mut() {
+            inv.inverse_in_place();
+        }
     }
 
     // Add circuit size public input size and public inputs to transcript
@@ -213,7 +273,11 @@ impl<P: Pairing> Plonk<P> {
 
         self.compute_logderivative_inverses(proving_key);
 
-        todo!();
+        self.memory.witness_commitments.lookup_inverses =
+            Self::commit(&self.memory.lookup_inverses, &proving_key.crs)?;
+
+        transcript_inout.add_point(self.memory.witness_commitments.lookup_inverses.into());
+
         // Round is done since ultra_honk is no goblin flavor
         Ok(())
     }
@@ -233,6 +297,8 @@ impl<P: Pairing> Plonk<P> {
         self.execute_sorted_list_accumulator_round(&mut transcript, &proving_key)?;
         // Fiat-Shamir: beta & gamma
         self.execute_log_derivative_inverse_round(&mut transcript, &proving_key)?;
+
+        todo!();
 
         Ok(())
     }
