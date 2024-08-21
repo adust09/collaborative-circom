@@ -43,6 +43,7 @@ impl<P: Pairing> Plonk<P> {
     }
 
     fn compute_w4(&mut self, proving_key: &ProvingKey<P>) {
+        tracing::trace!("compute w4");
         // The memory record values are computed at the indicated indices as
         // w4 = w3 * eta^3 + w2 * eta^2 + w1 * eta + read_write_flag;
 
@@ -80,6 +81,8 @@ impl<P: Pairing> Plonk<P> {
     }
 
     fn compute_read_term(&self, proving_key: &ProvingKey<P>, i: usize) -> P::ScalarField {
+        tracing::trace!("compute read term");
+
         let gamma = &self.memory.challenges.gamma;
         let eta_1 = &self.memory.challenges.eta_1;
         let eta_2 = &self.memory.challenges.eta_2;
@@ -112,6 +115,8 @@ impl<P: Pairing> Plonk<P> {
 
     // Compute table_1 + gamma + table_2 * eta + table_3 * eta_2 + table_4 * eta_3
     fn compute_write_term(&self, proving_key: &ProvingKey<P>, i: usize) -> P::ScalarField {
+        tracing::trace!("compute write term");
+
         let gamma = &self.memory.challenges.gamma;
         let eta_1 = &self.memory.challenges.eta_1;
         let eta_2 = &self.memory.challenges.eta_2;
@@ -125,6 +130,8 @@ impl<P: Pairing> Plonk<P> {
     }
 
     fn compute_logderivative_inverses(&mut self, proving_key: &ProvingKey<P>) {
+        tracing::trace!("compute logderivative inverse");
+
         debug_assert_eq!(
             proving_key.polynomials.precomputed.q_lookup.len(),
             proving_key.circuit_size as usize
@@ -217,6 +224,8 @@ impl<P: Pairing> Plonk<P> {
         transcript_inout: &mut Keccak256Transcript<P>,
         proving_key: &ProvingKey<P>,
     ) -> HonkProofResult<()> {
+        tracing::trace!("executing sorted list accumulator round");
+
         // Get the challenges and refresh the transcript
         let mut transcript = Keccak256Transcript::<P>::default();
         std::mem::swap(&mut transcript, transcript_inout);
@@ -259,6 +268,8 @@ impl<P: Pairing> Plonk<P> {
         transcript_inout: &mut Keccak256Transcript<P>,
         proving_key: &ProvingKey<P>,
     ) -> HonkProofResult<()> {
+        tracing::trace!("executing log derivative inverse round");
+
         // Get the challenges and refresh the transcript
         let mut transcript = Keccak256Transcript::<P>::default();
         std::mem::swap(&mut transcript, transcript_inout);
@@ -287,6 +298,8 @@ impl<P: Pairing> Plonk<P> {
         proving_key: ProvingKey<P>,
         public_inputs: Vec<P::ScalarField>,
     ) -> HonkProofResult<()> {
+        tracing::trace!("prove");
+
         let mut transcript = Keccak256Transcript::default();
 
         // Add circuit size public input size and public inputs to transcript
