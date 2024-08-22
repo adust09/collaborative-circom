@@ -4,7 +4,7 @@ use ark_ec::pairing::Pairing;
 use std::marker::PhantomData;
 
 pub struct Decider<P: Pairing> {
-    memory: ProverMemory<P>,
+    pub(super) memory: ProverMemory<P>,
     phantom_data: PhantomData<P>,
 }
 
@@ -22,17 +22,9 @@ impl<P: Pairing> Decider<P> {
         transcript: &mut transcript::Keccak256Transcript<P>,
         proving_key: &ProvingKey<P>,
     ) {
-        const HAS_ZK: bool = false;
         // This is just Sumcheck.prove
 
-        // Keep in mind, the UltraHonk protocol (UltraFlavor) does not per default have ZK
-        // The UltraFlavorWithZK has ZK
-
-        // In case the Flavor has ZK, we populate sumcheck data structure with randomness, compute correcting term for
-        // the total sum, etc.
-        if HAS_ZK {
-            //     setup_zk_sumcheck_data(zk_sumcheck_data);
-        };
+        self.sumcheck_prove(transcript, proving_key);
 
         todo!();
     }
@@ -51,6 +43,14 @@ impl<P: Pairing> Decider<P> {
         tracing::trace!("Decider prove");
 
         let mut transcript = transcript::Keccak256Transcript::<P>::default();
+        transcript.add_scalar(
+            self.memory
+                .challenges
+                .gate_challenges
+                .last()
+                .expect("Element is present")
+                .to_owned(),
+        );
 
         // Run sumcheck subprotocol.
         self.execute_relation_check_rounds(&mut transcript, &proving_key);

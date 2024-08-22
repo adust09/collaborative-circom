@@ -32,6 +32,36 @@ pub struct Challenges<F: PrimeField> {
     pub gate_challenges: Vec<F>,
 }
 
+pub struct PowPolynomial<F: PrimeField> {
+    betas: Vec<F>,
+    pow_betas: Vec<F>,
+}
+
+impl<F: PrimeField> PowPolynomial<F> {
+    pub fn new(betas: Vec<F>) -> Self {
+        let pow_size = 1 << betas.len();
+
+        let mut pow_betas = Vec::with_capacity(pow_size);
+
+        // Barretenberg uses multithreading here
+        for i in 0..pow_size {
+            let mut res = F::one();
+            let mut j = i;
+            let mut beta_idx = 0;
+            while j > 0 {
+                if j & 1 == 1 {
+                    res *= betas[beta_idx];
+                }
+                j >>= 1;
+                beta_idx += 1;
+            }
+            pow_betas.push(res);
+        }
+
+        Self { betas, pow_betas }
+    }
+}
+
 impl<P: Pairing> Default for WitnessCommitments<P> {
     fn default() -> Self {
         Self {
