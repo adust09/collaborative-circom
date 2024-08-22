@@ -41,12 +41,12 @@ pub enum HonkProofError {
     IOError(#[from] io::Error),
 }
 
-pub struct Plonk<P: Pairing> {
+pub struct Oink<P: Pairing> {
     memory: ProverMemory<P>,
     phantom_data: PhantomData<P>,
 }
 
-impl<P: Pairing> Plonk<P> {
+impl<P: Pairing> Oink<P> {
     pub fn new() -> Self {
         Self {
             memory: ProverMemory::default(),
