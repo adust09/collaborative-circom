@@ -212,8 +212,8 @@ impl<P: Pairing> Plonk<P> {
                 * P::ScalarField::from((1 + proving_key.pub_inputs_offset) as u64);
 
         for x_i in public_inputs.iter() {
-            num *= (num_acc + x_i);
-            denom *= (denom_acc + x_i);
+            num *= num_acc + x_i;
+            denom *= denom_acc + x_i;
             num_acc += self.memory.challenges.beta;
             denom_acc -= self.memory.challenges.beta;
         }
@@ -266,7 +266,7 @@ impl<P: Pairing> Plonk<P> {
             * (*w_4 + *sigma_4 * beta + gamma)
     }
 
-    fn compute_grand_product(&self, proving_key: &ProvingKey<P>) {
+    fn compute_grand_product(&mut self, proving_key: &ProvingKey<P>) {
         tracing::trace!("compute grand product");
         // Barratenberg uses multithreading here
 
@@ -284,18 +284,31 @@ impl<P: Pairing> Plonk<P> {
 
         // Step (2)
         // Compute the accumulating product of the numerator and denominator terms.
-        // This step is split into three parts for efficient multithreading:
-        // (i) compute ∏ A(j), ∏ B(j) subproducts for each thread
-        // (ii) compute scaling factor required to convert each subproduct into a single running product
-        // (ii) combine subproducts into a single running product
-        //
-        // For example, consider 4 threads and a size-8 numerator { a0, a1, a2, a3, a4, a5, a6, a7 }
-        // (i)   Each thread computes 1 element of N = {{ a0, a0a1 }, { a2, a2a3 }, { a4, a4a5 }, { a6, a6a7 }}
-        // (ii)  Take partial products P = { 1, a0a1, a2a3, a4a5 }
-        // (iii) Each thread j computes N[i][j]*P[j]=
-        //      {{a0,a0a1},{a0a1a2,a0a1a2a3},{a0a1a2a3a4,a0a1a2a3a4a5},{a0a1a2a3a4a5a6,a0a1a2a3a4a5a6a7}}
+        // In Barretenberg, this is done in parallel across multiple threads, however we just do the computation signlethreaded for simplicity
 
-        todo!()
+        for i in 1..proving_key.circuit_size as usize {
+            numerator[i] = numerator[i] * numerator[i - 1];
+            denominator[i] = denominator[i] * denominator[i - 1];
+        }
+
+        // invert denominator
+        for den in denominator.iter_mut() {
+            den.inverse_in_place();
+        }
+
+        // Step (3) Compute z_perm[i] = numerator[i] / denominator[i]
+        self.memory.z_perm.resize(
+            proving_key.circuit_size as usize + 1,
+            P::ScalarField::zero(),
+        );
+
+        for (des, num, den) in izip!(
+            self.memory.z_perm.iter_mut().skip(1),
+            numerator.into_iter(),
+            denominator.into_iter()
+        ) {
+            *des = num * den;
+        }
     }
 
     // Add circuit size public input size and public inputs to transcript
@@ -424,16 +437,21 @@ impl<P: Pairing> Plonk<P> {
     // Compute grand product(s) and commitments.
     fn execute_grand_product_computation_round(
         &mut self,
-        // transcript: &mut Keccak256Transcript<P>,
+        transcript: &mut Keccak256Transcript<P>,
         proving_key: &ProvingKey<P>,
         public_inputs: &[P::ScalarField],
-    ) {
+    ) -> HonkProofResult<()> {
         tracing::trace!("executing grand product computation round");
 
         self.memory.public_input_delta =
             self.compute_public_input_delta(proving_key, public_inputs);
+        self.compute_grand_product(proving_key);
 
-        todo!()
+        self.memory.witness_commitments.z_perm =
+            Self::commit(&self.memory.lookup_inverses, &proving_key.crs)?;
+
+        transcript.add_point(self.memory.witness_commitments.z_perm.into());
+        Ok(())
     }
 
     pub fn prove(
@@ -454,6 +472,11 @@ impl<P: Pairing> Plonk<P> {
         // Fiat-Shamir: beta & gamma
         self.execute_log_derivative_inverse_round(&mut transcript, &proving_key)?;
         // Compute grand product(s) and commitments.
+        self.execute_grand_product_computation_round(
+            &mut transcript,
+            &proving_key,
+            &public_inputs,
+        )?;
 
         todo!();
 

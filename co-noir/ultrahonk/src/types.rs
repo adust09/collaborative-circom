@@ -13,6 +13,7 @@ pub struct ProvingKey<P: Pairing> {
 
 pub struct ProverMemory<P: Pairing> {
     pub w_4: Vec<P::ScalarField>,             // column 3
+    pub z_perm: Vec<P::ScalarField>,          // column 4
     pub lookup_inverses: Vec<P::ScalarField>, // column 5
     pub public_input_delta: P::ScalarField,
     pub witness_commitments: WitnessCommitments<P>,
@@ -34,7 +35,7 @@ pub struct WitnessEntities<F: PrimeField> {
     pub w_r: Vec<F>, // column 1
     pub w_o: Vec<F>, // column 2
     // pub w_4: Vec<F>, // column 3 -> computed by prover
-    // pub z_perm : Vec<F>, // column 4 (???)
+    // pub z_perm : Vec<F>, // column 4 -> computed by prover
     // pub lookup_inverses: Vec<F>,    // column 5 -> computed by prover
     pub lookup_read_counts: Vec<F>, // column 6
     pub lookup_read_tags: Vec<F>,   // column 7
@@ -80,6 +81,7 @@ pub struct WitnessCommitments<P: Pairing> {
     pub w_r: P::G1,
     pub w_o: P::G1,
     pub w_4: P::G1,
+    pub z_perm: P::G1,
     pub lookup_inverses: P::G1,
     pub lookup_read_counts: P::G1,
     pub lookup_read_tags: P::G1,
@@ -92,6 +94,7 @@ impl<P: Pairing> Default for WitnessCommitments<P> {
             w_r: Default::default(),
             w_o: Default::default(),
             w_4: Default::default(),
+            z_perm: Default::default(),
             lookup_inverses: Default::default(),
             lookup_read_counts: Default::default(),
             lookup_read_tags: Default::default(),
@@ -115,6 +118,7 @@ impl<P: Pairing> Default for ProverMemory<P> {
     fn default() -> Self {
         Self {
             w_4: Default::default(),
+            z_perm: Default::default(),
             lookup_inverses: Default::default(),
             public_input_delta: Default::default(),
             witness_commitments: Default::default(),
