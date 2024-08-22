@@ -220,6 +220,84 @@ impl<P: Pairing> Plonk<P> {
         num / denom
     }
 
+    fn compute_grand_product_numerator(
+        &self,
+        proving_key: &ProvingKey<P>,
+        i: usize,
+    ) -> P::ScalarField {
+        tracing::trace!("compute grand product numerator");
+
+        let w_1 = &proving_key.polynomials.witness.w_l[i];
+        let w_2 = &proving_key.polynomials.witness.w_r[i];
+        let w_3 = &proving_key.polynomials.witness.w_o[i];
+        let w_4 = &self.memory.w_4[i];
+        let id_1 = &proving_key.polynomials.precomputed.id_1[i];
+        let id_2 = &proving_key.polynomials.precomputed.id_2[i];
+        let id_3 = &proving_key.polynomials.precomputed.id_3[i];
+        let id_4 = &proving_key.polynomials.precomputed.id_4[i];
+        let beta = &self.memory.challenges.beta;
+        let gamma = &self.memory.challenges.gamma;
+
+        // witness degree 4; full degree 8
+        (*w_1 + *id_1 * beta + gamma)
+            * (*w_2 + *id_2 * beta + gamma)
+            * (*w_3 + *id_3 * beta + gamma)
+            * (*w_4 + *id_4 * beta + gamma)
+    }
+
+    fn grand_product_denominator(&self, proving_key: &ProvingKey<P>, i: usize) -> P::ScalarField {
+        tracing::trace!("compute grand product denominator");
+
+        let w_1 = &proving_key.polynomials.witness.w_l[i];
+        let w_2 = &proving_key.polynomials.witness.w_r[i];
+        let w_3 = &proving_key.polynomials.witness.w_o[i];
+        let w_4 = &self.memory.w_4[i];
+        let sigma_1 = &proving_key.polynomials.precomputed.sigma_1[i];
+        let sigma_2 = &proving_key.polynomials.precomputed.sigma_2[i];
+        let sigma_3 = &proving_key.polynomials.precomputed.sigma_3[i];
+        let sigma_4 = &proving_key.polynomials.precomputed.sigma_4[i];
+        let beta = &self.memory.challenges.beta;
+        let gamma = &self.memory.challenges.gamma;
+
+        // witness degree 4; full degree 8
+        (*w_1 + *sigma_1 * beta + gamma)
+            * (*w_2 + *sigma_2 * beta + gamma)
+            * (*w_3 + *sigma_3 * beta + gamma)
+            * (*w_4 + *sigma_4 * beta + gamma)
+    }
+
+    fn compute_grand_product(&self, proving_key: &ProvingKey<P>) {
+        tracing::trace!("compute grand product");
+        // Barratenberg uses multithreading here
+
+        // In Barretenberg circuit size is taken from the q_c polynomial
+        let mut numerator = Vec::with_capacity(proving_key.circuit_size as usize);
+        let mut denominator = Vec::with_capacity(proving_key.circuit_size as usize);
+
+        // Step (1)
+        // Populate `numerator` and `denominator` with the algebra described by Relation
+
+        for i in 0..proving_key.circuit_size as usize {
+            numerator.push(self.compute_grand_product_numerator(proving_key, i));
+            denominator.push(self.grand_product_denominator(proving_key, i));
+        }
+
+        // Step (2)
+        // Compute the accumulating product of the numerator and denominator terms.
+        // This step is split into three parts for efficient multithreading:
+        // (i) compute ∏ A(j), ∏ B(j) subproducts for each thread
+        // (ii) compute scaling factor required to convert each subproduct into a single running product
+        // (ii) combine subproducts into a single running product
+        //
+        // For example, consider 4 threads and a size-8 numerator { a0, a1, a2, a3, a4, a5, a6, a7 }
+        // (i)   Each thread computes 1 element of N = {{ a0, a0a1 }, { a2, a2a3 }, { a4, a4a5 }, { a6, a6a7 }}
+        // (ii)  Take partial products P = { 1, a0a1, a2a3, a4a5 }
+        // (iii) Each thread j computes N[i][j]*P[j]=
+        //      {{a0,a0a1},{a0a1a2,a0a1a2a3},{a0a1a2a3a4,a0a1a2a3a4a5},{a0a1a2a3a4a5a6,a0a1a2a3a4a5a6a7}}
+
+        todo!()
+    }
+
     // Add circuit size public input size and public inputs to transcript
     fn execute_preamble_round(
         transcript: &mut Keccak256Transcript<P>,

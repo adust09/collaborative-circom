@@ -53,6 +53,14 @@ pub struct PrecomputedEntities<F: PrimeField> {
     pub q_r: Vec<F>,      // column 3
     pub q_o: Vec<F>,      // column 4
     pub q_lookup: Vec<F>, // column 10
+    pub sigma_1: Vec<F>,  // column 11
+    pub sigma_2: Vec<F>,  // column 12
+    pub sigma_3: Vec<F>,  // column 13
+    pub sigma_4: Vec<F>,  // column 14
+    pub id_1: Vec<F>,     // column 15
+    pub id_2: Vec<F>,     // column 16
+    pub id_3: Vec<F>,     // column 17
+    pub id_4: Vec<F>,     // column 18
     pub table_1: Vec<F>,  // column 19
     pub table_2: Vec<F>,  // column 20
     pub table_3: Vec<F>,  // column 21
@@ -108,6 +116,7 @@ impl<P: Pairing> Default for ProverMemory<P> {
         Self {
             w_4: Default::default(),
             lookup_inverses: Default::default(),
+            public_input_delta: Default::default(),
             witness_commitments: Default::default(),
             challenges: Default::default(),
         }
