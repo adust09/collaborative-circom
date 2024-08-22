@@ -69,13 +69,14 @@ pub struct PrecomputedEntities<F: PrimeField> {
 }
 
 const NUM_SUBRELATIONS: usize = 18; // TODO is this correct?
+const NUM_ALPHAS: usize = NUM_SUBRELATIONS - 1;
 pub struct Challenges<F: PrimeField> {
     pub eta_1: F,
     pub eta_2: F,
     pub eta_3: F,
     pub beta: F,
     pub gamma: F,
-    pub alphas: [F; NUM_SUBRELATIONS],
+    pub alphas: [F; NUM_ALPHAS],
 }
 
 pub struct WitnessCommitments<P: Pairing> {
@@ -112,7 +113,7 @@ impl<F: PrimeField> Default for Challenges<F> {
             eta_3: Default::default(),
             beta: Default::default(),
             gamma: Default::default(),
-            alphas: [Default::default(); NUM_SUBRELATIONS],
+            alphas: [Default::default(); NUM_ALPHAS],
         }
     }
 }
