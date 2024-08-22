@@ -1,5 +1,24 @@
+// clang-format off
+/*                                            )\   /|
+*                                          .-/'-|_/ |
+*                       __            __,-' (   / \/
+*                   .-'"  "'-..__,-'""          -o.`-._
+*                  /                                   '/
+*          *--._ ./                                 _.--
+*                |                              _.-'
+*                :                           .-/
+*                 \                       )_ /
+*                  \                _)   / \(
+*                    `.   /-.___.---'(  /   \\
+*                     (  /   \\       \(     L\
+*                      \(     L\       \\
+*                       \\              \\
+*                        L\              L\
+*/
+// clang-format on
+
 use crate::{
-    transcript::{self, Keccak256Transcript},
+    transcript::Keccak256Transcript,
     types::{ProverCrs, ProverMemory, ProvingKey},
 };
 use ark_ec::{pairing::Pairing, VariableBaseMSM};
