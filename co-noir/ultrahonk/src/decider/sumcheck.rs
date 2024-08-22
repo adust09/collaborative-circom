@@ -5,6 +5,10 @@ use ark_ec::pairing::Pairing;
 use ark_ff::UniformRand;
 use rand::{thread_rng, Rng};
 
+// Keep in mind, the UltraHonk protocol (UltraFlavor) does not per default have ZK
+// The UltraFlavorWithZK has ZK
+pub(crate) const HAS_ZK: bool = false;
+
 impl<P: Pairing> Decider<P> {
     fn setup_zk_sumcheck_data<R: Rng>(&self, rng: &mut R) {
         const NUM_ALL_WITNESS_ENTITIES: usize = 13;
@@ -21,9 +25,7 @@ impl<P: Pairing> Decider<P> {
         transcript: &mut transcript::Keccak256Transcript<P>,
         proving_key: &ProvingKey<P>,
     ) {
-        // Keep in mind, the UltraHonk protocol (UltraFlavor) does not per default have ZK
-        // The UltraFlavorWithZK has ZK
-        const HAS_ZK: bool = false;
+        tracing::trace!("Sumcheck prove");
 
         // TODO another RNG?
         let mut rng = thread_rng();
