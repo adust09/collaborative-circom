@@ -1,5 +1,5 @@
 use crate::{
-    transcript::Keccak256Transcript,
+    transcript::{self, Keccak256Transcript},
     types::{ProverCrs, ProverMemory, ProvingKey},
 };
 use ark_ec::{pairing::Pairing, VariableBaseMSM};
@@ -311,6 +311,16 @@ impl<P: Pairing> Plonk<P> {
         }
     }
 
+    // Generate relation separators alphas for sumcheck/combiner computation
+    fn generate_alphas_round(&mut self, transcript: Keccak256Transcript<P>) {
+        self.memory.challenges.alphas[0] = transcript.get_challenge();
+        for idx in 1..self.memory.challenges.alphas.len() {
+            let mut transcript = Keccak256Transcript::<P>::default();
+            transcript.add_scalar(self.memory.challenges.alphas[idx - 1]);
+            self.memory.challenges.alphas[idx] = transcript.get_challenge();
+        }
+    }
+
     // Add circuit size public input size and public inputs to transcript
     fn execute_preamble_round(
         transcript: &mut Keccak256Transcript<P>,
@@ -477,6 +487,9 @@ impl<P: Pairing> Plonk<P> {
             &proving_key,
             &public_inputs,
         )?;
+
+        // Generate relation separators alphas for sumcheck/combiner computation
+        self.generate_alphas_round(transcript);
 
         todo!();
 

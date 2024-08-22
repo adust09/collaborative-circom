@@ -68,12 +68,14 @@ pub struct PrecomputedEntities<F: PrimeField> {
     pub table_4: Vec<F>,  // column 22
 }
 
+const NUM_SUBRELATIONS: usize = 18; // TODO is this correct?
 pub struct Challenges<F: PrimeField> {
     pub eta_1: F,
     pub eta_2: F,
     pub eta_3: F,
     pub beta: F,
     pub gamma: F,
+    pub alphas: [F; NUM_SUBRELATIONS],
 }
 
 pub struct WitnessCommitments<P: Pairing> {
@@ -110,6 +112,7 @@ impl<F: PrimeField> Default for Challenges<F> {
             eta_3: Default::default(),
             beta: Default::default(),
             gamma: Default::default(),
+            alphas: [Default::default(); NUM_SUBRELATIONS],
         }
     }
 }
