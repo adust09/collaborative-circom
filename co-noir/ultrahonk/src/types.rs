@@ -1,10 +1,6 @@
 use ark_ec::pairing::Pairing;
 use ark_ff::PrimeField;
 
-pub struct ProverCrs<P: Pairing> {
-    pub monomials: Vec<P::G1Affine>,
-}
-
 pub struct ProvingKey<P: Pairing> {
     pub crs: ProverCrs<P>,
     pub circuit_size: u32,
@@ -13,6 +9,18 @@ pub struct ProvingKey<P: Pairing> {
     pub polynomials: Polynomials<P::ScalarField>,
     pub memory_read_records: Vec<u32>,
     pub memory_write_records: Vec<u32>,
+}
+
+pub struct ProverMemory<P: Pairing> {
+    pub w_4: Vec<P::ScalarField>,             // column 3
+    pub lookup_inverses: Vec<P::ScalarField>, // column 5
+    pub public_input_delta: P::ScalarField,
+    pub witness_commitments: WitnessCommitments<P>,
+    pub challenges: Challenges<P::ScalarField>,
+}
+
+pub struct ProverCrs<P: Pairing> {
+    pub monomials: Vec<P::G1Affine>,
 }
 
 pub struct Polynomials<F: PrimeField> {
@@ -67,12 +75,6 @@ pub struct WitnessCommitments<P: Pairing> {
     pub lookup_inverses: P::G1,
     pub lookup_read_counts: P::G1,
     pub lookup_read_tags: P::G1,
-}
-pub struct ProverMemory<P: Pairing> {
-    pub w_4: Vec<P::ScalarField>,             // column 3
-    pub lookup_inverses: Vec<P::ScalarField>, // column 5
-    pub witness_commitments: WitnessCommitments<P>,
-    pub challenges: Challenges<P::ScalarField>,
 }
 
 impl<P: Pairing> Default for WitnessCommitments<P> {
