@@ -1,1 +1,1 @@
-mod prover;
+pub(crate) mod prover;

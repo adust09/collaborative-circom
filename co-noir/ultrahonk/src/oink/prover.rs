@@ -18,32 +18,24 @@
 // clang-format on
 
 use crate::{
+    prover::{HonkProofError, HonkProofResult},
     transcript::Keccak256Transcript,
     types::{ProverCrs, ProverMemory, ProvingKey},
 };
 use ark_ec::{pairing::Pairing, VariableBaseMSM};
 use ark_ff::{Field, One, Zero};
 use itertools::izip;
-use std::{io, marker::PhantomData};
-
-type HonkProofResult<T> = std::result::Result<T, HonkProofError>;
-
-/// The errors that may arise during the computation of a co-PLONK proof.
-#[derive(Debug, thiserror::Error)]
-pub enum HonkProofError {
-    /// Indicates that the witness is too small for the provided circuit.
-    #[error("Cannot index into witness {0}")]
-    CorruptedWitness(usize),
-    /// Indicates that the crs is too small
-    #[error("CRS too small")]
-    CrsTooSmall,
-    #[error(transparent)]
-    IOError(#[from] io::Error),
-}
+use std::marker::PhantomData;
 
 pub struct Oink<P: Pairing> {
     memory: ProverMemory<P>,
     phantom_data: PhantomData<P>,
+}
+
+impl<P: Pairing> Default for Oink<P> {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl<P: Pairing> Oink<P> {
@@ -487,8 +479,8 @@ impl<P: Pairing> Oink<P> {
         mut self,
         proving_key: ProvingKey<P>,
         public_inputs: Vec<P::ScalarField>,
-    ) -> HonkProofResult<()> {
-        tracing::trace!("prove");
+    ) -> HonkProofResult<ProverMemory<P>> {
+        tracing::trace!("Oink prove");
 
         let mut transcript = Keccak256Transcript::default();
 
@@ -510,8 +502,6 @@ impl<P: Pairing> Oink<P> {
         // Generate relation separators alphas for sumcheck/combiner computation
         self.generate_alphas_round(transcript);
 
-        todo!();
-
-        Ok(())
+        Ok(self.memory)
     }
 }
