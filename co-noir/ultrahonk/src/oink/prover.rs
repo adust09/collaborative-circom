@@ -17,10 +17,11 @@
 */
 // clang-format on
 
+use super::types::ProverMemory;
 use crate::{
     prover::{HonkProofError, HonkProofResult},
     transcript::Keccak256Transcript,
-    types::{ProverCrs, ProverMemory, ProvingKey},
+    types::{ProverCrs, ProvingKey},
 };
 use ark_ec::{pairing::Pairing, VariableBaseMSM};
 use ark_ff::{Field, One, Zero};
@@ -155,10 +156,10 @@ impl<P: Pairing> Oink<P> {
             .lookup_inverses
             .resize(proving_key.circuit_size as usize, P::ScalarField::zero());
 
-        const READ_TERMS: usize = 1;
-        const WRITE_TERMS: usize = 1;
-        // 1 + polynomial degree of this relation
-        const LENGTH: usize = 5; // both subrelations are degree 4
+        // const READ_TERMS: usize = 1;
+        // const WRITE_TERMS: usize = 1;
+        // // 1 + polynomial degree of this relation
+        // const LENGTH: usize = 5; // both subrelations are degree 4
 
         for (i, (q_lookup, lookup_read_tag)) in izip!(
             proving_key.polynomials.precomputed.q_lookup.iter(),
@@ -324,6 +325,8 @@ impl<P: Pairing> Oink<P> {
 
     // Generate relation separators alphas for sumcheck/combiner computation
     fn generate_alphas_round(&mut self, transcript: Keccak256Transcript<P>) {
+        tracing::trace!("generate alpha round");
+
         self.memory.challenges.alphas[0] = transcript.get_challenge();
         for idx in 1..self.memory.challenges.alphas.len() {
             let mut transcript = Keccak256Transcript::<P>::default();
@@ -477,27 +480,23 @@ impl<P: Pairing> Oink<P> {
 
     pub fn prove(
         mut self,
-        proving_key: ProvingKey<P>,
-        public_inputs: Vec<P::ScalarField>,
+        proving_key: &ProvingKey<P>,
+        public_inputs: &[P::ScalarField],
     ) -> HonkProofResult<ProverMemory<P>> {
         tracing::trace!("Oink prove");
 
         let mut transcript = Keccak256Transcript::default();
 
         // Add circuit size public input size and public inputs to transcript
-        Self::execute_preamble_round(&mut transcript, &proving_key, &public_inputs)?;
+        Self::execute_preamble_round(&mut transcript, proving_key, public_inputs)?;
         // Compute first three wire commitments
-        self.execute_wire_commitments_round(&mut transcript, &proving_key)?;
+        self.execute_wire_commitments_round(&mut transcript, proving_key)?;
         // Compute sorted list accumulator and commitment
-        self.execute_sorted_list_accumulator_round(&mut transcript, &proving_key)?;
+        self.execute_sorted_list_accumulator_round(&mut transcript, proving_key)?;
         // Fiat-Shamir: beta & gamma
-        self.execute_log_derivative_inverse_round(&mut transcript, &proving_key)?;
+        self.execute_log_derivative_inverse_round(&mut transcript, proving_key)?;
         // Compute grand product(s) and commitments.
-        self.execute_grand_product_computation_round(
-            &mut transcript,
-            &proving_key,
-            &public_inputs,
-        )?;
+        self.execute_grand_product_computation_round(&mut transcript, proving_key, public_inputs)?;
 
         // Generate relation separators alphas for sumcheck/combiner computation
         self.generate_alphas_round(transcript);

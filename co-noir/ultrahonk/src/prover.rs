@@ -1,7 +1,13 @@
+use crate::{
+    decider::{prover::Decider, types::ProverMemory},
+    get_msb,
+    oink::prover::Oink,
+    transcript::Keccak256Transcript,
+    types::ProvingKey,
+    NUM_ALPHAS,
+};
 use ark_ec::pairing::Pairing;
 use std::{io, marker::PhantomData};
-
-use crate::{oink::prover::Oink, types::ProvingKey};
 
 pub type HonkProofResult<T> = std::result::Result<T, HonkProofError>;
 
@@ -35,17 +41,36 @@ impl<P: Pairing> UltraHonk<P> {
         }
     }
 
+    fn generate_gate_challenges(&self, memory: &mut ProverMemory<P>, proving_key: &ProvingKey<P>) {
+        tracing::trace!("generate gate challenges");
+
+        let challenge_size = get_msb(proving_key.circuit_size) as usize;
+        let mut gate_challenges = Vec::with_capacity(challenge_size);
+
+        let mut transcript = Keccak256Transcript::<P>::default();
+        transcript.add_scalar(memory.challenges.alphas[NUM_ALPHAS - 1]);
+
+        gate_challenges.push(transcript.get_challenge());
+        for idx in 1..challenge_size {
+            let mut transcript = Keccak256Transcript::<P>::default();
+            transcript.add_scalar(gate_challenges[idx - 1]);
+            gate_challenges.push(transcript.get_challenge());
+        }
+        memory.challenges.gate_challenges = gate_challenges;
+    }
+
     pub fn prove(
-        mut self,
+        self,
         proving_key: ProvingKey<P>,
         public_inputs: Vec<P::ScalarField>,
     ) -> HonkProofResult<()> {
         tracing::trace!("UltraHonk prove");
 
         let oink = Oink::<P>::default();
-        let oink_memory = oink.prove(proving_key, public_inputs)?;
+        let mut memory = ProverMemory::from(oink.prove(&proving_key, &public_inputs)?);
+        self.generate_gate_challenges(&mut memory, &proving_key);
 
-        todo!();
-        Ok(())
+        let decider = Decider::new(memory);
+        decider.prove(proving_key, public_inputs)
     }
 }
