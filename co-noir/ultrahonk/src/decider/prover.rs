@@ -16,6 +16,17 @@ impl<P: Pairing> Decider<P> {
         }
     }
 
+    // Run sumcheck subprotocol.
+    fn execute_relation_check_rounds(&self) {
+        todo!();
+    }
+
+    // Fiat-Shamir: rho, y, x, z
+    // Execute Zeromorph multilinear PCS
+    fn execute_pcs_rounds(&self) {
+        todo!();
+    }
+
     pub fn prove(
         self,
         proving_key: ProvingKey<P>,
@@ -23,7 +34,13 @@ impl<P: Pairing> Decider<P> {
     ) -> HonkProofResult<()> {
         tracing::trace!("Decider prove");
 
-        todo!("Implement Decider::prove");
+        // Run sumcheck subprotocol.
+        self.execute_relation_check_rounds();
+        // Fiat-Shamir: rho, y, x, z
+        // Execute Zeromorph multilinear PCS
+        self.execute_pcs_rounds();
+
+        todo!("output the proof");
         Ok(())
     }
 }
