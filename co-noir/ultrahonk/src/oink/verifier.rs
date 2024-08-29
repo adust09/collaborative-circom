@@ -1,40 +1,32 @@
-use crate::oink::prover::HonkProofError;
-use crate::transcript::{self, Keccak256Transcript, Transcript};
-use crate::types::VerifyingKey;
-use crate::NUM_ALPHAS;
-use ark_ec::{pairing::Pairing, Group};
-use ark_ff::{BigInt, Field};
 use std::marker::PhantomData;
 
-struct OinkOutput<P: Pairing> {
+use crate::oink::types::WitnessCommitments;
+use crate::transcript::Keccak256Transcript;
+use crate::types::VerifyingKey;
+use crate::{prover, NUM_ALPHAS};
+use ark_ec::pairing::Pairing;
+use ark_ff::Field;
+use prover::HonkProofError;
+
+pub(crate) struct OinkOutput<P: Pairing> {
     relation_parameters: RelationParameters<P>,
-    commitments: WitnessComms<P>,
-    public_inputs: Vec<P::ScalarField>, //?
+    commitments: WitnessCommitments<P>,
+    public_inputs: Vec<P::ScalarField>,
     alphas: [P::ScalarField; NUM_ALPHAS],
+    // transcript: Keccak256Transcript<P>, todo: I think that should also be output?
 }
 
-struct OinkVerifier<P: Pairing> {
+// todo: where does the Verifier get the witness_comms from?
+pub(crate) struct OinkVerifier<P: Pairing> {
     transcript: Keccak256Transcript<P>,
     key: VerifyingKey<P>,
     relation_parameters: RelationParameters<P>,
-    witness_comms: WitnessComms<P>,
-    public_inputs: Vec<P::ScalarField>, //?
+    witness_comms: WitnessCommitments<P>,
 }
 
-//types to be checked
-struct WitnessComms<P: Pairing> {
-    w_l: P::G1,
-    w_r: P::G1,
-    w_o: P::G1,
-    w_4: P::G1,
-    lookup_read_counts: P::G1,
-    lookup_read_tags: P::G1,
-    lookup_inverses: P::G1,
-    z_perm: P::G1,
-}
-
-//types to be checked
-struct RelationParameters<P: Pairing> {
+// todo: remove(?) this struct from OinkVerifier, these values get computed during verification
+#[derive(Clone)]
+pub(crate) struct RelationParameters<P: Pairing> {
     eta: P::ScalarField,
     eta_two: P::ScalarField,
     eta_three: P::ScalarField,
@@ -44,19 +36,34 @@ struct RelationParameters<P: Pairing> {
 }
 
 impl<P: Pairing> OinkVerifier<P> {
-    fn verify(&mut self, public_inputs: Vec<P::ScalarField>) -> OinkOutput<P> {
+    pub fn new(
+        transcript: Keccak256Transcript<P>,
+        key: VerifyingKey<P>,
+        relation_parameters: RelationParameters<P>,
+        witness_comms: WitnessCommitments<P>,
+    ) -> Self {
+        Self {
+            transcript,
+            key,
+            relation_parameters,
+            witness_comms,
+        }
+    }
+    //todo: maybe we also have to return the transcript (I think ultaverifier needs it?)
+    pub(crate) fn verify(&mut self, public_inputs: Vec<P::ScalarField>) -> OinkOutput<P> {
         self.execute_preamble_round(&public_inputs);
         self.execute_wire_commitments_round();
         self.execute_sorted_list_accumulator_round();
         self.execute_log_derivative_inverse_round();
-        self.execute_grand_product_computation_round();
+        self.execute_grand_product_computation_round(&public_inputs);
         let alphas = self.generate_alphas_round();
 
         OinkOutput {
-            relation_parameters: &self.relation_parameters,
-            commitments: &self.witness_comms,
-            public_inputs: &self.public_inputs,
+            relation_parameters: self.relation_parameters.clone(),
+            commitments: self.witness_comms.clone(),
+            public_inputs,
             alphas,
+            // transcript: self.transcript,
         }
     }
 
@@ -69,13 +76,13 @@ impl<P: Pairing> OinkVerifier<P> {
         self.transcript
             .add(self.key.pub_inputs_offset.to_le_bytes());
 
-        //To do / To think: do we want to assert here with key vs transcript?
+        // To do / To think: do we want to assert here with key vs transcript?
         // assert_eq!(circuit_size, self.key.circuit_size);
         // assert_eq!(public_input_size, self.key.num_public_inputs);
         // assert_eq!(pub_inputs_offset, self.key.pub_inputs_offset);
 
         if self.key.num_public_inputs as usize != public_inputs.len() {
-            todo!()
+            todo!() //return error
         }
 
         for public_input in public_inputs {
@@ -139,10 +146,10 @@ impl<P: Pairing> OinkVerifier<P> {
             .add_point(self.witness_comms.lookup_inverses.into());
     }
 
-    fn execute_grand_product_computation_round(&mut self) {
+    fn execute_grand_product_computation_round(&mut self, public_inputs: &[P::ScalarField]) {
         tracing::trace!("executing (verifying) grand product computation round");
         self.relation_parameters.public_input_delta = compute_public_input_delta::<P>(
-            self.public_inputs.clone(),
+            public_inputs,
             self.relation_parameters.beta,
             self.relation_parameters.gamma,
             self.key.circuit_size,
@@ -168,7 +175,7 @@ impl<P: Pairing> OinkVerifier<P> {
 }
 
 fn compute_public_input_delta<P: Pairing>(
-    public_inputs: Vec<P::ScalarField>,
+    public_inputs: &[P::ScalarField],
     beta: P::ScalarField,
     gamma: P::ScalarField,
     domain_size: u32,

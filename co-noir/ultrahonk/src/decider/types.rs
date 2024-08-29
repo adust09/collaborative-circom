@@ -60,6 +60,9 @@ impl<F: PrimeField> PowPolynomial<F> {
 
         Self { betas, pow_betas }
     }
+    pub fn partially_evaluate(round_challenge: F) {
+        todo!()
+    }
 }
 
 impl<P: Pairing> Default for WitnessCommitments<P> {

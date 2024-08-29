@@ -1,4 +1,3 @@
-use crate::NUM_ALPHAS;
 use ark_ec::pairing::Pairing;
 use ark_ff::PrimeField;
 
@@ -65,29 +64,5 @@ pub struct VerifyingKey<P: Pairing> {
     pub circuit_size: u32,
     pub num_public_inputs: u32,
     pub pub_inputs_offset: u32,
-    pub polynomials: Polynomials<P>,
-}
-
-pub struct VerifyingKey<P: Pairing> {
-    pub crs: ProverCrs<P>,
-    pub circuit_size: u32,
-    pub num_public_inputs: u32,
-    pub pub_inputs_offset: u32,
-    pub polynomials: Polynomials<P>,
-}
-
-pub struct VerifyingKey<P: Pairing> {
-    pub crs: ProverCrs<P>,
-    pub circuit_size: u32,
-    pub num_public_inputs: u32,
-    pub pub_inputs_offset: u32,
-    pub polynomials: Polynomials<P>,
-}
-
-pub struct VerifyingKey<P: Pairing> {
-    pub crs: ProverCrs<P>,
-    pub circuit_size: u32,
-    pub num_public_inputs: u32,
-    pub pub_inputs_offset: u32,
-    pub polynomials: Polynomials<P>,
+    pub polynomials: Polynomials<P::ScalarField>,
 }

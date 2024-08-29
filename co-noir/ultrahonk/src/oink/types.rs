@@ -19,6 +19,7 @@ pub struct Challenges<F: PrimeField> {
     pub gamma: F,
     pub alphas: [F; NUM_ALPHAS],
 }
+#[derive(Clone)]
 
 pub struct WitnessCommitments<P: Pairing> {
     pub w_l: P::G1,
