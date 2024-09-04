@@ -124,6 +124,7 @@ fn zeromorph_verify<P: Pairing>(
     shifted_evaluations: Vec<P::ScalarField>,
     multivariate_challenge: Vec<P::ScalarField>,
     transcript_inout: &mut Keccak256Transcript<P>,
+    concatenated_evaluations: Vec<P::ScalarField>, // RefSpan<FF> concatenated_evaluations = {}
 ) -> OpeningClaim<P> {
     let log_n = get_msb(circuit_size.clone()); //TODO: check this
     let mut transcript = Keccak256Transcript::<P>::default();
@@ -140,6 +141,7 @@ fn zeromorph_verify<P: Pairing>(
     for &value in unshifted_evaluations
         .iter()
         .chain(shifted_evaluations.iter())
+        .chain(concatenated_evaluations.iter())
     {
         batched_evaluation += value * batching_scalar;
         batching_scalar *= rho;

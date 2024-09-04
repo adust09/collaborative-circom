@@ -1,4 +1,5 @@
 use ark_ec::pairing::Pairing;
+
 use ark_ff::PrimeField;
 
 pub struct ProvingKey<P: Pairing> {
