@@ -35,11 +35,18 @@ pub struct Challenges<F: PrimeField> {
 pub struct PowPolynomial<F: PrimeField> {
     betas: Vec<F>,
     pow_betas: Vec<F>,
+    //dont know if only verifier needs the following, then maybe separate struct for this
+    partial_evaluation_result: F,
+    current_element_idx: usize,
+    periodicity: usize,
 }
 
 impl<F: PrimeField> PowPolynomial<F> {
     pub fn new(betas: Vec<F>) -> Self {
         let pow_size = 1 << betas.len();
+        let current_element_idx = 0;
+        let periodicity = 2;
+        let partial_evaluation_result = F::ONE;
 
         let mut pow_betas = Vec::with_capacity(pow_size);
 
@@ -58,10 +65,20 @@ impl<F: PrimeField> PowPolynomial<F> {
             pow_betas.push(res);
         }
 
-        Self { betas, pow_betas }
+        Self {
+            betas,
+            pow_betas,
+            partial_evaluation_result,
+            current_element_idx,
+            periodicity,
+        }
     }
-    pub fn partially_evaluate(round_challenge: F) {
-        todo!()
+    pub fn partially_evaluate(&mut self, round_challenge: F) {
+        let current_univariate_eval =
+            F::ONE + (round_challenge * (self.betas[self.current_element_idx] - F::ONE));
+        self.partial_evaluation_result *= current_univariate_eval;
+        self.current_element_idx + 1;
+        self.periodicity *= 2;
     }
 }
 

@@ -1,26 +1,24 @@
 use crate::decider::types::PowPolynomial;
 use crate::CONST_PROOF_SIZE_LOG_N;
 use crate::{
-    decider::{prover::Decider, types::ProverMemory},
     get_msb,
-    oink::{
-        self,
-        prover::Oink,
-        types::WitnessCommitments,
-        verifier::{self, OinkVerifier, RelationParameters},
-    },
+    oink::{self, types::WitnessCommitments, verifier::RelationParameters},
     transcript::{self, Keccak256Transcript},
-    types::{ProvingKey, VerifyingKey},
+    types::VerifyingKey,
     NUM_ALPHAS,
 };
 use ark_ec::pairing::{self, Pairing};
 use ark_ec::VariableBaseMSM;
 use ark_ff::Field;
-use std::vec;
 use std::{io, marker::PhantomData};
 
 pub struct UltraHonkVerifier<P: Pairing> {
     phantom_data: PhantomData<P>,
+}
+pub struct OpeningClaim<P: Pairing> {
+    challenge: P::ScalarField,
+    evaluation: P::ScalarField,
+    commitment: P::G1,
 }
 
 impl<P: Pairing> Default for UltraHonkVerifier<P> {
@@ -41,12 +39,12 @@ impl<P: Pairing> UltraHonkVerifier<P> {
         honk_proof: PhantomData<P>,
         vk: VerifyingKey<P>,
         public_inputs: Vec<P::ScalarField>,
-        relation_parameters: RelationParameters<P>,
-        witness_comms: WitnessCommitments<P>,
-    ) {
+        relation_parameters: RelationParameters<P>, //weg damit
+        witness_comms: WitnessCommitments<P>,       //weg damit
+    ) -> bool {
         tracing::trace!("UltraHonk verification");
         let mut transcript = Keccak256Transcript::<P>::default();
-        let log_circuit_size = get_msb(vk.circuit_size.clone()); //todo: is this what we want?
+        let log_circuit_size = get_msb(vk.circuit_size.clone());
         let oink_output = oink::verifier::OinkVerifier::<P>::new(
             transcript,
             vk,
@@ -54,6 +52,12 @@ impl<P: Pairing> UltraHonkVerifier<P> {
             witness_comms,
         )
         .verify(public_inputs);
+
+        // do we have to do this?:
+        // Copy the witness_commitments over to the VerifierCommitments
+        // for (auto [wit_comm_1, wit_comm_2] : zip_view(commitments.get_witness(), witness_commitments.get_all())) {
+        //     wit_comm_1 = wit_comm_2;
+        // }
 
         let mut transcript = Keccak256Transcript::<P>::default();
         let mut gate_challenges = Vec::with_capacity(log_circuit_size as usize);
@@ -63,18 +67,34 @@ impl<P: Pairing> UltraHonkVerifier<P> {
             transcript.add_scalar(gate_challenges[idx - 1]);
             gate_challenges[idx] = transcript.get_challenge();
         }
+        let [multivariate_challenge, claimed_evaluations, sumcheck_verified] = sumcheck_verify(
+            relation_parameters,
+            &mut transcript,
+            oink_output.alphas,
+            gate_challenges,
+            vk,
+        );
         // to do: build sumcheck verifier, returns (multivariate_challenge, claimed_evaluations, sumcheck_verified)
-        // get_unshifted(), get_to_be_shifted()
+        // get_unshifted(), get_to_be_shifted(), get_shifted()
 
-        // let opening_claim = zeromorph_verify(
-        //     vk.circuit_size,
-        //     unshifted_commitments,
-        //     to_be_shifted_commitments,
-        //     unshifted_evaluations,
-        //     shifted_evaluations,
-        //     multivariate_challenge,
-        //     transcript_inout,
-        // );
+        let opening_claim = zeromorph_verify(
+            vk.circuit_size,
+            witness_comms,
+            witness_comms,
+            claimed_evaluations,
+            claimed_evaluations,
+            multivariate_challenge,
+            &mut transcript,
+            // actually it is
+            // commitments.get_unshifted(),
+            // commitments.get_to_be_shifted(),
+            // claimed_evaluations.get_unshifted(),
+            // claimed_evaluations.get_shifted()
+            // but i dont understand the shift yet
+        );
+        let pairing_points = reduce_verify(&mut transcript, opening_claim);
+        let pcs_verified = pairing_check(pairing_points[0], pairing_points[1], precomputedlines);
+        sumcheck_verified && pcs_verified
     }
 }
 
@@ -104,7 +124,7 @@ fn zeromorph_verify<P: Pairing>(
     shifted_evaluations: Vec<P::ScalarField>,
     multivariate_challenge: Vec<P::ScalarField>,
     transcript_inout: &mut Keccak256Transcript<P>,
-) {
+) -> OpeningClaim<P> {
     let log_n = get_msb(circuit_size.clone()); //TODO: check this
     let mut transcript = Keccak256Transcript::<P>::default();
     std::mem::swap(&mut transcript, transcript_inout);
@@ -166,9 +186,12 @@ fn zeromorph_verify<P: Pairing>(
         circuit_size,
     );
     let c_zeta_z = c_zeta_x + c_z_x * z_challenge;
-    // return { .opening_pair = { .challenge = x_challenge, .evaluation = FF(0) }, .commitment = C_zeta_Z };
-    // ????
-    todo!();
+
+    return OpeningClaim {
+        challenge: x_challenge,
+        evaluation: P::ScalarField::ZERO,
+        commitment: c_zeta_z,
+    };
 }
 fn compute_c_zeta_x<P: Pairing>(
     c_q: P::G1,
@@ -227,7 +250,7 @@ fn compute_c_z_x<P: Pairing>(
     //todo
     let phi_n_x = phi_numerator / (x_challenge - P::ScalarField::ONE);
     scalars.push(batched_evaluation * x_challenge * phi_n_x * minus_one);
-    //TODO: push g1_identity first element in the SRS!
+    //TODO: push g1_identity = first element in the SRS!
     // commitments.push(P::G1::identity)
 
     let mut rho_pow = P::ScalarField::ONE;
@@ -274,19 +297,121 @@ fn compute_c_z_x<P: Pairing>(
     )
 }
 
-// fn reduce_verify
-
 fn sumcheck_verify<P: Pairing>(
     relation_parameters: RelationParameters<P>,
     transcript: &mut transcript::Keccak256Transcript<P>,
     alphas: [P::ScalarField; NUM_ALPHAS],
     gate_challenges: Vec<P::ScalarField>,
+    vk: VerifyingKey<P>,
 ) {
     let pow_univariate = PowPolynomial::new(gate_challenges);
-    // if (multivariate_d == 0) {
-    //     throw_or_abort("Number of variables in multivariate is 0.");
-    // }
+    let multivariate_n = vk.circuit_size;
+    let multivariate_d = get_msb(multivariate_n);
+    if multivariate_d == 0 {
+        todo!("Number of variables in multivariate is 0.");
+    }
+
+    let multivariate_challenge: Vec<P::ScalarField> = Vec::with_capacity(CONST_PROOF_SIZE_LOG_N);
+    let target_total_sum: P::ScalarField; //??????
+    let mut verified: bool;
+    for round_idx in 0..CONST_PROOF_SIZE_LOG_N {
+        // let round_univariate: some polynomial??;
+
+        let mut transcript = Keccak256Transcript::<P>::default();
+        // transcript.add_scalar(round_univariate);
+
+        let round_challenge = transcript.get_challenge();
+
+        // no recursive flavor I guess, otherwise we need to make some modifications to the following?
+        if round_idx < multivariate_d as usize {
+            let checked = check_sum(round_univariate, target_total_sum); //round-check_sum?
+            verified = verified && checked;
+            multivariate_challenge.push(round_challenge);
+
+            compute_next_target_sum(round_univariate, round_challenge); //round.compute_next_target_sum
+            pow_univariate.partially_evaluate(round_challenge);
+        } else {
+            multivariate_challenge.push(round_challenge);
+        }
+    }
+    let purported_evaluations: Vec<P::ScalarField>;
+    todo!("get transcript_evaluations from prover");
+    let full_honk_relation_purported_value = compute_full_honk_relation_purported_value(
+        purported_evaluations,
+        relation_parameters,
+        pow_univariate,
+        alphas,
+    );
+    let checked: bool = full_honk_relation_purported_value == target_total_sum;
+    verified = verified && checked;
+    todo!("return multivariate_challenge, purported_evaluations, verified");
 }
 
-fn compute_next_target_sum() {}
-fn compute_full_honk_relation_purported_value() {}
+fn compute_next_target_sum<P: Pairing>(
+    univariate: Vec<P::ScalarField>,
+    round_challenge: P::ScalarField,
+) -> P::ScalarField {
+    todo!("return evalution of univariate on round_challenge");
+}
+
+fn check_sum<P: Pairing>(
+    univariate: Vec<P::ScalarField>,
+    target_total_sum: P::ScalarField,
+) -> bool {
+    let total_sum: P::ScalarField; //= univariate.value_at(0) + univariate.value_at(1);
+    let mut sumcheck_round_failed = false;
+    sumcheck_round_failed = target_total_sum != total_sum;
+    round_failed = round_failed || sumcheck_round_failed;
+    //where does round_failed come from? is false per default, where should we save this? in a struct? I guess we maybe need something like a round struct
+    !sumcheck_round_failed
+}
+
+fn compute_full_honk_relation_purported_value<P: Pairing>(
+    purported_evaluations: Vec<P::ScalarField>,
+    relation_parameters: RelationParameters<P>,
+    pow_polynomial: PowPolynomial<P::ScalarField>,
+    alphas: [P::ScalarField; NUM_ALPHAS],
+) -> P::ScalarField {
+    let mut running_challenge = P::ScalarField::ONE;
+    let mut output = P::ScalarField::ZERO;
+    scale_by_challenge_and_batch(
+        relation_evaluations,
+        &alphas,
+        running_challenge,
+        &mut output,
+    )
+}
+fn accumulate_relation_evaluations_without_skipping<P: Pairing>(
+    purported_evaluations: Vec<P::ScalarField>,
+    relation_parameters: RelationParameters<P>,
+    pow_polynomial: PowPolynomial<P::ScalarField>,
+    relation_evaluations: Vec<P::ScalarField>,
+) -> P::ScalarField {
+    todo!()
+}
+
+fn scale_by_challenge_and_batch<P: Pairing>(
+    tuple: (
+        &mut Vec<P::ScalarField>,
+        &mut Vec<P::ScalarField>,
+        &mut Vec<P::ScalarField>,
+    ),
+    challenge: &[P::ScalarField; NUM_ALPHAS],
+    mut current_scalar: P::ScalarField,
+    result: &mut P::ScalarField,
+) -> P::ScalarField {
+    for array in tuple {
+        for &entry in array {
+            *result += entry * current_scalar;
+            current_scalar *= challenge;
+        }
+    }
+    result
+}
+
+fn reduce_verify<P: Pairing>(
+    transcript: &mut transcript::Keccak256Transcript<P>,
+    opening_pair: OpeningClaim<P>,
+) -> [P::G1Affine; 2] {
+    todo!()
+}

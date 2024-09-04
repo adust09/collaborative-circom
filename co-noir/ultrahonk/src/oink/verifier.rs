@@ -63,7 +63,7 @@ impl<P: Pairing> OinkVerifier<P> {
             commitments: self.witness_comms.clone(),
             public_inputs,
             alphas,
-            // transcript: self.transcript,
+            // transcript: self.transcript ???
         }
     }
 
