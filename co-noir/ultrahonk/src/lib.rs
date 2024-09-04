@@ -24,3 +24,4 @@ pub(crate) fn get_msb(inp: u32) -> u8 {
 const NUM_SUBRELATIONS: usize = 18; // TODO is this correct?
 pub(crate) const NUM_ALPHAS: usize = NUM_SUBRELATIONS - 1;
 pub(crate) const CONST_PROOF_SIZE_LOG_N: usize = 28;
+pub(crate) const N_MAX: usize = 1 << 25;
