@@ -1,5 +1,7 @@
 # Changelog
 
+
+
 ## [0.5.0](https://github.com/TaceoLabs/collaborative-circom/compare/co-circom-v0.4.0...co-circom-v0.5.0) (2024-08-21)
 
 

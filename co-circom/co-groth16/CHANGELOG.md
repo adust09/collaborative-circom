@@ -6,6 +6,8 @@
     * mpc-core bumped from 0.2.0 to 0.2.1
     * mpc-net bumped from 0.1.1 to 0.1.2
 
+
+
 ## [0.5.0](https://github.com/TaceoLabs/collaborative-circom/compare/co-groth16-v0.4.0...co-groth16-v0.5.0) (2024-08-21)
 
 

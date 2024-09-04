@@ -1,5 +1,9 @@
 # Changelog
 
+* The following workspace dependencies were updated
+  * dependencies
+    * circom-mpc-vm bumped from 0.4.1 to 0.4.2
+
 ## [0.6.0](https://github.com/TaceoLabs/collaborative-circom/compare/circom-mpc-compiler-v0.5.0...circom-mpc-compiler-v0.6.0) (2024-08-21)
 
 
