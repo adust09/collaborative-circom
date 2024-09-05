@@ -36,7 +36,7 @@ pub struct PowPolynomial<F: PrimeField> {
     betas: Vec<F>,
     pow_betas: Vec<F>,
     //dont know if only verifier needs the following, then maybe separate struct for this
-    partial_evaluation_result: F,
+    pub(crate) partial_evaluation_result: F,
     current_element_idx: usize,
     periodicity: usize,
 }

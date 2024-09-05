@@ -43,6 +43,7 @@ impl<P: Pairing> Decider<P> {
     // Fiat-Shamir: rho, y, x, z
     // Execute Zeromorph multilinear PCS
     fn execute_pcs_rounds(&self) {
+        let prover_opening_claim=Self::zeromorph_prove();
         todo!();
     }
 
@@ -70,6 +71,7 @@ impl<P: Pairing> Decider<P> {
         let mut f_k = Vec::<P::ScalarField>::with_capacity(size_q);
 
         // TODO: std::vector<FF> g(polynomial.data().get(), polynomial.data().get() + size_q);
+        todo!();
         let mut g = Vec::<P::ScalarField>::with_capacity(size_q);
 
         // Compute q_k in reverse order from k = n - 2, i.e., q_{n-2}, ..., q_0
@@ -334,6 +336,7 @@ impl<P: Pairing> Decider<P> {
         let quotients = Self::compute_multilinear_quotients(f_polynomial, u_challenge);
         // Compute and send commitments C_{q_k} = [q_k], k = 0,...,d-1
         for idx in 0..log_n {
+            todo!();
             // TODO let q_k_commitment = commitment_key.commit(&quotients[idx]);
             let label = format!("ZM:C_q_{}", idx);
             transcript.add(q_k_commitment);

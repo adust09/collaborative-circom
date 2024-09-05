@@ -85,6 +85,7 @@ impl<P: Pairing> UltraHonkVerifier<P> {
             claimed_evaluations,
             multivariate_challenge,
             &mut transcript,
+            // concatenated_evaluations
             // actually it is
             // commitments.get_unshifted(),
             // commitments.get_to_be_shifted(),
@@ -328,31 +329,33 @@ fn sumcheck_verify<P: Pairing>(
     gate_challenges: Vec<P::ScalarField>,
     vk: VerifyingKey<P>,
 ) {
-    let pow_univariate = PowPolynomial::new(gate_challenges);
+    let mut pow_univariate = PowPolynomial::new(gate_challenges);
     let multivariate_n = vk.circuit_size;
     let multivariate_d = get_msb(multivariate_n);
     if multivariate_d == 0 {
         todo!("Number of variables in multivariate is 0.");
     }
 
-    let multivariate_challenge: Vec<P::ScalarField> = Vec::with_capacity(CONST_PROOF_SIZE_LOG_N);
-    let target_total_sum: P::ScalarField; //??????
-    let mut verified: bool;
+    let mut multivariate_challenge: Vec<P::ScalarField> =
+        Vec::with_capacity(CONST_PROOF_SIZE_LOG_N);
+    let target_total_sum = P::ScalarField::ZERO; //??????
+    let mut verified: bool = true;
     for round_idx in 0..CONST_PROOF_SIZE_LOG_N {
-        // let round_univariate: some polynomial??;
+        // TODO make this correct: (receive_from_prover<bb::Univariate<FF, BATCHED_RELATION_PARTIAL_LENGTH>>(round_univariate_label);)
+        let round_univariate = Vec::<P::ScalarField>::with_capacity(multivariate_n as usize);
 
         let mut transcript = Keccak256Transcript::<P>::default();
         // transcript.add_scalar(round_univariate);
 
         let round_challenge = transcript.get_challenge();
 
-        // no recursive flavor I guess, otherwise we need to make some modifications to the following?
+        // no recursive flavor I guess, otherwise we need to make some modifications to the following
         if round_idx < multivariate_d as usize {
-            let checked = check_sum(round_univariate, target_total_sum); //round-check_sum?
+            let checked = check_sum::<P>(&round_univariate, &target_total_sum); //round-check_sum?
             verified = verified && checked;
             multivariate_challenge.push(round_challenge);
 
-            compute_next_target_sum(round_univariate, round_challenge); //round.compute_next_target_sum
+            compute_next_target_sum::<P>(round_univariate, round_challenge); //round.compute_next_target_sum
             pow_univariate.partially_evaluate(round_challenge);
         } else {
             multivariate_challenge.push(round_challenge);
@@ -379,8 +382,8 @@ fn compute_next_target_sum<P: Pairing>(
 }
 
 fn check_sum<P: Pairing>(
-    univariate: Vec<P::ScalarField>,
-    target_total_sum: P::ScalarField,
+    univariate: &Vec<P::ScalarField>,
+    target_total_sum: &P::ScalarField,
 ) -> bool {
     let total_sum: P::ScalarField; //= univariate.value_at(0) + univariate.value_at(1);
     let mut sumcheck_round_failed = false;
@@ -424,13 +427,17 @@ fn scale_by_challenge_and_batch<P: Pairing>(
     mut current_scalar: P::ScalarField,
     result: &mut P::ScalarField,
 ) -> P::ScalarField {
-    for array in tuple {
-        for &entry in array {
-            *result += entry * current_scalar;
-            current_scalar *= challenge;
+    let (vec1, vec2, vec3) = tuple;
+    for vec in [&mut *vec1, &mut *vec2, &mut *vec3].iter_mut() {
+        for entry in vec.iter() {
+            *result += *entry * current_scalar;
+            for &alpha in challenge.iter() {
+                current_scalar *= alpha;
+            }
         }
     }
-    result
+
+    *result
 }
 
 fn reduce_verify<P: Pairing>(

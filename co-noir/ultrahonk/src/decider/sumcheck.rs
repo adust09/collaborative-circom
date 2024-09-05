@@ -1,9 +1,11 @@
 use super::prover::Decider;
+use crate::oink::verifier::RelationParameters;
 use crate::{decider::types::PowPolynomial, get_msb};
 use crate::{transcript, types::ProvingKey};
 use ark_ec::pairing::Pairing;
 use ark_ff::UniformRand;
 use rand::{thread_rng, Rng};
+use crate::decider::sumcheck_round::SumcheckRound;
 
 // Keep in mind, the UltraHonk protocol (UltraFlavor) does not per default have ZK
 // The UltraFlavorWithZK has ZK
@@ -32,7 +34,8 @@ impl<P: Pairing> Decider<P> {
 
         let multivariate_n = proving_key.circuit_size;
         let multivariate_d = get_msb(multivariate_n);
-
+        // TODO check this
+        let sum_check_round:SumcheckRound= SumcheckRound::new(multivariate_n as usize);
         // In case the Flavor has ZK, we populate sumcheck data structure with randomness, compute correcting term for
         // the total sum, etc.
         if HAS_ZK {
@@ -50,7 +53,39 @@ impl<P: Pairing> Decider<P> {
         todo!("first round");
 
         multivariate_challenge.push(transcript.get_challenge());
+        let mut transcript = transcript::Keccak256Transcript::<P>::default();
+        transcript.add_scalar(multivariate_challenge[0]);
+        for round_idx in 1..multivariate_d {
+            let round_univariate= sum_check_round.compute_univariate(round_idx,partially_evaluated_polynomials, relation_parameters, pow_univariate, alpha)
+            transcript.add_scalar(round_univariate);
+            let round_challenge= transcript.get_challenge();
+            multivariate_challenge.push(round_challenge);
+            let mut transcript = transcript::Keccak256Transcript::<P>::default();
+            transcript.add_scalar(round_challenge);
+            // need SumcheckRound struct here:
+            sum_check_round.partially_evaluate_poly(partially_evaluated_polynomials, round_challenge);
+            pow_univariate.partially_evaluate(round_challenge);
+            sum_check_round.round_size = sum_check_round.round_size >> 1;
+        }
 
-        todo!()
+        // auto zero_univariate = bb::Univariate<FF, Flavor::BATCHED_RELATION_PARTIAL_LENGTH>::zero();
+        let placeholder=347;
+
+        let zero_univariate= Vec::<P::ScalarField>::with_capacity(placeholder);
+        for idx in multivariate_d as usize .. crate::CONST_PROOF_SIZE_LOG_N  {
+            zero_univariate.iter().for_each(|inst| {
+                transcript.add_scalar(*inst);
+            }); // TODO is this really what we want?
+            let round_challenge=transcript.get_challenge();
+            multivariate_challenge.push(round_challenge);
+            let mut transcript = transcript::Keccak256Transcript::<P>::default();
+            transcript.add_scalar(round_challenge);
+        }
+
+// Final round: Extract multivariate evaluations from #partially_evaluated_polynomials and add to transcript
+
+
+
+        todo!("return multivariate_challenge and multivariate_evaluations")
     }
 }
