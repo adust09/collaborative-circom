@@ -1,5 +1,5 @@
 use super::types::ProverMemory;
-use crate::{prover::HonkProofResult, transcript, types::ProvingKey, CONST_PROOF_SIZE_LOG_N};
+use crate::{prover::HonkProofResult, transcript, types::ProvingKey};
 use ark_ec::pairing::Pairing;
 use std::marker::PhantomData;
 

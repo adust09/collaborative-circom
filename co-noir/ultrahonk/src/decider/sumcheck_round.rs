@@ -1,4 +1,8 @@
-use super::types::{GateSeparatorPolynomial, ProverMemory, MAX_PARTIAL_RELATION_LENGTH};
+use super::{
+    relations::{ultra_arithmetic_relation::UltraArithmeticRelation, Relation},
+    types::{GateSeparatorPolynomial, ProverMemory, MAX_PARTIAL_RELATION_LENGTH},
+    univariate::Univariate,
+};
 use crate::{
     decider::types::ProverUnivariates,
     oink::verifier::RelationParameters,
@@ -28,16 +32,16 @@ impl SumcheckRound {
 
     fn extend_to<F: PrimeField>(
         poly: &[F],
-        res: &mut [F; MAX_PARTIAL_RELATION_LENGTH],
+        res: &mut Univariate<F, MAX_PARTIAL_RELATION_LENGTH>,
         idx: usize,
     ) {
-        res[0] = poly[idx];
-        res[1] = poly[idx + 1];
+        res.coefficients[0] = poly[idx];
+        res.coefficients[1] = poly[idx + 1];
 
         // We only need to implement LENGTH = 2
-        let delta = res[1] - res[0];
+        let delta = res.coefficients[1] - res.coefficients[0];
         for i in 2..MAX_PARTIAL_RELATION_LENGTH {
-            res[i] = res[i - 1] + delta;
+            res.coefficients[i] = res.coefficients[i - 1] + delta;
         }
     }
 
@@ -62,12 +66,13 @@ impl SumcheckRound {
             edge_index,
             (w_l, w_r, w_o, lookup_read_counts, lookup_read_tags)
         );
+
         // ShiftedWitnessEntities
         extend_macro!(
             &multivariates.shifted,
             &mut extended_edges.polys.shifted,
             edge_index,
-            (w_l, w_r, w_o)
+            (w_l, w_r, w_o, w_4)
         );
 
         // PrecomputedEntities
@@ -76,10 +81,38 @@ impl SumcheckRound {
             &mut extended_edges.polys.precomputed,
             edge_index,
             (
-                q_m, q_c, q_r, q_o, q_lookup, sigma_1, sigma_2, sigma_3, sigma_4, id_1, id_2, id_3,
-                id_4, table_1, table_2, table_3, table_4
+                q_m, q_c, q_l, q_r, q_o, q_4, q_arith, q_lookup, sigma_1, sigma_2, sigma_3,
+                sigma_4, id_1, id_2, id_3, id_4, table_1, table_2, table_3, table_4
             )
         );
+    }
+
+    fn accumulate_one_relation_univariates<P: Pairing, R: Relation<P::ScalarField>>(
+        // acc
+        extended_edges: &ProverUnivariates<P::ScalarField>,
+        relation_parameters: RelationParameters<P>,
+        gate_sparator: &P::ScalarField,
+    ) {
+        if R::SKIPPABLE && R::skip(extended_edges) {
+            return;
+        }
+
+        R::accumulate(extended_edges);
+        todo!()
+    }
+
+    fn accumulate_relation_univariates<P: Pairing>(
+        // acc
+        extended_edges: &ProverUnivariates<P::ScalarField>,
+        relation_parameters: RelationParameters<P>,
+        gate_sparator: &P::ScalarField,
+    ) {
+        Self::accumulate_one_relation_univariates::<P, UltraArithmeticRelation>(
+            extended_edges,
+            relation_parameters,
+            gate_sparator,
+        );
+        todo!()
     }
 
     pub(crate) fn compute_univariate<P: Pairing>(

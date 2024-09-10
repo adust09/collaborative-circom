@@ -40,15 +40,18 @@ pub struct ShiftedWitnessEntities<T: Default> {
     pub w_l: T, // column 0
     pub w_r: T, // column 1
     pub w_o: T, // column 2
+    pub w_4: T, // column 3
 }
 
 #[derive(Default)]
 pub struct PrecomputedEntities<T: Default> {
-    pub q_m: T, // column 0
-    pub q_c: T, // column 1
-    // pub q_l: T,      // column 2
+    pub q_m: T,      // column 0
+    pub q_c: T,      // column 1
+    pub q_l: T,      // column 2
     pub q_r: T,      // column 3
     pub q_o: T,      // column 4
+    pub q_4: T,      // column 5
+    pub q_arith: T,  // column 6
     pub q_lookup: T, // column 10
     pub sigma_1: T,  // column 11
     pub sigma_2: T,  // column 12
