@@ -76,7 +76,7 @@ where
         proving_key: &ProvingKey<P>,
         public_inputs: &[P::ScalarField],
     ) -> HonkProofResult<()> {
-        tracing::trace!("UltraHonk prove");
+        // tracing::trace!("UltraHonk prove");
 
         let mut transcript = TranscriptType::default();
 
