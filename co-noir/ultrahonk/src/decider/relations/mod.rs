@@ -13,5 +13,5 @@ pub(crate) trait Relation<F: PrimeField> {
     }
 
     fn skip(input: &ProverUnivariates<F>) -> bool;
-    fn accumulate(input: &ProverUnivariates<F>);
+    fn accumulate(input: &ProverUnivariates<F>, scaling_factor: &F);
 }

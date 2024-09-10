@@ -35,13 +35,13 @@ impl SumcheckRound {
         res: &mut Univariate<F, MAX_PARTIAL_RELATION_LENGTH>,
         idx: usize,
     ) {
-        res.coefficients[0] = poly[idx];
-        res.coefficients[1] = poly[idx + 1];
+        res.evaluations[0] = poly[idx];
+        res.evaluations[1] = poly[idx + 1];
 
         // We only need to implement LENGTH = 2
-        let delta = res.coefficients[1] - res.coefficients[0];
+        let delta = res.evaluations[1] - res.evaluations[0];
         for i in 2..MAX_PARTIAL_RELATION_LENGTH {
-            res.coefficients[i] = res.coefficients[i - 1] + delta;
+            res.evaluations[i] = res.evaluations[i - 1] + delta;
         }
     }
 
@@ -91,13 +91,13 @@ impl SumcheckRound {
         // acc
         extended_edges: &ProverUnivariates<P::ScalarField>,
         relation_parameters: RelationParameters<P>,
-        gate_sparator: &P::ScalarField,
+        scaling_factor: &P::ScalarField,
     ) {
         if R::SKIPPABLE && R::skip(extended_edges) {
             return;
         }
 
-        R::accumulate(extended_edges);
+        R::accumulate(extended_edges, scaling_factor);
         todo!()
     }
 
@@ -105,12 +105,12 @@ impl SumcheckRound {
         // acc
         extended_edges: &ProverUnivariates<P::ScalarField>,
         relation_parameters: RelationParameters<P>,
-        gate_sparator: &P::ScalarField,
+        scaling_factor: &P::ScalarField,
     ) {
         Self::accumulate_one_relation_univariates::<P, UltraArithmeticRelation>(
             extended_edges,
             relation_parameters,
-            gate_sparator,
+            scaling_factor,
         );
         todo!()
     }
