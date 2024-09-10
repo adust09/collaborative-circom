@@ -67,7 +67,7 @@ impl<P: Pairing> UltraHonkVerifier<P> {
             transcript.add_scalar(gate_challenges[idx - 1]);
             gate_challenges[idx] = transcript.get_challenge();
         }
-        let [multivariate_challenge, claimed_evaluations, sumcheck_verified] = sumcheck_verify(
+        let (multivariate_challenge, claimed_evaluations, sumcheck_verified) = sumcheck_verify(
             relation_parameters,
             &mut transcript,
             oink_output.alphas,
@@ -142,7 +142,7 @@ fn zeromorph_verify<P: Pairing>(
     for &value in unshifted_evaluations
         .iter()
         .chain(shifted_evaluations.iter())
-        .chain(concatenated_evaluations.iter())
+    // .chain(concatenated_evaluations.iter())
     {
         batched_evaluation += value * batching_scalar;
         batching_scalar *= rho;
@@ -328,14 +328,16 @@ fn sumcheck_verify<P: Pairing>(
     alphas: [P::ScalarField; NUM_ALPHAS],
     gate_challenges: Vec<P::ScalarField>,
     vk: VerifyingKey<P>,
-) {
+) -> (Vec<P::ScalarField>, Vec<P::ScalarField>, bool) {
     let mut pow_univariate = PowPolynomial::new(gate_challenges);
     let multivariate_n = vk.circuit_size;
     let multivariate_d = get_msb(multivariate_n);
     if multivariate_d == 0 {
         todo!("Number of variables in multivariate is 0.");
     }
-
+    if crate::decider::sumcheck::HAS_ZK {
+        todo!();
+    };
     let mut multivariate_challenge: Vec<P::ScalarField> =
         Vec::with_capacity(CONST_PROOF_SIZE_LOG_N);
     let target_total_sum = P::ScalarField::ZERO; //??????
@@ -361,6 +363,7 @@ fn sumcheck_verify<P: Pairing>(
             multivariate_challenge.push(round_challenge);
         }
     }
+    todo!("new Libra stuff");
     let purported_evaluations: Vec<P::ScalarField>;
     todo!("get transcript_evaluations from prover");
     let full_honk_relation_purported_value = compute_full_honk_relation_purported_value(
@@ -438,9 +441,18 @@ fn scale_by_challenge_and_batch<P: Pairing>(
     *result
 }
 
+// this is the kzg one:
 fn reduce_verify<P: Pairing>(
     transcript: &mut transcript::Poseidon2Transcript<P>,
     opening_pair: OpeningClaim<P>,
 ) -> [P::G1Affine; 2] {
+    // TODO: quotient_commitment = verifier_transcript->template receive_from_prover<Commitment>("KZG:W");
+    let quotient_commitment: P::G1;
+
+    // Note: The pairing check can be expressed naturally as
+    // e(C - v * [1]_1, [1]_2) = e([W]_1, [X - r]_2) where C =[p(X)]_1. This can be rearranged (e.g. see the plonk
+    // paper) as e(C + r*[W]_1 - v*[1]_1, [1]_2) * e(-[W]_1, [X]_2) = 1, or e(P_0, [1]_2) * e(P_1, [X]_2) = 1
+    let mut p0 = opening_pair.commitment + quotient_commitment * opening_pair.challenge
+        - opening_pair.evaluation * P::G1::ONE;
     todo!()
 }
