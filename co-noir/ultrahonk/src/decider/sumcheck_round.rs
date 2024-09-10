@@ -34,6 +34,7 @@ impl SumcheckRound {
     }
 
     fn extend_edges<F: PrimeField>(
+        &self,
         extended_edges: &mut ProverUnivariates<F>,
         multivariates: &Polynomials<F>,
         edge_index: usize,
@@ -58,7 +59,7 @@ impl SumcheckRound {
 
         // Accumulate the contribution from each sub-relation accross each edge of the hyper-cube
         for edge_idx in (0..self.round_size).step_by(2) {
-            Self::extend_edges(&mut extended_edge, &proving_key.polynomials, edge_idx);
+            self.extend_edges(&mut extended_edge, &proving_key.polynomials, edge_idx);
             // Compute the \f$ \ell \f$-th edge's univariate contribution,
             // scale it by the corresponding \f$ pow_{\beta} \f$ contribution and add it to the accumulators for \f$
             // \tilde{S}^i(X_i) \f$. If \f$ \ell \f$'s binary representation is given by \f$ (\ell_{i+1},\ldots,

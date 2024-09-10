@@ -2,9 +2,6 @@ use crate::{types::AllEntities, NUM_ALPHAS};
 use ark_ec::pairing::Pairing;
 use ark_ff::PrimeField;
 
-pub const MAX_PARTIAL_RELATION_LENGTH: usize = 7;
-pub type ProverUnivariates<F> = AllEntities<[F; MAX_PARTIAL_RELATION_LENGTH]>;
-
 pub struct ProverMemory<P: Pairing> {
     pub w_4: Vec<P::ScalarField>,             // column 3
     pub z_perm: Vec<P::ScalarField>,          // column 4
@@ -12,6 +9,15 @@ pub struct ProverMemory<P: Pairing> {
     pub public_input_delta: P::ScalarField,
     pub witness_commitments: WitnessCommitments<P>,
     pub challenges: Challenges<P::ScalarField>,
+}
+
+pub const MAX_PARTIAL_RELATION_LENGTH: usize = 7;
+#[derive(Default)]
+pub struct ProverUnivariates<F: PrimeField> {
+    pub w_4: [F; MAX_PARTIAL_RELATION_LENGTH],    // column 3
+    pub z_perm: [F; MAX_PARTIAL_RELATION_LENGTH], // column 4
+    pub lookup_inverses: [F; MAX_PARTIAL_RELATION_LENGTH], // column 5
+    pub polys: AllEntities<[F; MAX_PARTIAL_RELATION_LENGTH]>,
 }
 
 pub struct WitnessCommitments<P: Pairing> {
