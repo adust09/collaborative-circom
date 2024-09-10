@@ -1,4 +1,4 @@
-use super::types::{GateSeparatorPolynomial, MAX_PARTIAL_RELATION_LENGTH};
+use super::types::{GateSeparatorPolynomial, ProverMemory, MAX_PARTIAL_RELATION_LENGTH};
 use crate::{
     decider::types::ProverUnivariates,
     oink::verifier::RelationParameters,
@@ -33,13 +33,57 @@ impl SumcheckRound {
         }
     }
 
-    fn extend_edges<F: PrimeField>(
-        &self,
-        extended_edges: &mut ProverUnivariates<F>,
-        multivariates: &Polynomials<F>,
+    fn extend_edges<P: Pairing>(
+        extended_edges: &mut ProverUnivariates<P::ScalarField>,
+        multivariates: &Polynomials<P::ScalarField>,
+        prover_memory: &ProverMemory<P>,
         edge_index: usize,
     ) {
-        todo!()
+        let idx = edge_index;
+
+        let src = &prover_memory;
+        let des = extended_edges;
+        // Memory
+        Self::extend_to(&src.w_4, &mut des.w_4, idx);
+        Self::extend_to(&src.z_perm, &mut des.z_perm, idx);
+        Self::extend_to(&src.lookup_inverses, &mut des.lookup_inverses, idx);
+
+        let extended_edges = des;
+        let src = &multivariates.witness;
+        let des = &mut extended_edges.polys.witness;
+        // WitnessEntities
+        Self::extend_to(&src.w_l, &mut des.w_l, idx);
+        Self::extend_to(&src.w_r, &mut des.w_r, idx);
+        Self::extend_to(&src.w_o, &mut des.w_o, idx);
+        Self::extend_to(&src.lookup_read_counts, &mut des.lookup_read_counts, idx);
+        Self::extend_to(&src.lookup_read_tags, &mut des.lookup_read_tags, idx);
+
+        let src = &multivariates.shifted;
+        let des = &mut extended_edges.polys.shifted;
+        // ShiftedWitnessEntities
+        Self::extend_to(&src.w_l, &mut des.w_l, idx);
+        Self::extend_to(&src.w_r, &mut des.w_r, idx);
+        Self::extend_to(&src.w_o, &mut des.w_o, idx);
+
+        let src = &multivariates.precomputed;
+        let des = &mut extended_edges.polys.precomputed;
+        // PrecomputedEntities
+        Self::extend_to(&src.q_m, &mut des.q_m, idx);
+        Self::extend_to(&src.q_c, &mut des.q_c, idx);
+        Self::extend_to(&src.q_r, &mut des.q_r, idx);
+        Self::extend_to(&src.q_o, &mut des.q_o, idx);
+        Self::extend_to(&src.q_lookup, &mut des.q_lookup, idx);
+        Self::extend_to(&src.sigma_1, &mut des.sigma_1, idx);
+        Self::extend_to(&src.sigma_2, &mut des.sigma_2, idx);
+        Self::extend_to(&src.sigma_3, &mut des.sigma_3, idx);
+        Self::extend_to(&src.id_1, &mut des.id_1, idx);
+        Self::extend_to(&src.id_2, &mut des.id_2, idx);
+        Self::extend_to(&src.id_3, &mut des.id_3, idx);
+        Self::extend_to(&src.id_4, &mut des.id_4, idx);
+        Self::extend_to(&src.table_1, &mut des.table_1, idx);
+        Self::extend_to(&src.table_2, &mut des.table_2, idx);
+        Self::extend_to(&src.table_3, &mut des.table_3, idx);
+        Self::extend_to(&src.table_4, &mut des.table_4, idx);
     }
 
     pub(crate) fn compute_univariate<P: Pairing>(
@@ -48,6 +92,7 @@ impl SumcheckRound {
         relation_parameters: RelationParameters<P>,
         gate_sparators: GateSeparatorPolynomial<P::ScalarField>,
         alphas: [P::ScalarField; crate::NUM_ALPHAS],
+        prover_memory: &ProverMemory<P>,
         proving_key: &ProvingKey<P>,
     ) {
         tracing::trace!("Sumcheck round {}", round_index);
@@ -59,7 +104,12 @@ impl SumcheckRound {
 
         // Accumulate the contribution from each sub-relation accross each edge of the hyper-cube
         for edge_idx in (0..self.round_size).step_by(2) {
-            self.extend_edges(&mut extended_edge, &proving_key.polynomials, edge_idx);
+            Self::extend_edges(
+                &mut extended_edge,
+                &proving_key.polynomials,
+                prover_memory,
+                edge_idx,
+            );
             // Compute the \f$ \ell \f$-th edge's univariate contribution,
             // scale it by the corresponding \f$ pow_{\beta} \f$ contribution and add it to the accumulators for \f$
             // \tilde{S}^i(X_i) \f$. If \f$ \ell \f$'s binary representation is given by \f$ (\ell_{i+1},\ldots,
