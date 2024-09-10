@@ -81,8 +81,28 @@ impl SumcheckRound {
             &mut extended_edges.polys.precomputed,
             edge_index,
             (
-                q_m, q_c, q_l, q_r, q_o, q_4, q_arith, q_lookup, sigma_1, sigma_2, sigma_3,
-                sigma_4, id_1, id_2, id_3, id_4, table_1, table_2, table_3, table_4
+                q_m,
+                q_c,
+                q_l,
+                q_r,
+                q_o,
+                q_4,
+                q_arith,
+                q_lookup,
+                sigma_1,
+                sigma_2,
+                sigma_3,
+                sigma_4,
+                id_1,
+                id_2,
+                id_3,
+                id_4,
+                table_1,
+                table_2,
+                table_3,
+                table_4,
+                lagrange_first,
+                lagrange_last
             )
         );
     }
@@ -92,13 +112,12 @@ impl SumcheckRound {
         extended_edges: &ProverUnivariates<P::ScalarField>,
         relation_parameters: RelationParameters<P>,
         scaling_factor: &P::ScalarField,
-    ) {
+    ) -> R::Acc {
         if R::SKIPPABLE && R::skip(extended_edges) {
-            return;
+            return R::Acc::default();
         }
 
-        R::accumulate(extended_edges, scaling_factor);
-        todo!()
+        R::accumulate(extended_edges, scaling_factor)
     }
 
     fn accumulate_relation_univariates<P: Pairing>(
@@ -107,7 +126,7 @@ impl SumcheckRound {
         relation_parameters: RelationParameters<P>,
         scaling_factor: &P::ScalarField,
     ) {
-        Self::accumulate_one_relation_univariates::<P, UltraArithmeticRelation>(
+        let r1 = Self::accumulate_one_relation_univariates::<P, UltraArithmeticRelation>(
             extended_edges,
             relation_parameters,
             scaling_factor,

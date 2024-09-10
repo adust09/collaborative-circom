@@ -1,17 +1,24 @@
 use super::Relation;
-use crate::decider::types::ProverUnivariates;
+use crate::decider::{types::ProverUnivariates, univariate::Univariate};
 use ark_ff::{PrimeField, Zero};
+
+#[derive(Clone, Debug, Default)]
+pub(crate) struct UltraArithmeticRelationAcc<F: PrimeField> {
+    pub(crate) r1: Univariate<F, 6>,
+    pub(crate) r2: Univariate<F, 5>,
+}
 
 pub(crate) struct UltraArithmeticRelation {}
 
 impl<F: PrimeField> Relation<F> for UltraArithmeticRelation {
+    type Acc = UltraArithmeticRelationAcc<F>;
     const SKIPPABLE: bool = true;
 
     fn skip(input: &ProverUnivariates<F>) -> bool {
         input.polys.precomputed.q_arith.is_zero()
     }
 
-    fn accumulate(input: &ProverUnivariates<F>, scaling_factor: &F) {
+    fn accumulate(input: &ProverUnivariates<F>, scaling_factor: &F) -> Self::Acc {
         let w_l = &input.polys.witness.w_l;
         let w_r = &input.polys.witness.w_r;
         let w_o = &input.polys.witness.w_o;
@@ -38,14 +45,22 @@ impl<F: PrimeField> Relation<F> for UltraArithmeticRelation {
         tmp *= q_arith;
         tmp *= scaling_factor;
 
-        todo!("Output that");
+        let mut r1 = Univariate::default();
+        for i in 0..r1.evaluations.len() {
+            r1.evaluations[i] = tmp.evaluations[i];
+        }
 
-        let tmp = w_l.to_owned() + w_4 - w_l_shift + q_m;
+        let mut tmp = w_l.to_owned() + w_4 - w_l_shift + q_m;
         tmp *= q_arith.to_owned() - 2;
         tmp *= q_arith.to_owned() - 1;
         tmp *= q_arith;
         tmp *= scaling_factor;
 
-        todo!("Output that");
+        let mut r2 = Univariate::default();
+        for i in 0..r2.evaluations.len() {
+            r2.evaluations[i] = tmp.evaluations[i];
+        }
+
+        UltraArithmeticRelationAcc { r1, r2 }
     }
 }
