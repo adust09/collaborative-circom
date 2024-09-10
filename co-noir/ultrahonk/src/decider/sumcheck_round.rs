@@ -11,6 +11,14 @@ pub(crate) struct SumcheckRound {
     pub(crate) round_size: usize,
 }
 
+macro_rules! extend_macro {
+    ($src:expr, $des:expr, $idx:expr, ($($el:ident),*)) => {{
+        $(
+            Self::extend_to(&$src.$el, &mut $des.$el, $idx);
+        )*
+    }};
+}
+
 impl SumcheckRound {
     pub(crate) fn new(initial_round_size: usize) -> Self {
         SumcheckRound {
@@ -39,51 +47,39 @@ impl SumcheckRound {
         prover_memory: &ProverMemory<P>,
         edge_index: usize,
     ) {
-        let idx = edge_index;
-
-        let src = &prover_memory;
-        let des = extended_edges;
         // Memory
-        Self::extend_to(&src.w_4, &mut des.w_4, idx);
-        Self::extend_to(&src.z_perm, &mut des.z_perm, idx);
-        Self::extend_to(&src.lookup_inverses, &mut des.lookup_inverses, idx);
+        extend_macro!(
+            &prover_memory,
+            extended_edges,
+            edge_index,
+            (w_4, z_perm, lookup_inverses)
+        );
 
-        let extended_edges = des;
-        let src = &multivariates.witness;
-        let des = &mut extended_edges.polys.witness;
         // WitnessEntities
-        Self::extend_to(&src.w_l, &mut des.w_l, idx);
-        Self::extend_to(&src.w_r, &mut des.w_r, idx);
-        Self::extend_to(&src.w_o, &mut des.w_o, idx);
-        Self::extend_to(&src.lookup_read_counts, &mut des.lookup_read_counts, idx);
-        Self::extend_to(&src.lookup_read_tags, &mut des.lookup_read_tags, idx);
-
-        let src = &multivariates.shifted;
-        let des = &mut extended_edges.polys.shifted;
+        extend_macro!(
+            &multivariates.witness,
+            &mut extended_edges.polys.witness,
+            edge_index,
+            (w_l, w_r, w_o, lookup_read_counts, lookup_read_tags)
+        );
         // ShiftedWitnessEntities
-        Self::extend_to(&src.w_l, &mut des.w_l, idx);
-        Self::extend_to(&src.w_r, &mut des.w_r, idx);
-        Self::extend_to(&src.w_o, &mut des.w_o, idx);
+        extend_macro!(
+            &multivariates.shifted,
+            &mut extended_edges.polys.shifted,
+            edge_index,
+            (w_l, w_r, w_o)
+        );
 
-        let src = &multivariates.precomputed;
-        let des = &mut extended_edges.polys.precomputed;
         // PrecomputedEntities
-        Self::extend_to(&src.q_m, &mut des.q_m, idx);
-        Self::extend_to(&src.q_c, &mut des.q_c, idx);
-        Self::extend_to(&src.q_r, &mut des.q_r, idx);
-        Self::extend_to(&src.q_o, &mut des.q_o, idx);
-        Self::extend_to(&src.q_lookup, &mut des.q_lookup, idx);
-        Self::extend_to(&src.sigma_1, &mut des.sigma_1, idx);
-        Self::extend_to(&src.sigma_2, &mut des.sigma_2, idx);
-        Self::extend_to(&src.sigma_3, &mut des.sigma_3, idx);
-        Self::extend_to(&src.id_1, &mut des.id_1, idx);
-        Self::extend_to(&src.id_2, &mut des.id_2, idx);
-        Self::extend_to(&src.id_3, &mut des.id_3, idx);
-        Self::extend_to(&src.id_4, &mut des.id_4, idx);
-        Self::extend_to(&src.table_1, &mut des.table_1, idx);
-        Self::extend_to(&src.table_2, &mut des.table_2, idx);
-        Self::extend_to(&src.table_3, &mut des.table_3, idx);
-        Self::extend_to(&src.table_4, &mut des.table_4, idx);
+        extend_macro!(
+            &multivariates.precomputed,
+            &mut extended_edges.polys.precomputed,
+            edge_index,
+            (
+                q_m, q_c, q_r, q_o, q_lookup, sigma_1, sigma_2, sigma_3, sigma_4, id_1, id_2, id_3,
+                id_4, table_1, table_2, table_3, table_4
+            )
+        );
     }
 
     pub(crate) fn compute_univariate<P: Pairing>(
