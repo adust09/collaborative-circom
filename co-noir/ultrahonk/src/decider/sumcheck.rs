@@ -27,7 +27,7 @@ impl<P: Pairing> Decider<P> {
         transcript: &mut transcript::Keccak256Transcript<P>,
         proving_key: &ProvingKey<P>,
     ) {
-        tracing::trace!("Sumcheck prove");
+        // tracing::trace!("Sumcheck prove");
 
         // TODO another RNG?
         let mut rng = thread_rng();

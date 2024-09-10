@@ -66,4 +66,5 @@ pub struct VerifyingKey<P: Pairing> {
     pub num_public_inputs: u32,
     pub pub_inputs_offset: u32,
     pub polynomials: Polynomials<P::ScalarField>,
+    pub gate_challenges: Vec<P::ScalarField>,
 }

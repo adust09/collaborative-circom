@@ -42,7 +42,7 @@ impl<P: Pairing> UltraHonkVerifier<P> {
         relation_parameters: RelationParameters<P>, //weg damit
         witness_comms: WitnessCommitments<P>,       //weg damit
     ) -> bool {
-        tracing::trace!("UltraHonk verification");
+        // tracing::trace!("UltraHonk verification");
         let mut transcript = Keccak256Transcript::<P>::default();
         let log_circuit_size = get_msb(vk.circuit_size.clone());
         let oink_output = oink::verifier::OinkVerifier::<P>::new(
@@ -60,20 +60,15 @@ impl<P: Pairing> UltraHonkVerifier<P> {
         // }
 
         let mut transcript = Keccak256Transcript::<P>::default();
-        let mut gate_challenges = Vec::with_capacity(log_circuit_size as usize);
-        gate_challenges[0] = transcript.get_challenge();
+        // let mut gate_challenges = Vec::with_capacity(log_circuit_size as usize);
+        vk.gate_challenges[0] = transcript.get_challenge();
         for idx in 1..log_circuit_size as usize {
             let mut transcript = Keccak256Transcript::<P>::default();
-            transcript.add_scalar(gate_challenges[idx - 1]);
-            gate_challenges[idx] = transcript.get_challenge();
+            transcript.add_scalar(vk.gate_challenges[idx - 1]);
+            vk.gate_challenges[idx] = transcript.get_challenge();
         }
-        let (multivariate_challenge, claimed_evaluations, sumcheck_verified) = sumcheck_verify(
-            relation_parameters,
-            &mut transcript,
-            oink_output.alphas,
-            gate_challenges,
-            vk,
-        );
+        let (multivariate_challenge, claimed_evaluations, sumcheck_verified) =
+            sumcheck_verify(relation_parameters, &mut transcript, oink_output.alphas, vk);
         // to do: build sumcheck verifier, returns (multivariate_challenge, claimed_evaluations, sumcheck_verified)
         // get_unshifted(), get_to_be_shifted(), get_shifted()
 
@@ -326,10 +321,10 @@ fn sumcheck_verify<P: Pairing>(
     relation_parameters: RelationParameters<P>,
     transcript: &mut transcript::Keccak256Transcript<P>,
     alphas: [P::ScalarField; NUM_ALPHAS],
-    gate_challenges: Vec<P::ScalarField>,
+    // gate_challenges: Vec<P::ScalarField>,
     vk: VerifyingKey<P>,
 ) -> (Vec<P::ScalarField>, Vec<P::ScalarField>, bool) {
-    let mut pow_univariate = PowPolynomial::new(gate_challenges);
+    let mut pow_univariate = PowPolynomial::new(vk.gate_challenges);
     let multivariate_n = vk.circuit_size;
     let multivariate_d = get_msb(multivariate_n);
     if multivariate_d == 0 {
@@ -363,10 +358,10 @@ fn sumcheck_verify<P: Pairing>(
             multivariate_challenge.push(round_challenge);
         }
     }
-    todo!("new Libra stuff");
+    todo!("new Libra stuff (ZK?)");
     let purported_evaluations: Vec<P::ScalarField>;
     todo!("get transcript_evaluations from prover");
-    let full_honk_relation_purported_value = compute_full_honk_relation_purported_value(
+    let full_honk_relation_purported_value = compute_full_relation_purported_value(
         purported_evaluations,
         relation_parameters,
         pow_univariate,
@@ -374,6 +369,9 @@ fn sumcheck_verify<P: Pairing>(
     );
     let checked: bool = full_honk_relation_purported_value == target_total_sum;
     verified = verified && checked;
+    if crate::decider::sumcheck::HAS_ZK {
+        todo!(); // For ZK Flavors: the evaluations of Libra univariates are included in the Sumcheck Output
+    };
     todo!("return multivariate_challenge, purported_evaluations, verified");
 }
 
@@ -396,7 +394,7 @@ fn check_sum<P: Pairing>(
     !sumcheck_round_failed
 }
 
-fn compute_full_honk_relation_purported_value<P: Pairing>(
+fn compute_full_relation_purported_value<P: Pairing>(
     purported_evaluations: Vec<P::ScalarField>,
     relation_parameters: RelationParameters<P>,
     pow_polynomial: PowPolynomial<P::ScalarField>,
@@ -409,7 +407,12 @@ fn compute_full_honk_relation_purported_value<P: Pairing>(
         &alphas,
         running_challenge,
         &mut output,
-    )
+    );
+    if crate::decider::sumcheck::HAS_ZK {
+        todo!();
+        // output += full_libra_purported_value.value();
+    };
+    output
 }
 fn accumulate_relation_evaluations_without_skipping<P: Pairing>(
     purported_evaluations: Vec<P::ScalarField>,
