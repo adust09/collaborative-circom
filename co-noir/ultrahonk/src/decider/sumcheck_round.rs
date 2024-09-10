@@ -1,4 +1,5 @@
 use ark_ec::pairing::Pairing;
+use super::types::GateSeparatorPolynomial;
 
 pub(crate) struct SumcheckRound {
     pub(crate) round_size: usize,
@@ -14,7 +15,7 @@ impl SumcheckRound {
     pub(crate) fn compute_univariate<P: Pairing>(
         &self,
         round_index: usize,
-        pow_polynomial: super::types::PowPolynomial<P::ScalarField>,
+        pow_polynomial: GateSeparatorPolynomial<P::ScalarField>,
         alphas: [P::ScalarField; crate::NUM_ALPHAS],
         relation_parameters: crate::oink::verifier::RelationParameters<P>,
         polynomials: Vec<P::ScalarField>,
