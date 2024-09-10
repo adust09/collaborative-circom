@@ -382,14 +382,15 @@ fn compute_next_target_sum<P: Pairing>(
 }
 
 fn check_sum<P: Pairing>(
-    univariate: &Vec<P::ScalarField>,
+    univariate: &[P::ScalarField],
     target_total_sum: &P::ScalarField,
 ) -> bool {
-    let total_sum: P::ScalarField; //= univariate.value_at(0) + univariate.value_at(1);
+    let total_sum = univariate[0] + univariate[1];
     let mut sumcheck_round_failed = false;
-    sumcheck_round_failed = target_total_sum != total_sum;
+    sumcheck_round_failed = target_total_sum != &total_sum;
+    todo!("where does round_failed come from? is false per default, where should we save this? in a struct? I guess we maybe need something like a round struct");
+    let mut round_failed = false;
     round_failed = round_failed || sumcheck_round_failed;
-    //where does round_failed come from? is false per default, where should we save this? in a struct? I guess we maybe need something like a round struct
     !sumcheck_round_failed
 }
 

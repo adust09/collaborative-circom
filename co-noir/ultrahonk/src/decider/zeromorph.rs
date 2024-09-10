@@ -302,15 +302,18 @@ impl<P: Pairing> Decider<P> {
         for idx in 0..log_n {
             todo!();
             // TODO let q_k_commitment = commitment_key.commit(&quotients[idx]);
+            let q_k_commitment =0u8;
             let label = format!("ZM:C_q_{}", idx);
-            transcript.add(q_k_commitment);
+            transcript.add(&[q_k_commitment]);
         }
 
         // Add buffer elements to remove log_N dependence in proof
         for idx in log_n..CONST_PROOF_SIZE_LOG_N as u8 {
             // let buffer_element = Commitment::one();
             let label = format!("ZM:C_q_{}", idx);
-            transcript.add(buffer_element);
+            todo!();
+            let buffer_element =0u8;
+            transcript.add(&[buffer_element]);
         }
         let y_challenge = transcript.get_challenge();
 
@@ -320,6 +323,8 @@ impl<P: Pairing> Decider<P> {
         // auto q_commitment = commitment_key->commit(batched_quotient);
         let mut transcript = transcript::Keccak256Transcript::<P>::default();
         transcript.add_scalar(y_challenge);
+        todo!();
+        let q_commitment =Default::default();
         transcript.add_scalar(q_commitment);
         let x_challenge = transcript.get_challenge();
         let mut transcript = transcript::Keccak256Transcript::<P>::default();

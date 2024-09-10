@@ -1,6 +1,6 @@
 use super::prover::Decider;
 use crate::oink::verifier::RelationParameters;
-use crate::{decider::types::PowPolynomial, get_msb};
+use crate::{decider::types::GateSeparatorPolynomial, get_msb};
 use crate::{transcript, types::ProvingKey};
 use ark_ec::pairing::Pairing;
 use ark_ff::UniformRand;
@@ -19,7 +19,7 @@ impl<P: Pairing> Decider<P> {
             .map(|_| P::ScalarField::rand(rng))
             .collect::<Vec<_>>();
 
-        todo!();
+        todo!("Not yet implemented");
     }
 
     pub(crate) fn sumcheck_prove(
@@ -35,14 +35,14 @@ impl<P: Pairing> Decider<P> {
         let multivariate_n = proving_key.circuit_size;
         let multivariate_d = get_msb(multivariate_n);
         // TODO check this
-        let sum_check_round:SumcheckRound= SumcheckRound::new(multivariate_n as usize);
+        let sum_check_round = SumcheckRound::new(multivariate_n as usize);
         // In case the Flavor has ZK, we populate sumcheck data structure with randomness, compute correcting term for
         // the total sum, etc.
         if HAS_ZK {
             self.setup_zk_sumcheck_data(&mut rng);
         };
 
-        let pow_univariate = PowPolynomial::new(self.memory.challenges.gate_challenges.to_owned());
+        let pow_univariate = GateSeparatorPolynomial::new(self.memory.challenges.gate_challenges.to_owned());
 
         let mut multivariate_challenge = Vec::with_capacity(multivariate_d as usize);
         let mut round_idx = 0;

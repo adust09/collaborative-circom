@@ -32,7 +32,7 @@ pub struct Challenges<F: PrimeField> {
     pub gate_challenges: Vec<F>,
 }
 
-pub struct PowPolynomial<F: PrimeField> {
+pub struct GateSeparatorPolynomial<F: PrimeField> {
     betas: Vec<F>,
     pow_betas: Vec<F>,
     //dont know if only verifier needs the following, then maybe separate struct for this
@@ -41,7 +41,7 @@ pub struct PowPolynomial<F: PrimeField> {
     periodicity: usize,
 }
 
-impl<F: PrimeField> PowPolynomial<F> {
+impl<F: PrimeField> GateSeparatorPolynomial<F> {
     pub fn new(betas: Vec<F>) -> Self {
         let pow_size = 1 << betas.len();
         let current_element_idx = 0;
