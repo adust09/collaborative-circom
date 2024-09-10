@@ -1,9 +1,9 @@
-use crate::{types::Polynomials, NUM_ALPHAS};
+use crate::{types::AllEntities, NUM_ALPHAS};
 use ark_ec::pairing::Pairing;
 use ark_ff::PrimeField;
 
 pub const MAX_PARTIAL_RELATION_LENGTH: usize = 7;
-pub type ProverUnivariates<F> = Polynomials<[F; MAX_PARTIAL_RELATION_LENGTH]>;
+pub type ProverUnivariates<F> = AllEntities<[F; MAX_PARTIAL_RELATION_LENGTH]>;
 
 pub struct ProverMemory<P: Pairing> {
     pub w_4: Vec<P::ScalarField>,             // column 3
