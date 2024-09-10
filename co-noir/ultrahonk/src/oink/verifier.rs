@@ -11,7 +11,7 @@ pub(crate) struct OinkOutput<P: Pairing> {
     relation_parameters: RelationParameters<P>,
     commitments: WitnessCommitments<P>,
     public_inputs: Vec<P::ScalarField>,
-    alphas: [P::ScalarField; NUM_ALPHAS],
+    pub(crate) alphas: [P::ScalarField; NUM_ALPHAS],
     // transcript: Keccak256Transcript<P>, todo: I think that should also be output?
 }
 
