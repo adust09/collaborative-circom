@@ -1,11 +1,11 @@
 use super::prover::Decider;
+use crate::decider::sumcheck_round::SumcheckRound;
 use crate::oink::verifier::RelationParameters;
 use crate::{decider::types::GateSeparatorPolynomial, get_msb};
 use crate::{transcript, types::ProvingKey};
 use ark_ec::pairing::Pairing;
 use ark_ff::UniformRand;
 use rand::{thread_rng, Rng};
-use crate::decider::sumcheck_round::SumcheckRound;
 
 // Keep in mind, the UltraHonk protocol (UltraFlavor) does not per default have ZK
 // The UltraFlavorWithZK has ZK
@@ -42,7 +42,8 @@ impl<P: Pairing> Decider<P> {
             self.setup_zk_sumcheck_data(&mut rng);
         };
 
-        let pow_univariate = GateSeparatorPolynomial::new(self.memory.challenges.gate_challenges.to_owned());
+        let pow_univariate =
+            GateSeparatorPolynomial::new(self.memory.challenges.gate_challenges.to_owned());
 
         // let mut multivariate_challenge = Vec::with_capacity(multivariate_d as usize);
         let mut round_idx = 0;
@@ -82,9 +83,7 @@ impl<P: Pairing> Decider<P> {
         //     transcript.add_scalar(round_challenge);
         // }
 
-// Final round: Extract multivariate evaluations from #partially_evaluated_polynomials and add to transcript
-
-
+        // Final round: Extract multivariate evaluations from #partially_evaluated_polynomials and add to transcript
 
         todo!("return multivariate_challenge and multivariate_evaluations")
     }

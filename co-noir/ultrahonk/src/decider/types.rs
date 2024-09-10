@@ -1,4 +1,7 @@
-use crate::{types::{PrecomputedEntities, ShiftedWitnessEntities, WitnessEntities}, NUM_ALPHAS};
+use crate::{
+    types::{PrecomputedEntities, ShiftedWitnessEntities, WitnessEntities},
+    NUM_ALPHAS,
+};
 use ark_ec::pairing::Pairing;
 use ark_ff::PrimeField;
 

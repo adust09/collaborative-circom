@@ -22,7 +22,6 @@ pub struct Polynomials<F: PrimeField> {
     pub shifted: ShiftedWitnessEntities<F>,
 }
 
-
 #[derive(Default)]
 pub struct WitnessEntities<T: Default> {
     pub w_l: Vec<T>, // column 0
