@@ -16,10 +16,11 @@ pub struct ProverCrs<P: Pairing> {
     pub monomials: Vec<P::G1Affine>,
 }
 
-pub struct Polynomials<F: PrimeField> {
-    pub witness: WitnessEntities<F>,
-    pub precomputed: PrecomputedEntities<F>,
-    pub shifted: ShiftedWitnessEntities<F>,
+#[derive(Default)]
+pub struct Polynomials<T: Default> {
+    pub witness: WitnessEntities<T>,
+    pub precomputed: PrecomputedEntities<T>,
+    pub shifted: ShiftedWitnessEntities<T>,
 }
 
 #[derive(Default)]
