@@ -34,7 +34,7 @@ pub struct Challenges<F: PrimeField> {
 
 pub struct GateSeparatorPolynomial<F: PrimeField> {
     betas: Vec<F>,
-    pow_betas: Vec<F>,
+    beta_products: Vec<F>,
     //dont know if only verifier needs the following, then maybe separate struct for this
     pub(crate) partial_evaluation_result: F,
     current_element_idx: usize,
@@ -48,7 +48,7 @@ impl<F: PrimeField> GateSeparatorPolynomial<F> {
         let periodicity = 2;
         let partial_evaluation_result = F::ONE;
 
-        let mut pow_betas = Vec::with_capacity(pow_size);
+        let mut beta_products = Vec::with_capacity(pow_size);
 
         // Barretenberg uses multithreading here
         for i in 0..pow_size {
@@ -62,17 +62,18 @@ impl<F: PrimeField> GateSeparatorPolynomial<F> {
                 j >>= 1;
                 beta_idx += 1;
             }
-            pow_betas.push(res);
+            beta_products.push(res);
         }
 
         Self {
             betas,
-            pow_betas,
+            beta_products,
             partial_evaluation_result,
             current_element_idx,
             periodicity,
         }
     }
+
     pub fn partially_evaluate(&mut self, round_challenge: F) {
         let current_univariate_eval =
             F::ONE + (round_challenge * (self.betas[self.current_element_idx] - F::ONE));
