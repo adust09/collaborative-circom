@@ -44,7 +44,7 @@ impl<P: Pairing> Decider<P> {
 
         let pow_univariate = GateSeparatorPolynomial::new(self.memory.challenges.gate_challenges.to_owned());
 
-        let mut multivariate_challenge = Vec::with_capacity(multivariate_d as usize);
+        // let mut multivariate_challenge = Vec::with_capacity(multivariate_d as usize);
         let mut round_idx = 0;
         // In the first round, we compute the first univariate polynomial and populate the book-keeping table of
         // #partially_evaluated_polynomials, which has \f$ n/2 \f$ rows and \f$ N \f$ columns. When the Flavor has ZK,
@@ -52,35 +52,35 @@ impl<P: Pairing> Decider<P> {
 
         todo!("first round");
 
-        multivariate_challenge.push(transcript.get_challenge());
-        let mut transcript = transcript::Keccak256Transcript::<P>::default();
-        transcript.add_scalar(multivariate_challenge[0]);
-        for round_idx in 1..multivariate_d {
-            let round_univariate= sum_check_round.compute_univariate(round_idx,partially_evaluated_polynomials, relation_parameters, pow_univariate, alpha)
-            transcript.add_scalar(round_univariate);
-            let round_challenge= transcript.get_challenge();
-            multivariate_challenge.push(round_challenge);
-            let mut transcript = transcript::Keccak256Transcript::<P>::default();
-            transcript.add_scalar(round_challenge);
-            // need SumcheckRound struct here:
-            sum_check_round.partially_evaluate_poly(partially_evaluated_polynomials, round_challenge);
-            pow_univariate.partially_evaluate(round_challenge);
-            sum_check_round.round_size = sum_check_round.round_size >> 1;
-        }
+        // multivariate_challenge.push(transcript.get_challenge());
+        // let mut transcript = transcript::Keccak256Transcript::<P>::default();
+        // transcript.add_scalar(multivariate_challenge[0]);
+        // for round_idx in 1..multivariate_d {
+        //     let round_univariate= sum_check_round.compute_univariate(round_idx,partially_evaluated_polynomials, relation_parameters, pow_univariate, alpha)
+        //     transcript.add_scalar(round_univariate);
+        //     let round_challenge= transcript.get_challenge();
+        //     multivariate_challenge.push(round_challenge);
+        //     let mut transcript = transcript::Keccak256Transcript::<P>::default();
+        //     transcript.add_scalar(round_challenge);
+        //     // need SumcheckRound struct here:
+        //     sum_check_round.partially_evaluate_poly(partially_evaluated_polynomials, round_challenge);
+        //     pow_univariate.partially_evaluate(round_challenge);
+        //     sum_check_round.round_size = sum_check_round.round_size >> 1;
+        // }
 
-        // auto zero_univariate = bb::Univariate<FF, Flavor::BATCHED_RELATION_PARTIAL_LENGTH>::zero();
-        let placeholder=347;
+        // // auto zero_univariate = bb::Univariate<FF, Flavor::BATCHED_RELATION_PARTIAL_LENGTH>::zero();
+        // let placeholder=347;
 
-        let zero_univariate= Vec::<P::ScalarField>::with_capacity(placeholder);
-        for idx in multivariate_d as usize .. crate::CONST_PROOF_SIZE_LOG_N  {
-            zero_univariate.iter().for_each(|inst| {
-                transcript.add_scalar(*inst);
-            }); // TODO is this really what we want?
-            let round_challenge=transcript.get_challenge();
-            multivariate_challenge.push(round_challenge);
-            let mut transcript = transcript::Keccak256Transcript::<P>::default();
-            transcript.add_scalar(round_challenge);
-        }
+        // let zero_univariate= Vec::<P::ScalarField>::with_capacity(placeholder);
+        // for idx in multivariate_d as usize .. crate::CONST_PROOF_SIZE_LOG_N  {
+        //     zero_univariate.iter().for_each(|inst| {
+        //         transcript.add_scalar(*inst);
+        //     }); // TODO is this really what we want?
+        //     let round_challenge=transcript.get_challenge();
+        //     multivariate_challenge.push(round_challenge);
+        //     let mut transcript = transcript::Keccak256Transcript::<P>::default();
+        //     transcript.add_scalar(round_challenge);
+        // }
 
 // Final round: Extract multivariate evaluations from #partially_evaluated_polynomials and add to transcript
 

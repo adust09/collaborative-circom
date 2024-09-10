@@ -1,4 +1,4 @@
-use crate::NUM_ALPHAS;
+use crate::{types::{PrecomputedEntities, ShiftedWitnessEntities, WitnessEntities}, NUM_ALPHAS};
 use ark_ec::pairing::Pairing;
 use ark_ff::PrimeField;
 
@@ -30,6 +30,23 @@ pub struct Challenges<F: PrimeField> {
     pub gamma: F,
     pub alphas: [F; NUM_ALPHAS],
     pub gate_challenges: Vec<F>,
+}
+
+pub const MAX_PARTIAL_RELATION_LENGTH: usize = 7;
+pub struct ProverUnivariates<F: PrimeField> {
+    pub witness: WitnessEntities<[F; MAX_PARTIAL_RELATION_LENGTH]>,
+    pub precomputed: PrecomputedEntities<[F; MAX_PARTIAL_RELATION_LENGTH]>,
+    pub shifted: ShiftedWitnessEntities<[F; MAX_PARTIAL_RELATION_LENGTH]>,
+}
+
+impl<F: PrimeField> Default for ProverUnivariates<F> {
+    fn default() -> Self {
+        Self {
+            witness: Default::default(),
+            precomputed: Default::default(),
+            shifted: Default::default(),
+        }
+    }
 }
 
 pub struct GateSeparatorPolynomial<F: PrimeField> {

@@ -34,7 +34,7 @@ impl<P: Pairing> Decider<P> {
     // Fiat-Shamir: rho, y, x, z
     // Execute Zeromorph multilinear PCS
     fn execute_pcs_rounds(&self) {
-        let prover_opening_claim = Self::zeromorph_prove();
+        // let prover_opening_claim = Self::zeromorph_prove();
         todo!();
     }
 
