@@ -62,13 +62,8 @@ use std::{io, marker::PhantomData};
             transcript.add_scalar(gate_challenges[idx - 1]);
             gate_challenges[idx] = transcript.get_challenge();
         }
-        let (multivariate_challenge, claimed_evaluations, sumcheck_verified) = sumcheck_verify(
-            relation_parameters,
-            &mut transcript,
-            oink_output.alphas,
-            gate_challenges,
-            vk,
-        );
+        let (multivariate_challenge, claimed_evaluations, sumcheck_verified) =
+            sumcheck_verify(relation_parameters, &mut transcript, oink_output.alphas, vk);
         // to do: build sumcheck verifier, returns (multivariate_challenge, claimed_evaluations, sumcheck_verified)
         // get_unshifted(), get_to_be_shifted(), get_shifted()
 
@@ -354,10 +349,10 @@ pub fn sumcheck_verify<P: Pairing>(
             multivariate_challenge.push(round_challenge);
         }
     }
-    todo!("new Libra stuff");
+    todo!("new Libra stuff (ZK?)");
     let purported_evaluations: Vec<P::ScalarField>;
     todo!("get transcript_evaluations from prover");
-    let full_honk_relation_purported_value = compute_full_honk_relation_purported_value(
+    let full_honk_relation_purported_value = compute_full_relation_purported_value(
         purported_evaluations,
         relation_parameters,
         pow_univariate,
@@ -365,6 +360,9 @@ pub fn sumcheck_verify<P: Pairing>(
     );
     let checked: bool = full_honk_relation_purported_value == target_total_sum;
     verified = verified && checked;
+    if crate::decider::sumcheck::HAS_ZK {
+        todo!(); // For ZK Flavors: the evaluations of Libra univariates are included in the Sumcheck Output
+    };
     todo!("return multivariate_challenge, purported_evaluations, verified");
 }
 
