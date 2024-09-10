@@ -42,7 +42,7 @@ impl<P: Pairing> UltraHonk<P> {
     }
 
     fn generate_gate_challenges(&self, memory: &mut ProverMemory<P>, proving_key: &ProvingKey<P>) {
-        tracing::trace!("generate gate challenges");
+        // tracing::trace!("generate gate challenges");
 
         let challenge_size = get_msb(proving_key.circuit_size) as usize;
         let mut gate_challenges = Vec::with_capacity(challenge_size);
@@ -64,7 +64,7 @@ impl<P: Pairing> UltraHonk<P> {
         proving_key: &ProvingKey<P>,
         public_inputs: &[P::ScalarField],
     ) -> HonkProofResult<()> {
-        tracing::trace!("UltraHonk prove");
+        // tracing::trace!("UltraHonk prove");
 
         let oink = Oink::<P>::default();
         let mut memory = ProverMemory::from(oink.prove(proving_key, public_inputs)?);

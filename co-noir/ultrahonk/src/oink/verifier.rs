@@ -67,7 +67,7 @@ impl<P: Pairing> OinkVerifier<P> {
     }
 
     fn execute_preamble_round(&mut self, public_inputs: &[P::ScalarField]) {
-        tracing::trace!("executing (verifying) preamble round");
+        // tracing::trace!("executing (verifying) preamble round");
 
         self.transcript.add(self.key.circuit_size.to_le_bytes());
         self.transcript
@@ -90,7 +90,7 @@ impl<P: Pairing> OinkVerifier<P> {
     }
 
     fn execute_wire_commitments_round(&mut self) {
-        tracing::trace!("executing (verifying) wire commitments round");
+        // tracing::trace!("executing (verifying) wire commitments round");
 
         self.transcript.add_point(self.witness_comms.w_l.into());
         self.transcript.add_point(self.witness_comms.w_r.into());
@@ -98,7 +98,7 @@ impl<P: Pairing> OinkVerifier<P> {
     }
 
     fn execute_sorted_list_accumulator_round(&mut self) {
-        tracing::trace!("executing (verifying) sorted list accumulator round");
+        // tracing::trace!("executing (verifying) sorted list accumulator round");
 
         let mut transcript = Keccak256Transcript::<P>::default();
         std::mem::swap(&mut transcript, &mut self.transcript);
@@ -127,7 +127,7 @@ impl<P: Pairing> OinkVerifier<P> {
     }
 
     fn execute_log_derivative_inverse_round(&mut self) {
-        tracing::trace!("executing (verifying) log derivative inverse round");
+        // tracing::trace!("executing (verifying) log derivative inverse round");
 
         let mut transcript = Keccak256Transcript::<P>::default();
         std::mem::swap(&mut transcript, &mut self.transcript);
@@ -146,7 +146,7 @@ impl<P: Pairing> OinkVerifier<P> {
     }
 
     fn execute_grand_product_computation_round(&mut self, public_inputs: &[P::ScalarField]) {
-        tracing::trace!("executing (verifying) grand product computation round");
+        // tracing::trace!("executing (verifying) grand product computation round");
         self.relation_parameters.public_input_delta = compute_public_input_delta::<P>(
             public_inputs,
             self.relation_parameters.beta,
@@ -159,7 +159,7 @@ impl<P: Pairing> OinkVerifier<P> {
     }
 
     fn generate_alphas_round(&mut self) -> [P::ScalarField; NUM_ALPHAS] {
-        tracing::trace!("generating (verifying) alphas round");
+        // tracing::trace!("generating (verifying) alphas round");
         let mut alphas: [P::ScalarField; NUM_ALPHAS] = [P::ScalarField::default(); NUM_ALPHAS];
         let mut transcript = Keccak256Transcript::<P>::default();
         std::mem::swap(&mut transcript, &mut self.transcript);
@@ -180,7 +180,7 @@ fn compute_public_input_delta<P: Pairing>(
     domain_size: u32,
     offset: usize,
 ) -> P::ScalarField {
-    tracing::trace!("computing public input delta");
+    // tracing::trace!("computing public input delta");
     let mut numerator = P::ScalarField::ONE;
     let mut denominator = P::ScalarField::ONE;
     let mut numerator_acc =
