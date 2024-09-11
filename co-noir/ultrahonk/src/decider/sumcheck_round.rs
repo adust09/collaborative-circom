@@ -6,6 +6,7 @@ use super::{
 use crate::{
     decider::{
         relations::{
+            auxiliary_relation::AuxiliaryRelation,
             delta_range_constraint_relation::DeltaRangeConstraintRelation,
             elliptic_relation::EllipticRelation, permutation_relation::UltraPermutationRelation,
         },
@@ -160,6 +161,12 @@ impl SumcheckRound {
                 && <EllipticRelation as Relation<P>>::skip(extended_edges)
         );
         let r4 = <EllipticRelation as Relation<P>>::Acc::default();
+        let r5 = Self::accumulate_one_relation_univariates::<P, AuxiliaryRelation>(
+            extended_edges,
+            memory,
+            challenges,
+            scaling_factor,
+        );
 
         todo!()
     }

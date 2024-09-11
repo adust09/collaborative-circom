@@ -8,8 +8,8 @@ use ark_ff::{PrimeField, Zero};
 
 #[derive(Clone, Debug, Default)]
 pub(crate) struct UltraPermutationRelationAcc<F: PrimeField> {
-    pub(crate) r1: Univariate<F, 6>,
-    pub(crate) r2: Univariate<F, 3>,
+    pub(crate) r0: Univariate<F, 6>,
+    pub(crate) r1: Univariate<F, 3>,
 }
 
 pub(crate) struct UltraPermutationRelation {}
@@ -109,20 +109,20 @@ impl<P: Pairing> Relation<P> for UltraPermutationRelation {
                 * Self::compute_grand_product_denominator::<P>(input, challenges)))
             * scaling_factor;
 
-        let mut r1 = Univariate::default();
-        for i in 0..r1.evaluations.len() {
-            r1.evaluations[i] = tmp.evaluations[i];
+        let mut r0 = Univariate::default();
+        for i in 0..r0.evaluations.len() {
+            r0.evaluations[i] = tmp.evaluations[i];
         }
 
         ///////////////////////////////////////////////////////////////////////
 
         let tmp = (lagrange_last.to_owned() * z_perm_shift) * scaling_factor;
 
-        let mut r2 = Univariate::default();
-        for i in 0..r2.evaluations.len() {
-            r2.evaluations[i] = tmp.evaluations[i];
+        let mut r1 = Univariate::default();
+        for i in 0..r1.evaluations.len() {
+            r1.evaluations[i] = tmp.evaluations[i];
         }
 
-        Self::Acc { r1, r2 }
+        Self::Acc { r0, r1 }
     }
 }

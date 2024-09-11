@@ -8,8 +8,8 @@ use ark_ff::{Field, PrimeField, Zero};
 
 #[derive(Clone, Debug, Default)]
 pub(crate) struct UltraArithmeticRelationAcc<F: PrimeField> {
-    pub(crate) r1: Univariate<F, 6>,
-    pub(crate) r2: Univariate<F, 5>,
+    pub(crate) r0: Univariate<F, 6>,
+    pub(crate) r1: Univariate<F, 5>,
 }
 
 pub(crate) struct UltraArithmeticRelation {}
@@ -105,9 +105,9 @@ impl<P: Pairing> Relation<P> for UltraArithmeticRelation {
         tmp *= q_arith;
         tmp *= scaling_factor;
 
-        let mut r1 = Univariate::default();
-        for i in 0..r1.evaluations.len() {
-            r1.evaluations[i] = tmp.evaluations[i];
+        let mut r0 = Univariate::default();
+        for i in 0..r0.evaluations.len() {
+            r0.evaluations[i] = tmp.evaluations[i];
         }
 
         ///////////////////////////////////////////////////////////////////////
@@ -118,11 +118,11 @@ impl<P: Pairing> Relation<P> for UltraArithmeticRelation {
         tmp *= q_arith;
         tmp *= scaling_factor;
 
-        let mut r2 = Univariate::default();
-        for i in 0..r2.evaluations.len() {
-            r2.evaluations[i] = tmp.evaluations[i];
+        let mut r1 = Univariate::default();
+        for i in 0..r1.evaluations.len() {
+            r1.evaluations[i] = tmp.evaluations[i];
         }
 
-        Self::Acc { r1, r2 }
+        Self::Acc { r0, r1 }
     }
 }

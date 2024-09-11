@@ -22,12 +22,12 @@ use num_bigint::BigUint;
  * };
  */
 pub(crate) struct AuxiliaryRelationAcc<F: PrimeField> {
+    pub(crate) r0: Univariate<F, 6>,
     pub(crate) r1: Univariate<F, 6>,
     pub(crate) r2: Univariate<F, 6>,
     pub(crate) r3: Univariate<F, 6>,
     pub(crate) r4: Univariate<F, 6>,
     pub(crate) r5: Univariate<F, 6>,
-    pub(crate) r6: Univariate<F, 6>,
 }
 
 pub(crate) struct AuxiliaryRelation {}
@@ -233,26 +233,137 @@ impl<P: Pairing> Relation<P> for AuxiliaryRelation {
 
         let index_is_monotonically_increasing = index_delta.to_owned().sqr() - &index_delta; // deg 2
 
-        let adjacent_values_match_if_adjacent_indices_match =
-            (-index_delta + &P::ScalarField::one()) * record_delta; // deg 2
+        let index_delta_one = -index_delta + &P::ScalarField::one();
+
+        let adjacent_values_match_if_adjacent_indices_match = record_delta * &index_delta_one; // deg 2
 
         let q_aux_by_scaling = q_aux.to_owned() * scaling_factor;
         let q_one_by_two = q_1.to_owned() * q_2;
-        let q_one_by_two_by_aux_by_scaling = q_one_by_two * q_aux_by_scaling;
+        let q_one_by_two_by_aux_by_scaling = q_one_by_two.to_owned() * &q_aux_by_scaling;
 
-        // let mut r1 = Univariate::default();
-        // for i in 0..r1.evaluations.len() {
-        //     r1.evaluations[i] = tmp.evaluations[i];
-        // }
+        let tmp = adjacent_values_match_if_adjacent_indices_match * &q_one_by_two_by_aux_by_scaling; // deg 5
 
-        ///////////////////////////////////////////////////////////////////////
+        let mut r1 = Univariate::default();
+        for i in 0..r1.evaluations.len() {
+            r1.evaluations[i] = tmp.evaluations[i];
+        }
 
-        // let mut r2 = Univariate::default();
-        // for i in 0..r2.evaluations.len() {
-        //     r2.evaluations[i] = tmp.evaluations[i];
-        // }
+        let tmp = q_one_by_two_by_aux_by_scaling * &index_is_monotonically_increasing; // deg 5
+        let mut r2 = Univariate::default();
+        for i in 0..r2.evaluations.len() {
+            r2.evaluations[i] = tmp.evaluations[i];
+        }
 
-        // Self::Acc { r1, r2 }
-        todo!()
+        let rom_consistency_check_identity = q_one_by_two * &memory_record_check; // deg 3 or 4
+
+        /*
+         * RAM Consistency Check
+         *
+         * The 'access' type of the record is extracted with the expression `w_4 - partial_record_check`
+         * (i.e. for an honest Prover `w1 * η + w2 * η₂ + w3 * η₃ - w4 = access`.
+         * This is validated by requiring `access` to be boolean
+         *
+         * For two adjacent entries in the sorted list if _both_
+         *  A) index values match
+         *  B) adjacent access value is 0 (i.e. next gate is a READ)
+         * then
+         *  C) both values must match.
+         * The gate boolean check is
+         * (A && B) => C  === !(A && B) || C ===  !A || !B || C
+         *
+         * N.B. it is the responsibility of the circuit writer to ensure that every RAM cell is initialized
+         * with a WRITE operation.
+         */
+        let access_type = w_4.to_owned() - partial_record_check; // will be 0 or 1 for honest Prover; deg 1 or 2
+        let access_check = access_type.to_owned() * &access_type - &access_type; // check value is 0 or 1; deg 2 or 4
+
+        // TODO(https://github.com/AztecProtocol/barretenberg/issues/757): If we sorted in
+        // reverse order we could re-use `partial_record_check`  1 -  (w3' * eta_three + w2' * eta_two + w1' *
+        // eta) deg 1 or 2
+        let mut next_gate_access_type = w_3_shift.to_owned() * eta_three;
+        next_gate_access_type += w_2_shift.to_owned() * eta_two;
+        next_gate_access_type += w_1_shift.to_owned() * eta;
+        next_gate_access_type = -next_gate_access_type.to_owned() + w_4_shift;
+
+        let value_delta = w_3_shift.to_owned() - w_3;
+        let adjacent_values_match_if_adjacent_indices_match_and_next_access_is_a_read_operation =
+            value_delta
+                * &index_delta_one
+                * (-next_gate_access_type.to_owned() + &P::ScalarField::one()); // deg 3 or 4
+
+        // We can't apply the RAM consistency check identity on the final entry in the sorted list (the wires in the
+        // next gate would make the identity fail).  We need to validate that its 'access type' bool is correct. Can't
+        // do  with an arithmetic gate because of the  `eta` factors. We need to check that the *next* gate's access
+        // type is  correct, to cover this edge case
+        // deg 2 or 4
+        let next_gate_access_type_is_boolean =
+            next_gate_access_type.to_owned().sqr() - next_gate_access_type;
+
+        let q_arith_by_aux_and_scaling = q_arith.to_owned() * &q_aux_by_scaling;
+        // Putting it all together...
+
+        let tmp =
+            adjacent_values_match_if_adjacent_indices_match_and_next_access_is_a_read_operation
+                * &q_arith_by_aux_and_scaling; // deg 5 or 6
+        let mut r3 = Univariate::default();
+        for i in 0..r3.evaluations.len() {
+            r3.evaluations[i] = tmp.evaluations[i];
+        }
+
+        let tmp = index_is_monotonically_increasing * &q_arith_by_aux_and_scaling; // deg 4
+        let mut r4 = Univariate::default();
+        for i in 0..r4.evaluations.len() {
+            r4.evaluations[i] = tmp.evaluations[i];
+        }
+
+        let tmp = next_gate_access_type_is_boolean * q_arith_by_aux_and_scaling; // deg 4 or 6
+        let mut r5 = Univariate::default();
+        for i in 0..r5.evaluations.len() {
+            r5.evaluations[i] = tmp.evaluations[i];
+        }
+
+        let ram_consistency_check_identity = access_check * (q_arith); // deg 3 or 5
+
+        /*
+         * RAM Timestamp Consistency Check
+         *
+         * | w1 | w2 | w3 | w4 |
+         * | index | timestamp | timestamp_check | -- |
+         *
+         * Let delta_index = index_{i + 1} - index_{i}
+         *
+         * Iff delta_index == 0, timestamp_check = timestamp_{i + 1} - timestamp_i
+         * Else timestamp_check = 0
+         */
+        let timestamp_delta = w_2_shift.to_owned() - w_2;
+        let ram_timestamp_check_identity = index_delta_one * timestamp_delta - w_3; // deg 3
+
+        /*
+         * The complete RAM/ROM memory identity
+         * Partial degree:
+         */
+        let mut memory_identity = rom_consistency_check_identity; // deg 3 or 4
+        memory_identity += ram_timestamp_check_identity * (q_4.to_owned() * q_1); // deg 4
+        memory_identity += memory_record_check * (q_m.to_owned() * q_1); // deg 3 or 4
+        memory_identity += ram_consistency_check_identity; // deg 3 or 5
+
+        // (deg 3 or 5) + (deg 4) + (deg 3)
+        let mut auxiliary_identity =
+            memory_identity + non_native_field_identity + limb_accumulator_identity;
+        auxiliary_identity *= q_aux_by_scaling; // deg 5 or 6
+
+        let mut r0 = Univariate::default();
+        for i in 0..r0.evaluations.len() {
+            r0.evaluations[i] = auxiliary_identity.evaluations[i];
+        }
+
+        Self::Acc {
+            r0,
+            r1,
+            r2,
+            r3,
+            r4,
+            r5,
+        }
     }
 }

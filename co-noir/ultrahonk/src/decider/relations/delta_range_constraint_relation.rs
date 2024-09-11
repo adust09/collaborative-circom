@@ -8,10 +8,10 @@ use ark_ff::{One, PrimeField, Zero};
 
 #[derive(Clone, Debug, Default)]
 pub(crate) struct DeltaRangeConstraintRelationAcc<F: PrimeField> {
+    pub(crate) r0: Univariate<F, 6>,
     pub(crate) r1: Univariate<F, 6>,
     pub(crate) r2: Univariate<F, 6>,
     pub(crate) r3: Univariate<F, 6>,
-    pub(crate) r4: Univariate<F, 6>,
 }
 
 pub(crate) struct DeltaRangeConstraintRelation {}
@@ -66,9 +66,9 @@ impl<P: Pairing> Relation<P> for DeltaRangeConstraintRelation {
         tmp_1 *= q_delta_range;
         tmp_1 *= scaling_factor;
 
-        let mut r1 = Univariate::default();
-        for i in 0..r1.evaluations.len() {
-            r1.evaluations[i] = tmp_1.evaluations[i];
+        let mut r0 = Univariate::default();
+        for i in 0..r0.evaluations.len() {
+            r0.evaluations[i] = tmp_1.evaluations[i];
         }
 
         ///////////////////////////////////////////////////////////////////////
@@ -78,9 +78,9 @@ impl<P: Pairing> Relation<P> for DeltaRangeConstraintRelation {
         tmp_2 *= q_delta_range;
         tmp_2 *= scaling_factor;
 
-        let mut r2 = Univariate::default();
-        for i in 0..r2.evaluations.len() {
-            r2.evaluations[i] = tmp_2.evaluations[i];
+        let mut r1 = Univariate::default();
+        for i in 0..r1.evaluations.len() {
+            r1.evaluations[i] = tmp_2.evaluations[i];
         }
 
         ///////////////////////////////////////////////////////////////////////
@@ -90,9 +90,9 @@ impl<P: Pairing> Relation<P> for DeltaRangeConstraintRelation {
         tmp_3 *= q_delta_range;
         tmp_3 *= scaling_factor;
 
-        let mut r3 = Univariate::default();
-        for i in 0..r3.evaluations.len() {
-            r3.evaluations[i] = tmp_3.evaluations[i];
+        let mut r2 = Univariate::default();
+        for i in 0..r2.evaluations.len() {
+            r2.evaluations[i] = tmp_3.evaluations[i];
         }
 
         ///////////////////////////////////////////////////////////////////////
@@ -102,11 +102,11 @@ impl<P: Pairing> Relation<P> for DeltaRangeConstraintRelation {
         tmp_4 *= q_delta_range;
         tmp_4 *= scaling_factor;
 
-        let mut r4 = Univariate::default();
-        for i in 0..r4.evaluations.len() {
-            r4.evaluations[i] = tmp_4.evaluations[i];
+        let mut r3 = Univariate::default();
+        for i in 0..r3.evaluations.len() {
+            r3.evaluations[i] = tmp_4.evaluations[i];
         }
 
-        Self::Acc { r1, r2, r3, r4 }
+        Self::Acc { r0, r1, r2, r3 }
     }
 }
