@@ -88,8 +88,8 @@ impl<P: Pairing> Decider<P> {
                 q[l] = f_k[size_q + l] - f_k[l];
             }
 
-            quotients[log_n as usize - k as usize - 1] = q.clone(); // Assuming `clone` is implemented for Polynomial
-            g = f_k.clone(); // Assuming `clone` is implemented for Vec<i32>
+            quotients[log_n as usize - k as usize - 1] = q.clone();
+            g = f_k.clone();
         }
 
         quotients

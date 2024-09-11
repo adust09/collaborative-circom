@@ -8,6 +8,7 @@ use crate::{
     NUM_ALPHAS,
 };
 use ark_ec::pairing::{self, Pairing};
+use ark_ec::Group;
 use ark_ec::VariableBaseMSM;
 use ark_ff::Field;
 use std::{io, marker::PhantomData};
@@ -53,12 +54,6 @@ impl<P: Pairing> UltraHonkVerifier<P> {
         )
         .verify(public_inputs);
 
-        // do we have to do this?:
-        // Copy the witness_commitments over to the VerifierCommitments
-        // for (auto [wit_comm_1, wit_comm_2] : zip_view(commitments.get_witness(), witness_commitments.get_all())) {
-        //     wit_comm_1 = wit_comm_2;
-        // }
-
         let mut transcript = Keccak256Transcript::<P>::default();
         // let mut gate_challenges = Vec::with_capacity(log_circuit_size as usize);
         vk.gate_challenges[0] = transcript.get_challenge();
@@ -89,19 +84,16 @@ impl<P: Pairing> UltraHonkVerifier<P> {
             // but i dont understand the shift yet
         );
         let pairing_points = reduce_verify(&mut transcript, opening_claim);
-        let pcs_verified = pairing_check(pairing_points[0], pairing_points[1], precomputedlines);
+        let pcs_verified = pairing_check(pairing_points[0], pairing_points[1]);
         sumcheck_verified && pcs_verified
     }
 }
 
 //need (?) the verifier SRS for the following ("https://aztec-ignition.s3.amazonaws.com/MAIN%20IGNITION/flat/g1.dat" and "https://aztec-ignition.s3.amazonaws.com/MAIN%20IGNITION/flat/g2.dat")
 //Check: g1_identity first element in the SRS!
-fn pairing_check<P: Pairing>(
-    p0: P::G1Affine,
-    p1: P::G1Affine,
-    precomputedlines: [P::G2Prepared; 2], //todo: where to get this from
-) -> bool {
+pub fn pairing_check<P: Pairing>(p0: P::G1Affine, p1: P::G1Affine) -> bool {
     let g1_prepared = [P::G1Prepared::from(p0), P::G1Prepared::from(p1)];
+    let precomputedlines: [P::G2Prepared; 2]; //todo: where to get this from
     let m_loop = P::multi_miller_loop(g1_prepared, precomputedlines);
     let result = P::final_exponentiation(m_loop);
     match result {
@@ -112,7 +104,7 @@ fn pairing_check<P: Pairing>(
 
 // (compare cpp/src/barretenberg/commitment_schemes/zeromorph/zeromorph.hpp or https://hackmd.io/dlf9xEwhTQyE3hiGbq4FsA?view)
 
-fn zeromorph_verify<P: Pairing>(
+pub fn zeromorph_verify<P: Pairing>(
     circuit_size: u32,
     unshifted_commitments: Vec<P::G1>,
     to_be_shifted_commitments: Vec<P::G1>,
@@ -317,7 +309,7 @@ fn compute_c_z_x<P: Pairing>(
     )
 }
 
-fn sumcheck_verify<P: Pairing>(
+pub fn sumcheck_verify<P: Pairing>(
     relation_parameters: RelationParameters<P>,
     transcript: &mut transcript::Keccak256Transcript<P>,
     alphas: [P::ScalarField; NUM_ALPHAS],
@@ -446,8 +438,9 @@ fn scale_by_challenge_and_batch<P: Pairing>(
     *result
 }
 
+// I don't know about this one...
 // this is the kzg one:
-fn reduce_verify<P: Pairing>(
+pub fn reduce_verify<P: Pairing>(
     transcript: &mut transcript::Keccak256Transcript<P>,
     opening_pair: OpeningClaim<P>,
 ) -> [P::G1Affine; 2] {
@@ -457,7 +450,7 @@ fn reduce_verify<P: Pairing>(
     // Note: The pairing check can be expressed naturally as
     // e(C - v * [1]_1, [1]_2) = e([W]_1, [X - r]_2) where C =[p(X)]_1. This can be rearranged (e.g. see the plonk
     // paper) as e(C + r*[W]_1 - v*[1]_1, [1]_2) * e(-[W]_1, [X]_2) = 1, or e(P_0, [1]_2) * e(P_1, [X]_2) = 1
-    let mut p0 = opening_pair.commitment + quotient_commitment * opening_pair.challenge
-        - opening_pair.evaluation * P::G1::ONE;
+    // let mut p0 = opening_pair.commitment + quotient_commitment * opening_pair.challenge
+    //     - std::ops::Mul::mul(P::G1::generator(), opening_pair.evaluation);
     todo!()
 }

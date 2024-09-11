@@ -19,3 +19,4 @@ sha3.workspace = true
 tracing.workspace = true
 thiserror.workspace = true
 rand.workspace = true
+byteorder.workspace = true
