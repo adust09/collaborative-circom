@@ -4,6 +4,7 @@ pub(crate) mod elliptic_relation;
 pub(crate) mod logderiv_lookup_relation;
 pub(crate) mod permutation_relation;
 pub(crate) mod poseidon2_external_relation;
+pub(crate) mod poseidon2_internal_relation;
 pub(crate) mod ultra_arithmetic_relation;
 
 use super::types::{ProverUnivariates, RelationParameters};
