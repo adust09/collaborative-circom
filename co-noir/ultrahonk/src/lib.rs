@@ -5,6 +5,7 @@ pub(crate) mod decider;
 pub mod field_convert;
 pub(crate) mod oink;
 pub mod prover;
+mod reference_string;
 mod transcript;
 mod types;
 mod verifier;
