@@ -35,7 +35,7 @@ impl<P: Pairing> DeciderVerifier<P> {
         public_inputs: Vec<P::ScalarField>,
         relation_parameters: RelationParameters<P>, //weg damit
         witness_comms: WitnessCommitments<P>,       //weg damit
-    ) {
+    ) -> bool {
         // tracing::trace!("Decider verification");
         let mut transcript = Keccak256Transcript::<P>::default();
         let log_circuit_size = get_msb(vk.circuit_size.clone());
@@ -55,17 +55,17 @@ impl<P: Pairing> DeciderVerifier<P> {
             transcript.add_scalar(gate_challenges[idx - 1]);
             gate_challenges[idx] = transcript.get_challenge();
         }
-        let (multivariate_challenge, claimed_evaluations, sumcheck_verified) = sumcheck_verify(
-            relation_parameters,
-            &mut transcript,
-            oink_output.alphas,
-            gate_challenges,
-            vk,
-        );
+        let (multivariate_challenge, claimed_evaluations, sumcheck_verified) =
+            crate::verifier::sumcheck_verify(
+                relation_parameters,
+                &mut transcript,
+                oink_output.alphas,
+                vk,
+            );
         // to do: build sumcheck verifier, returns (multivariate_challenge, claimed_evaluations, sumcheck_verified)
         // get_unshifted(), get_to_be_shifted(), get_shifted()
 
-        let opening_claim = zeromorph_verify(
+        let opening_claim = crate::verifier::zeromorph_verify(
             vk.circuit_size,
             witness_comms,
             witness_comms,
@@ -73,6 +73,7 @@ impl<P: Pairing> DeciderVerifier<P> {
             claimed_evaluations,
             multivariate_challenge,
             &mut transcript,
+            // TODO Check these types/shifts
             // concatenated_evaluations
             // actually it is
             // commitments.get_unshifted(),
@@ -81,8 +82,8 @@ impl<P: Pairing> DeciderVerifier<P> {
             // claimed_evaluations.get_shifted()
             // but i dont understand the shift yet
         );
-        let pairing_points = reduce_verify(&mut transcript, opening_claim);
-        let pcs_verified = pairing_check(pairing_points[0], pairing_points[1], precomputedlines);
+        let pairing_points = crate::verifier::reduce_verify(&mut transcript, opening_claim);
+        let pcs_verified = crate::verifier::pairing_check(pairing_points[0], pairing_points[1]);
         sumcheck_verified && pcs_verified
     }
 }

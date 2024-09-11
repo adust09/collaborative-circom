@@ -89,18 +89,18 @@ use std::{io, marker::PhantomData};
 //     }
 // }
 
-// //need (?) the verifier SRS for the following ("https://aztec-ignition.s3.amazonaws.com/MAIN%20IGNITION/flat/g1.dat" and "https://aztec-ignition.s3.amazonaws.com/MAIN%20IGNITION/flat/g2.dat")
-// //Check: g1_identity first element in the SRS!
-// pub fn pairing_check<P: Pairing>(p0: P::G1Affine, p1: P::G1Affine) -> bool {
-//     let g1_prepared = [P::G1Prepared::from(p0), P::G1Prepared::from(p1)];
-//     let precomputedlines: [P::G2Prepared; 2]; //todo: where to get this from
-//     let m_loop = P::multi_miller_loop(g1_prepared, precomputedlines);
-//     let result = P::final_exponentiation(m_loop);
-//     match result {
-//         Some(pairing_output) => pairing_output.0 == P::TargetField::ONE,
-//         None => false, // todo: what does that mean?
-//     }
-// }
+//need (?) the verifier SRS for the following ("https://aztec-ignition.s3.amazonaws.com/MAIN%20IGNITION/flat/g1.dat" and "https://aztec-ignition.s3.amazonaws.com/MAIN%20IGNITION/flat/g2.dat")
+//Check: g1_identity first element in the SRS!
+pub fn pairing_check<P: Pairing>(p0: P::G1Affine, p1: P::G1Affine) -> bool {
+    let g1_prepared = [P::G1Prepared::from(p0), P::G1Prepared::from(p1)];
+    let precomputedlines: [P::G2Prepared; 2]; //todo: where to get this from
+    let m_loop = P::multi_miller_loop(g1_prepared, precomputedlines);
+    let result = P::final_exponentiation(m_loop);
+    match result {
+        Some(pairing_output) => pairing_output.0 == P::TargetField::ONE,
+        None => false, // todo: what does that mean?
+    }
+}
 
 // // (compare cpp/src/barretenberg/commitment_schemes/zeromorph/zeromorph.hpp or https://hackmd.io/dlf9xEwhTQyE3hiGbq4FsA?view)
 
@@ -437,17 +437,17 @@ fn check_sum<P: Pairing>(univariate: &[P::ScalarField], target_total_sum: &P::Sc
 
 // I don't know about this one...
 // this is the kzg one:
-fn reduce_verify<P: Pairing>(
-    transcript: &mut transcript::Poseidon2Transcript<P>,
+pub fn reduce_verify<P: Pairing>(
+    transcript: &mut transcript::Keccak256Transcript<P>,
     opening_pair: OpeningClaim<P>,
 ) -> [P::G1Affine; 2] {
     // TODO: quotient_commitment = verifier_transcript->template receive_from_prover<Commitment>("KZG:W");
     let quotient_commitment: P::G1;
 
-//     // Note: The pairing check can be expressed naturally as
-//     // e(C - v * [1]_1, [1]_2) = e([W]_1, [X - r]_2) where C =[p(X)]_1. This can be rearranged (e.g. see the plonk
-//     // paper) as e(C + r*[W]_1 - v*[1]_1, [1]_2) * e(-[W]_1, [X]_2) = 1, or e(P_0, [1]_2) * e(P_1, [X]_2) = 1
-//     // let mut p0 = opening_pair.commitment + quotient_commitment * opening_pair.challenge
-//     //     - std::ops::Mul::mul(P::G1::generator(), opening_pair.evaluation);
-//     todo!()
-// }
+    // Note: The pairing check can be expressed naturally as
+    // e(C - v * [1]_1, [1]_2) = e([W]_1, [X - r]_2) where C =[p(X)]_1. This can be rearranged (e.g. see the plonk
+    // paper) as e(C + r*[W]_1 - v*[1]_1, [1]_2) * e(-[W]_1, [X]_2) = 1, or e(P_0, [1]_2) * e(P_1, [X]_2) = 1
+    // let mut p0 = opening_pair.commitment + quotient_commitment * opening_pair.challenge
+    //     - std::ops::Mul::mul(P::G1::generator(), opening_pair.evaluation);
+    todo!()
+}
