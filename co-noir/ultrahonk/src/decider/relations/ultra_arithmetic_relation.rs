@@ -18,6 +18,7 @@ impl<F: PrimeField> Relation<F> for UltraArithmeticRelation {
     const SKIPPABLE: bool = true;
 
     fn skip(input: &ProverUnivariates<F>) -> bool {
+        <Self as Relation<F>>::check_skippable();
         input.polys.precomputed.q_arith.is_zero()
     }
 
@@ -34,21 +35,21 @@ impl<F: PrimeField> Relation<F> for UltraArithmeticRelation {
      * 1. q_arith == 0: Arithmetic gate is completely disabled
      *
      * 2. q_arith == 1: Everything in the minigate on the right is disabled. The equation is just a standard plonk
-     * equation with extra wires: q_m * w_1 * w_2 + q_1 * w_1 + q_2 * w_2 + q_3 * w_3 + q_4 * w_4 + q_c = 0
+     *    equation with extra wires: q_m * w_1 * w_2 + q_1 * w_1 + q_2 * w_2 + q_3 * w_3 + q_4 * w_4 + q_c = 0
      *
      * 3. q_arith == 2: The (w_1 + w_4 - ...) term is disabled. THe equation is:
-     * (1/2) * q_m * w_1 * w_2 + q_1 * w_1 + q_2 * w_2 + q_3 * w_3 + q_4 * w_4 + q_c + w_4_omega = 0
-     * It allows defining w_4 at next index (w_4_omega) in terms of current wire values
+     *    (1/2) * q_m * w_1 * w_2 + q_1 * w_1 + q_2 * w_2 + q_3 * w_3 + q_4 * w_4 + q_c + w_4_omega = 0
+     *    It allows defining w_4 at next index (w_4_omega) in terms of current wire values
      *
      * 4. q_arith == 3: The product of w_1 and w_2 is disabled, but a mini addition gate is enabled. α² allows us to
-     * split the equation into two:
+     *    split the equation into two:
      *
      * q_1 * w_1 + q_2 * w_2 + q_3 * w_3 + q_4 * w_4 + q_c + 2 * w_4_omega = 0
      *
      * w_1 + w_4 - w_1_omega + q_m = 0  (we are reusing q_m here)
      *
      * 5. q_arith > 3: The product of w_1 and w_2 is scaled by (q_arith - 3), while the w_4_omega term is scaled by
-     * (q_arith
+     *    (q_arith
      * - 1). The equation can be split into two:
      *
      * (q_arith - 3)* q_m * w_1 * w_ 2 + q_1 * w_1 + q_2 * w_2 + q_3 * w_3 + q_4 * w_4 + q_c + (q_arith - 1) * w_4_omega

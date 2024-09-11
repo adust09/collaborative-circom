@@ -44,6 +44,7 @@ impl<F: PrimeField> Relation<F> for Poseidon2InternalRelation {
     const SKIPPABLE: bool = true;
 
     fn skip(input: &ProverUnivariates<F>) -> bool {
+        <Self as Relation<F>>::check_skippable();
         input.polys.precomputed.q_poseidon2_internal.is_zero()
     }
 

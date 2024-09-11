@@ -20,6 +20,7 @@ impl<F: PrimeField> Relation<F> for DeltaRangeConstraintRelation {
     const SKIPPABLE: bool = true;
 
     fn skip(input: &ProverUnivariates<F>) -> bool {
+        <Self as Relation<F>>::check_skippable();
         input.polys.precomputed.q_delta_range.is_zero()
     }
 

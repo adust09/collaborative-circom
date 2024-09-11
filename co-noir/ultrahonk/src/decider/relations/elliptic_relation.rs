@@ -22,6 +22,7 @@ impl<F: PrimeField> Relation<F> for EllipticRelation
     const SKIPPABLE: bool = true;
 
     fn skip(input: &ProverUnivariates<F>) -> bool {
+        <Self as Relation<F>>::check_skippable();
         input.polys.precomputed.q_elliptic.is_zero()
     }
 

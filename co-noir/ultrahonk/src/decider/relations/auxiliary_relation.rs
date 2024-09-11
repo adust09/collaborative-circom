@@ -36,6 +36,7 @@ impl<F: PrimeField> Relation<F> for AuxiliaryRelation {
     const SKIPPABLE: bool = true;
 
     fn skip(input: &ProverUnivariates<F>) -> bool {
+        <Self as Relation<F>>::check_skippable();
         input.polys.precomputed.q_aux.is_zero()
     }
 
