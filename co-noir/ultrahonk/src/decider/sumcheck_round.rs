@@ -22,6 +22,8 @@ use crate::{
 use ark_ec::pairing::Pairing;
 use ark_ff::PrimeField;
 
+type SumcheckRoundOutput<F> = Univariate<F, { MAX_PARTIAL_RELATION_LENGTH + 1 }>;
+
 pub(crate) struct SumcheckRound {
     pub(crate) round_size: usize,
 }
@@ -125,6 +127,27 @@ impl SumcheckRound {
     }
 
     /**
+     * @brief Extend Univariates then sum them multiplying by the current \f$ pow_{\beta} \f$-contributions.
+     * @details Since the sub-relations comprising full Honk relation are of different degrees, the computation of the
+     * evaluations of round univariate \f$ \tilde{S}_{i}(X_{i}) \f$ at points \f$ X_{i} = 0,\ldots, D \f$ requires to
+     * extend evaluations of individual relations to the domain \f$ 0,\ldots, D\f$. Moreover, linearly independent
+     * sub-relations, i.e. whose validity is being checked at every point of the hypercube, are multiplied by the
+     * constant \f$ c_i = pow_\beta(u_0,\ldots, u_{i-1}) \f$ and the current \f$pow_{\beta}\f$-factor \f$ ( (1−X_i) +
+     * X_i\cdot \beta_i ) \vert_{X_i = k} \f$ for \f$ k = 0,\ldots, D\f$.
+     * @tparam extended_size Size after extension
+     * @param tuple A tuple of tuples of Univariates
+     * @param result Round univariate \f$ \tilde{S}^i\f$ represented by its evaluations over \f$ \{0,\ldots, D\} \f$.
+     * @param gate_sparators Round \f$pow_{\beta}\f$-factor  \f$ ( (1−X_i) + X_i\cdot \beta_i )\f$.
+     */
+    fn extend_and_batch_univariates<F: PrimeField>(
+        result: &mut SumcheckRoundOutput<F>,
+        univariate_accumulators: AllRelationAcc<F>,
+        gate_sparators: &GateSeparatorPolynomial<F>,
+    ) {
+        todo!()
+    }
+
+    /**
      * @brief Given a tuple of tuples of extended per-relation contributions,  \f$ (t_0, t_1, \ldots,
      * t_{\text{NUM_SUBRELATIONS}-1}) \f$ and a challenge \f$ \alpha \f$, scale them by the relation separator
      * \f$\alpha\f$, extend to the correct degree, and take the sum multiplying by \f$pow_{\beta}\f$-contributions.
@@ -144,15 +167,14 @@ impl SumcheckRound {
         mut univariate_accumulators: AllRelationAcc<F>,
         alphas: &[F; crate::NUM_ALPHAS],
         gate_sparators: &GateSeparatorPolynomial<F>,
-    ) -> Univariate<F, { MAX_PARTIAL_RELATION_LENGTH + 1 }> {
+    ) -> SumcheckRoundOutput<F> {
         tracing::trace!("batch over relations");
 
         let running_challenge = F::one();
         univariate_accumulators.scale(running_challenge, alphas);
 
-        let mut res = Univariate::<F, { MAX_PARTIAL_RELATION_LENGTH + 1 }>::default();
-
-        todo!();
+        let mut res = SumcheckRoundOutput::default();
+        Self::extend_and_batch_univariates(&mut res, univariate_accumulators, gate_sparators);
         res
     }
 
@@ -238,7 +260,7 @@ impl SumcheckRound {
         gate_sparators: &GateSeparatorPolynomial<P::ScalarField>,
         prover_memory: &ProverMemory<P>,
         proving_key: &ProvingKey<P>,
-    ) -> Univariate<P::ScalarField, { MAX_PARTIAL_RELATION_LENGTH + 1 }> {
+    ) -> SumcheckRoundOutput<P::ScalarField> {
         tracing::trace!("Sumcheck round {}", round_index);
 
         // Barretenberg uses multithreading here
