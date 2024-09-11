@@ -3,7 +3,6 @@ use crate::decider::{
     types::{ProverUnivariates, RelationParameters, MAX_PARTIAL_RELATION_LENGTH},
     univariate::Univariate,
 };
-use ark_ec::pairing::Pairing;
 use ark_ff::{PrimeField, Zero};
 
 #[derive(Clone, Debug, Default)]
@@ -83,11 +82,11 @@ impl LogDerivLookupRelation {
     }
 }
 
-impl<P: Pairing> Relation<P> for LogDerivLookupRelation {
-    type Acc = LogDerivLookupRelationAcc<P::ScalarField>;
+impl<F: PrimeField> Relation<F> for LogDerivLookupRelation {
+    type Acc = LogDerivLookupRelationAcc<F>;
     const SKIPPABLE: bool = true;
 
-    fn skip(input: &ProverUnivariates<P::ScalarField>) -> bool {
+    fn skip(input: &ProverUnivariates<F>) -> bool {
         input.polys.precomputed.q_lookup.is_zero()
             && input.polys.witness.lookup_read_counts.is_zero()
     }
@@ -130,9 +129,9 @@ impl<P: Pairing> Relation<P> for LogDerivLookupRelation {
      *
      */
     fn accumulate(
-        input: &ProverUnivariates<P::ScalarField>,
-        relation_parameters: &RelationParameters<P::ScalarField>,
-        scaling_factor: &P::ScalarField,
+        input: &ProverUnivariates<F>,
+        relation_parameters: &RelationParameters<F>,
+        scaling_factor: &F,
     ) -> Self::Acc {
         tracing::trace!("Accumulate LogDerivLookupRelation");
 

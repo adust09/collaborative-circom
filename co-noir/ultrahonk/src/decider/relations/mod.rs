@@ -8,9 +8,9 @@ pub(crate) mod poseidon2_internal_relation;
 pub(crate) mod ultra_arithmetic_relation;
 
 use super::types::{ProverUnivariates, RelationParameters};
-use ark_ec::pairing::Pairing;
+use ark_ff::PrimeField;
 
-pub(crate) trait Relation<P: Pairing> {
+pub(crate) trait Relation<F: PrimeField> {
     type Acc: Default;
     const SKIPPABLE: bool;
 
@@ -20,10 +20,10 @@ pub(crate) trait Relation<P: Pairing> {
         }
     }
 
-    fn skip(input: &ProverUnivariates<P::ScalarField>) -> bool;
+    fn skip(input: &ProverUnivariates<F>) -> bool;
     fn accumulate(
-        input: &ProverUnivariates<P::ScalarField>,
-        relation_parameters: &RelationParameters<P::ScalarField>,
-        scaling_factor: &P::ScalarField,
+        input: &ProverUnivariates<F>,
+        relation_parameters: &RelationParameters<F>,
+        scaling_factor: &F,
     ) -> Self::Acc;
 }

@@ -3,8 +3,7 @@ use crate::decider::{
     types::{ProverUnivariates, RelationParameters},
     univariate::Univariate,
 };
-use ark_ec::pairing::Pairing;
-use ark_ff::{One, PrimeField, Zero};
+use ark_ff::{PrimeField, Zero};
 
 #[derive(Clone, Debug, Default)]
 pub(crate) struct DeltaRangeConstraintRelationAcc<F: PrimeField> {
@@ -16,11 +15,11 @@ pub(crate) struct DeltaRangeConstraintRelationAcc<F: PrimeField> {
 
 pub(crate) struct DeltaRangeConstraintRelation {}
 
-impl<P: Pairing> Relation<P> for DeltaRangeConstraintRelation {
-    type Acc = DeltaRangeConstraintRelationAcc<P::ScalarField>;
+impl<F: PrimeField> Relation<F> for DeltaRangeConstraintRelation {
+    type Acc = DeltaRangeConstraintRelationAcc<F>;
     const SKIPPABLE: bool = true;
 
-    fn skip(input: &ProverUnivariates<P::ScalarField>) -> bool {
+    fn skip(input: &ProverUnivariates<F>) -> bool {
         input.polys.precomputed.q_delta_range.is_zero()
     }
 
@@ -40,9 +39,9 @@ impl<P: Pairing> Relation<P> for DeltaRangeConstraintRelation {
      * @param scaling_factor optional term to scale the evaluation before adding to evals.
      */
     fn accumulate(
-        input: &ProverUnivariates<P::ScalarField>,
-        _relation_parameters: &RelationParameters<P::ScalarField>,
-        scaling_factor: &P::ScalarField,
+        input: &ProverUnivariates<F>,
+        _relation_parameters: &RelationParameters<F>,
+        scaling_factor: &F,
     ) -> Self::Acc {
         tracing::trace!("Accumulate DeltaRangeConstraintRelation");
 
@@ -52,8 +51,8 @@ impl<P: Pairing> Relation<P> for DeltaRangeConstraintRelation {
         let w_4 = &input.w_4;
         let w_1_shift = &input.polys.shifted.w_l;
         let q_delta_range = &input.polys.precomputed.q_delta_range;
-        let minus_one = -P::ScalarField::one();
-        let minus_two = -P::ScalarField::from(2u64);
+        let minus_one = -F::one();
+        let minus_two = -F::from(2u64);
 
         // Compute wire differences
         let delta_1 = w_2.to_owned() - w_1;

@@ -3,7 +3,6 @@ use crate::decider::{
     types::{ProverUnivariates, RelationParameters},
     univariate::Univariate,
 };
-use ark_ec::pairing::Pairing;
 use ark_ff::{PrimeField, Zero};
 
 #[derive(Clone, Debug, Default)]
@@ -16,11 +15,11 @@ pub(crate) struct Poseidon2ExternalRelationAcc<F: PrimeField> {
 
 pub(crate) struct Poseidon2ExternalRelation {}
 
-impl<P: Pairing> Relation<P> for Poseidon2ExternalRelation {
-    type Acc = Poseidon2ExternalRelationAcc<P::ScalarField>;
+impl<F: PrimeField> Relation<F> for Poseidon2ExternalRelation {
+    type Acc = Poseidon2ExternalRelationAcc<F>;
     const SKIPPABLE: bool = true;
 
-    fn skip(input: &ProverUnivariates<P::ScalarField>) -> bool {
+    fn skip(input: &ProverUnivariates<F>) -> bool {
         input.polys.precomputed.q_poseidon2_external.is_zero()
     }
 
@@ -49,9 +48,9 @@ impl<P: Pairing> Relation<P> for Poseidon2ExternalRelation {
      * @param scaling_factor optional term to scale the evaluation before adding to evals.
      */
     fn accumulate(
-        input: &ProverUnivariates<P::ScalarField>,
-        _relation_parameters: &RelationParameters<P::ScalarField>,
-        scaling_factor: &P::ScalarField,
+        input: &ProverUnivariates<F>,
+        _relation_parameters: &RelationParameters<F>,
+        scaling_factor: &F,
     ) -> Self::Acc {
         tracing::trace!("Accumulate Poseidon2ExternalRelation");
 

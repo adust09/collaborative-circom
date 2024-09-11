@@ -1,5 +1,15 @@
 use super::{
-    relations::{ultra_arithmetic_relation::UltraArithmeticRelation, Relation},
+    relations::{
+        auxiliary_relation::AuxiliaryRelationAcc,
+        delta_range_constraint_relation::DeltaRangeConstraintRelationAcc,
+        elliptic_relation::EllipticRelationAcc,
+        logderiv_lookup_relation::LogDerivLookupRelationAcc,
+        permutation_relation::UltraPermutationRelationAcc,
+        poseidon2_external_relation::Poseidon2ExternalRelationAcc,
+        poseidon2_internal_relation::Poseidon2InternalRelationAcc,
+        ultra_arithmetic_relation::{UltraArithmeticRelation, UltraArithmeticRelationAcc},
+        Relation,
+    },
     types::{
         GateSeparatorPolynomial, ProverMemory, RelationParameters, MAX_PARTIAL_RELATION_LENGTH,
     },
@@ -24,6 +34,17 @@ use ark_ff::PrimeField;
 
 pub(crate) struct SumcheckRound {
     pub(crate) round_size: usize,
+}
+
+struct AllRelationAcc<F: PrimeField> {
+    r_arith: UltraArithmeticRelationAcc<F>,
+    r_perm: UltraPermutationRelationAcc<F>,
+    r_delta: DeltaRangeConstraintRelationAcc<F>,
+    r_elliptic: EllipticRelationAcc<F>,
+    r_aux: AuxiliaryRelationAcc<F>,
+    r_lookup: LogDerivLookupRelationAcc<F>,
+    r_pos_ext: Poseidon2ExternalRelationAcc<F>,
+    r_pos_int: Poseidon2InternalRelationAcc<F>,
 }
 
 macro_rules! extend_macro {
@@ -124,11 +145,22 @@ impl SumcheckRound {
         );
     }
 
-    fn accumulate_one_relation_univariates<P: Pairing, R: Relation<P>>(
-        // acc
-        extended_edges: &ProverUnivariates<P::ScalarField>,
-        relation_parameters: &RelationParameters<P::ScalarField>,
-        scaling_factor: &P::ScalarField,
+    fn batch_over_relations_univariates<P: Pairing>(// extended_edges: &ProverUnivariates<P::ScalarField>,
+        // relation_parameters: &RelationParameters<P::ScalarField>,
+        // scaling_factor: &P::ScalarField,
+    ) -> Univariate<P::ScalarField, { MAX_PARTIAL_RELATION_LENGTH + 1 }> {
+        // Self::accumulate_relation_univariates::<P>(
+        //     extended_edges,
+        //     relation_parameters,
+        //     scaling_factor,
+        // );
+        todo!()
+    }
+
+    fn accumulate_one_relation_univariates<F: PrimeField, R: Relation<F>>(
+        extended_edges: &ProverUnivariates<F>,
+        relation_parameters: &RelationParameters<F>,
+        scaling_factor: &F,
     ) -> R::Acc {
         if R::SKIPPABLE && R::skip(extended_edges) {
             return R::Acc::default();
@@ -137,56 +169,65 @@ impl SumcheckRound {
         R::accumulate(extended_edges, relation_parameters, scaling_factor)
     }
 
-    fn accumulate_relation_univariates<P: Pairing>(
-        // acc
-        extended_edges: &ProverUnivariates<P::ScalarField>,
-        relation_parameters: &RelationParameters<P::ScalarField>,
-        scaling_factor: &P::ScalarField,
-    ) {
+    fn accumulate_relation_univariates<F: PrimeField>(
+        extended_edges: &ProverUnivariates<F>,
+        relation_parameters: &RelationParameters<F>,
+        scaling_factor: &F,
+    ) -> AllRelationAcc<F> {
         tracing::trace!("Accumulate relation");
 
-        let r1 = Self::accumulate_one_relation_univariates::<P, UltraArithmeticRelation>(
+        let r_arith = Self::accumulate_one_relation_univariates::<F, UltraArithmeticRelation>(
             extended_edges,
             relation_parameters,
             scaling_factor,
         );
-        let r2 = Self::accumulate_one_relation_univariates::<P, UltraPermutationRelation>(
+        let r_perm = Self::accumulate_one_relation_univariates::<F, UltraPermutationRelation>(
             extended_edges,
             relation_parameters,
             scaling_factor,
         );
-        let r3 = Self::accumulate_one_relation_univariates::<P, DeltaRangeConstraintRelation>(
+        let r_delta = Self::accumulate_one_relation_univariates::<F, DeltaRangeConstraintRelation>(
             extended_edges,
             relation_parameters,
             scaling_factor,
         );
         // TODO we skip the EllipticRelation relation so far due to implementation issues (see the implementation file)
         assert!(
-            <EllipticRelation as Relation<P>>::SKIPPABLE
-                && <EllipticRelation as Relation<P>>::skip(extended_edges)
+            <EllipticRelation as Relation<F>>::SKIPPABLE
+                && <EllipticRelation as Relation<F>>::skip(extended_edges)
         );
-        let r4 = <EllipticRelation as Relation<P>>::Acc::default();
-        let r5 = Self::accumulate_one_relation_univariates::<P, AuxiliaryRelation>(
+        let r_elliptic = <EllipticRelation as Relation<F>>::Acc::default();
+        let r_aux = Self::accumulate_one_relation_univariates::<F, AuxiliaryRelation>(
             extended_edges,
             relation_parameters,
             scaling_factor,
         );
-        let r6 = Self::accumulate_one_relation_univariates::<P, LogDerivLookupRelation>(
+        let r_lookup = Self::accumulate_one_relation_univariates::<F, LogDerivLookupRelation>(
             extended_edges,
             relation_parameters,
             scaling_factor,
         );
-        let r7 = Self::accumulate_one_relation_univariates::<P, Poseidon2ExternalRelation>(
+        let r_pos_ext = Self::accumulate_one_relation_univariates::<F, Poseidon2ExternalRelation>(
             extended_edges,
             relation_parameters,
             scaling_factor,
         );
-        let r8 = Self::accumulate_one_relation_univariates::<P, Poseidon2InternalRelation>(
+        let r_pos_int = Self::accumulate_one_relation_univariates::<F, Poseidon2InternalRelation>(
             extended_edges,
             relation_parameters,
             scaling_factor,
         );
-        todo!()
+
+        AllRelationAcc {
+            r_arith,
+            r_perm,
+            r_delta,
+            r_elliptic,
+            r_aux,
+            r_lookup,
+            r_pos_ext,
+            r_pos_int,
+        }
     }
 
     pub(crate) fn compute_univariate<P: Pairing>(
@@ -218,6 +259,11 @@ impl SumcheckRound {
             // \tilde{S}^i(X_i) \f$. If \f$ \ell \f$'s binary representation is given by \f$ (\ell_{i+1},\ldots,
             // \ell_{d-1})\f$, the \f$ pow_{\beta}\f$-contribution is \f$\beta_{i+1}^{\ell_{i+1}} \cdot \ldots \cdot
             // \beta_{d-1}^{\ell_{d-1}}\f$.
+            let accs = Self::accumulate_relation_univariates(
+                &extended_edge,
+                relation_parameters,
+                &gate_sparators.beta_products[(edge_idx >> 1) * gate_sparators.periodicity],
+            );
             todo!()
         }
 

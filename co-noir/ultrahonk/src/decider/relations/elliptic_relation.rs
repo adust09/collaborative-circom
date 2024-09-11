@@ -1,8 +1,8 @@
 use super::Relation;
 use crate::decider::types::RelationParameters;
 use crate::decider::{types::ProverUnivariates, univariate::Univariate};
+use ark_ec::short_weierstrass::SWCurveConfig;
 use ark_ec::CurveGroup;
-use ark_ec::{pairing::Pairing, short_weierstrass::SWCurveConfig};
 use ark_ff::{PrimeField, Zero};
 
 #[derive(Clone, Debug, Default)]
@@ -13,15 +13,15 @@ pub(crate) struct EllipticRelationAcc<F: PrimeField> {
 
 pub(crate) struct EllipticRelation {}
 
-impl<P: Pairing> Relation<P> for EllipticRelation
-// TODO
+impl<F: PrimeField> Relation<F> for EllipticRelation
+// TODO The following is not generic anymore since we are now a relation over prime fields...
 // where
 // <P::G1 as CurveGroup>::Config: SWCurveConfig,
 {
-    type Acc = EllipticRelationAcc<P::ScalarField>;
+    type Acc = EllipticRelationAcc<F>;
     const SKIPPABLE: bool = true;
 
-    fn skip(input: &ProverUnivariates<P::ScalarField>) -> bool {
+    fn skip(input: &ProverUnivariates<F>) -> bool {
         input.polys.precomputed.q_elliptic.is_zero()
     }
 
@@ -36,9 +36,9 @@ impl<P: Pairing> Relation<P> for EllipticRelation
      * @param scaling_factor optional term to scale the evaluation before adding to evals.
      */
     fn accumulate(
-        input: &ProverUnivariates<P::ScalarField>,
-        _relation_parameters: &RelationParameters<P::ScalarField>,
-        scaling_factor: &P::ScalarField,
+        input: &ProverUnivariates<F>,
+        _relation_parameters: &RelationParameters<F>,
+        scaling_factor: &F,
     ) -> Self::Acc {
         tracing::trace!("Accumulate EllipticRelation");
 

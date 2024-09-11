@@ -14,11 +14,11 @@ pub(crate) struct UltraArithmeticRelationAcc<F: PrimeField> {
 
 pub(crate) struct UltraArithmeticRelation {}
 
-impl<P: Pairing> Relation<P> for UltraArithmeticRelation {
-    type Acc = UltraArithmeticRelationAcc<P::ScalarField>;
+impl<F: PrimeField> Relation<F> for UltraArithmeticRelation {
+    type Acc = UltraArithmeticRelationAcc<F>;
     const SKIPPABLE: bool = true;
 
-    fn skip(input: &ProverUnivariates<P::ScalarField>) -> bool {
+    fn skip(input: &ProverUnivariates<F>) -> bool {
         input.polys.precomputed.q_arith.is_zero()
     }
 
@@ -74,9 +74,9 @@ impl<P: Pairing> Relation<P> for UltraArithmeticRelation {
      * @param scaling_factor optional term to scale the evaluation before adding to evals.
      */
     fn accumulate(
-        input: &ProverUnivariates<P::ScalarField>,
-        _relation_parameters: &RelationParameters<P::ScalarField>,
-        scaling_factor: &P::ScalarField,
+        input: &ProverUnivariates<F>,
+        _relation_parameters: &RelationParameters<F>,
+        scaling_factor: &F,
     ) -> Self::Acc {
         tracing::trace!("Accumulate UltraArithmeticRelation");
 
@@ -94,7 +94,7 @@ impl<P: Pairing> Relation<P> for UltraArithmeticRelation {
         let q_arith = &input.polys.precomputed.q_arith;
         let w_l_shift = &input.polys.shifted.w_l;
 
-        let neg_half = -P::ScalarField::from(2u64).inverse().unwrap();
+        let neg_half = -F::from(2u64).inverse().unwrap();
 
         let mut tmp = (q_arith.to_owned() - 3) * (q_m.to_owned() * w_r * w_l) * neg_half;
         tmp += (q_l.to_owned() * w_l)

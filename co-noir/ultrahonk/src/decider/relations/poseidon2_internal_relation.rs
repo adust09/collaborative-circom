@@ -5,7 +5,6 @@ use crate::decider::{
     types::{ProverUnivariates, RelationParameters},
     univariate::Univariate,
 };
-use ark_ec::pairing::Pairing;
 use ark_ff::{PrimeField, Zero};
 use lazy_static::lazy_static;
 use num_bigint::BigUint;
@@ -40,11 +39,11 @@ pub(crate) struct Poseidon2InternalRelationAcc<F: PrimeField> {
 
 pub(crate) struct Poseidon2InternalRelation {}
 
-impl<P: Pairing> Relation<P> for Poseidon2InternalRelation {
-    type Acc = Poseidon2InternalRelationAcc<P::ScalarField>;
+impl<F: PrimeField> Relation<F> for Poseidon2InternalRelation {
+    type Acc = Poseidon2InternalRelationAcc<F>;
     const SKIPPABLE: bool = true;
 
-    fn skip(input: &ProverUnivariates<P::ScalarField>) -> bool {
+    fn skip(input: &ProverUnivariates<F>) -> bool {
         input.polys.precomputed.q_poseidon2_internal.is_zero()
     }
 
@@ -68,9 +67,9 @@ impl<P: Pairing> Relation<P> for Poseidon2InternalRelation {
      * @param scaling_factor optional term to scale the evaluation before adding to evals.
      */
     fn accumulate(
-        input: &ProverUnivariates<P::ScalarField>,
-        _relation_parameters: &RelationParameters<P::ScalarField>,
-        scaling_factor: &P::ScalarField,
+        input: &ProverUnivariates<F>,
+        _relation_parameters: &RelationParameters<F>,
+        scaling_factor: &F,
     ) -> Self::Acc {
         tracing::trace!("Accumulate Poseidon2InternalRelation");
 
@@ -101,7 +100,7 @@ impl<P: Pairing> Relation<P> for Poseidon2InternalRelation {
 
         let q_pos_by_scaling = q_poseidon2_internal.to_owned() * scaling_factor;
 
-        let mut v1 = u1 * P::ScalarField::from(INTERNAL_MATRIX_DIAG_0.to_owned());
+        let mut v1 = u1 * F::from(INTERNAL_MATRIX_DIAG_0.to_owned());
         v1 += &sum;
         let tmp = (v1 - w_l_shift) * &q_pos_by_scaling;
         let mut r0 = Univariate::default();
@@ -111,7 +110,7 @@ impl<P: Pairing> Relation<P> for Poseidon2InternalRelation {
 
         ///////////////////////////////////////////////////////////////////////
 
-        let mut v2 = u2 * P::ScalarField::from(INTERNAL_MATRIX_DIAG_1.to_owned());
+        let mut v2 = u2 * F::from(INTERNAL_MATRIX_DIAG_1.to_owned());
         v2 += &sum;
         let tmp = (v2 - w_r_shift) * &q_pos_by_scaling;
         let mut r1 = Univariate::default();
@@ -121,7 +120,7 @@ impl<P: Pairing> Relation<P> for Poseidon2InternalRelation {
 
         ///////////////////////////////////////////////////////////////////////
 
-        let mut v3 = u3 * P::ScalarField::from(INTERNAL_MATRIX_DIAG_2.to_owned());
+        let mut v3 = u3 * F::from(INTERNAL_MATRIX_DIAG_2.to_owned());
         v3 += &sum;
         let tmp = (v3 - w_o_shift) * &q_pos_by_scaling;
         let mut r2 = Univariate::default();
@@ -131,7 +130,7 @@ impl<P: Pairing> Relation<P> for Poseidon2InternalRelation {
 
         ///////////////////////////////////////////////////////////////////////
 
-        let mut v4 = u4 * P::ScalarField::from(INTERNAL_MATRIX_DIAG_3.to_owned());
+        let mut v4 = u4 * F::from(INTERNAL_MATRIX_DIAG_3.to_owned());
         v4 += sum;
         let tmp = (v4 - w_4_shift) * q_pos_by_scaling;
         let mut r3 = Univariate::default();

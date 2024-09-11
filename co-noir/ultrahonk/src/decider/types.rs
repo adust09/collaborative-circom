@@ -46,11 +46,11 @@ pub struct RelationParameters<F: PrimeField> {
 
 pub struct GateSeparatorPolynomial<F: PrimeField> {
     betas: Vec<F>,
-    beta_products: Vec<F>,
+    pub(crate) beta_products: Vec<F>,
     //dont know if only verifier needs the following, then maybe separate struct for this
     pub(crate) partial_evaluation_result: F,
     current_element_idx: usize,
-    periodicity: usize,
+    pub(crate) periodicity: usize,
 }
 
 impl<F: PrimeField> GateSeparatorPolynomial<F> {

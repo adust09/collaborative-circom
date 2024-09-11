@@ -3,7 +3,6 @@ use crate::decider::{
     types::{ProverUnivariates, RelationParameters},
     univariate::Univariate,
 };
-use ark_ec::pairing::Pairing;
 use ark_ff::{One, PrimeField, Zero};
 use num_bigint::BigUint;
 
@@ -32,11 +31,11 @@ pub(crate) struct AuxiliaryRelationAcc<F: PrimeField> {
 
 pub(crate) struct AuxiliaryRelation {}
 
-impl<P: Pairing> Relation<P> for AuxiliaryRelation {
-    type Acc = AuxiliaryRelationAcc<P::ScalarField>;
+impl<F: PrimeField> Relation<F> for AuxiliaryRelation {
+    type Acc = AuxiliaryRelationAcc<F>;
     const SKIPPABLE: bool = true;
 
-    fn skip(input: &ProverUnivariates<P::ScalarField>) -> bool {
+    fn skip(input: &ProverUnivariates<F>) -> bool {
         input.polys.precomputed.q_aux.is_zero()
     }
 
@@ -75,9 +74,9 @@ impl<P: Pairing> Relation<P> for AuxiliaryRelation {
      * @param scaling_factor optional term to scale the evaluation before adding to evals.
      */
     fn accumulate(
-        input: &ProverUnivariates<P::ScalarField>,
-        relation_parameters: &RelationParameters<P::ScalarField>,
-        scaling_factor: &P::ScalarField,
+        input: &ProverUnivariates<F>,
+        relation_parameters: &RelationParameters<F>,
+        scaling_factor: &F,
     ) -> Self::Acc {
         tracing::trace!("Accumulate AuxiliaryRelation");
 
@@ -103,8 +102,8 @@ impl<P: Pairing> Relation<P> for AuxiliaryRelation {
         let q_arith = &input.polys.precomputed.q_arith;
         let q_aux = &input.polys.precomputed.q_aux;
 
-        let limb_size = P::ScalarField::from(BigUint::one() << 68);
-        let sublimb_shift = P::ScalarField::from(1u64 << 14);
+        let limb_size = F::from(BigUint::one() << 68);
+        let sublimb_shift = F::from(1u64 << 14);
 
         /*
          * Non native field arithmetic gate 2
@@ -234,7 +233,7 @@ impl<P: Pairing> Relation<P> for AuxiliaryRelation {
 
         let index_is_monotonically_increasing = index_delta.to_owned().sqr() - &index_delta; // deg 2
 
-        let index_delta_one = -index_delta + &P::ScalarField::one();
+        let index_delta_one = -index_delta + &F::one();
 
         let adjacent_values_match_if_adjacent_indices_match = record_delta * &index_delta_one; // deg 2
 
@@ -288,9 +287,7 @@ impl<P: Pairing> Relation<P> for AuxiliaryRelation {
 
         let value_delta = w_3_shift.to_owned() - w_3;
         let adjacent_values_match_if_adjacent_indices_match_and_next_access_is_a_read_operation =
-            value_delta
-                * &index_delta_one
-                * (-next_gate_access_type.to_owned() + &P::ScalarField::one()); // deg 3 or 4
+            value_delta * &index_delta_one * (-next_gate_access_type.to_owned() + &F::one()); // deg 3 or 4
 
         // We can't apply the RAM consistency check identity on the final entry in the sorted list (the wires in the
         // next gate would make the identity fail).  We need to validate that its 'access type' bool is correct. Can't
