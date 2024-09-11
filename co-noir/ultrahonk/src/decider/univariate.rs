@@ -56,16 +56,17 @@ impl<F: PrimeField, const SIZE: usize> Univariate<F, SIZE> {
      *
      */
     pub(crate) fn extend_from(&mut self, poly: &[F]) {
-        self.evaluations[0] = poly[0];
-        self.evaluations[1] = poly[1];
+        self.evaluations[..poly.len()].copy_from_slice(poly);
 
-        // We only need to implement LENGTH = 2
-        // TODO this is not the case anymore...
-        assert_eq!(poly.len(), 2);
-        let delta = self.evaluations[1] - self.evaluations[0];
-        for i in 2..SIZE {
-            self.evaluations[i] = self.evaluations[i - 1] + delta;
+        if poly.len() == 2 {
+            let delta = self.evaluations[1] - self.evaluations[0];
+            for i in 2..SIZE {
+                self.evaluations[i] = self.evaluations[i - 1] + delta;
+            }
+            return;
         }
+        // TODO this is not the case anymore...
+        todo!("extend other cases")
     }
 
     pub(crate) fn extend_and_batch_univariates<const SIZE2: usize>(
