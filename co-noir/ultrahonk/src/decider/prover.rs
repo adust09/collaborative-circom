@@ -2,7 +2,7 @@ use super::{sumcheck::SumcheckOutput, types::ProverMemory};
 use crate::{
     field_convert::ConvertField,
     prover::HonkProofResult,
-    transcript::{TranscriptType, TranscriptFieldType},
+    transcript::{TranscriptFieldType, TranscriptType},
     types::ProvingKey,
 };
 use ark_ec::{pairing::Pairing, AffineRepr};
