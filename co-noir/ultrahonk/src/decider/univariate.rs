@@ -6,6 +6,16 @@ pub struct Univariate<F: PrimeField, const SIZE: usize> {
     pub(crate) evaluations: [F; SIZE],
 }
 
+impl<F: PrimeField, const SIZE: usize> Univariate<F, SIZE> {
+    pub fn sqr(self) -> Self {
+        let mut result = self;
+        for i in 0..SIZE {
+            result.evaluations[i].square_in_place();
+        }
+        result
+    }
+}
+
 impl<F: PrimeField, const SIZE: usize> Default for Univariate<F, SIZE> {
     fn default() -> Self {
         Self {

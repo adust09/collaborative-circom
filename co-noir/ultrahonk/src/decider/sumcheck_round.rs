@@ -5,7 +5,11 @@ use super::{
 };
 use crate::{
     decider::{
-        relations::permutation_relation::UltraPermutationRelation, types::ProverUnivariates,
+        relations::{
+            delta_range_constraint_relation::DeltaRangeConstraintRelation,
+            permutation_relation::UltraPermutationRelation,
+        },
+        types::ProverUnivariates,
     },
     types::{Polynomials, ProvingKey},
 };
@@ -90,6 +94,7 @@ impl SumcheckRound {
                 q_4,
                 q_arith,
                 q_lookup,
+                q_delta_range,
                 sigma_1,
                 sigma_2,
                 sigma_3,
@@ -136,6 +141,12 @@ impl SumcheckRound {
             scaling_factor,
         );
         let r2 = Self::accumulate_one_relation_univariates::<P, UltraPermutationRelation>(
+            extended_edges,
+            memory,
+            challenges,
+            scaling_factor,
+        );
+        let r3 = Self::accumulate_one_relation_univariates::<P, DeltaRangeConstraintRelation>(
             extended_edges,
             memory,
             challenges,
