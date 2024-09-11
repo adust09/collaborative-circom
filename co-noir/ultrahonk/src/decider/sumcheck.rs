@@ -51,6 +51,14 @@ impl<P: Pairing> Decider<P> {
         // #partially_evaluated_polynomials, which has \f$ n/2 \f$ rows and \f$ N \f$ columns. When the Flavor has ZK,
         // compute_univariate also takes into account the zk_sumcheck_data.
 
+        let round_univariate = sum_check_round.compute_univariate(
+            round_idx,
+            &self.memory.relation_parameters,
+            pow_univariate,
+            &self.memory,
+            proving_key,
+        );
+
         todo!("first round");
 
         // multivariate_challenge.push(transcript.get_challenge());

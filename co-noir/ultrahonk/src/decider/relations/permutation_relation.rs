@@ -88,10 +88,11 @@ impl<F: PrimeField> Relation<F> for UltraPermutationRelation {
     * @param scaling_factor optional term to scale the evaluation before adding to evals.
     */
     fn accumulate(
+        univariate_accumulator: &mut Self::Acc,
         input: &ProverUnivariates<F>,
         relation_parameters: &RelationParameters<F>,
         scaling_factor: &F,
-    ) -> Self::Acc {
+    ) {
         tracing::trace!("Accumulate UltraPermutationRelation");
 
         let public_input_delta = &relation_parameters.public_input_delta;
@@ -109,20 +110,16 @@ impl<F: PrimeField> Relation<F> for UltraPermutationRelation {
                 * Self::compute_grand_product_denominator::<F>(input, relation_parameters)))
             * scaling_factor;
 
-        let mut r0 = Univariate::default();
-        for i in 0..r0.evaluations.len() {
-            r0.evaluations[i] = tmp.evaluations[i];
+        for i in 0..univariate_accumulator.r0.evaluations.len() {
+            univariate_accumulator.r0.evaluations[i] += tmp.evaluations[i];
         }
 
         ///////////////////////////////////////////////////////////////////////
 
         let tmp = (lagrange_last.to_owned() * z_perm_shift) * scaling_factor;
 
-        let mut r1 = Univariate::default();
-        for i in 0..r1.evaluations.len() {
-            r1.evaluations[i] = tmp.evaluations[i];
+        for i in 0..univariate_accumulator.r1.evaluations.len() {
+            univariate_accumulator.r1.evaluations[i] += tmp.evaluations[i];
         }
-
-        Self::Acc { r0, r1 }
     }
 }

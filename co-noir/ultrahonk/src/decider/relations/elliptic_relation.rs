@@ -36,10 +36,11 @@ impl<F: PrimeField> Relation<F> for EllipticRelation
      * @param scaling_factor optional term to scale the evaluation before adding to evals.
      */
     fn accumulate(
+        univariate_accumulator: &mut Self::Acc,
         input: &ProverUnivariates<F>,
         _relation_parameters: &RelationParameters<F>,
         scaling_factor: &F,
-    ) -> Self::Acc {
+    ) {
         tracing::trace!("Accumulate EllipticRelation");
 
         // TODO(@zac - williamson #2608 when Pedersen refactor is completed,
@@ -111,16 +112,12 @@ impl<F: PrimeField> Relation<F> for EllipticRelation
 
         ///////////////////////////////////////////////////////////////////////
 
-        let mut r0 = Univariate::default();
-        for i in 0..r0.evaluations.len() {
-            r0.evaluations[i] = tmp_1.evaluations[i];
+        for i in 0..univariate_accumulator.r0.evaluations.len() {
+            univariate_accumulator.r0.evaluations[i] += tmp_1.evaluations[i];
         }
 
-        let mut r1 = Univariate::default();
-        for i in 0..r1.evaluations.len() {
-            r1.evaluations[i] = tmp_2.evaluations[i];
+        for i in 0..univariate_accumulator.r1.evaluations.len() {
+            univariate_accumulator.r1.evaluations[i] += tmp_2.evaluations[i];
         }
-
-        Self::Acc { r0, r1 }
     }
 }

@@ -129,10 +129,11 @@ impl<F: PrimeField> Relation<F> for LogDerivLookupRelation {
      *
      */
     fn accumulate(
+        univariate_accumulator: &mut Self::Acc,
         input: &ProverUnivariates<F>,
         relation_parameters: &RelationParameters<F>,
         scaling_factor: &F,
-    ) -> Self::Acc {
+    ) {
         tracing::trace!("Accumulate LogDerivLookupRelation");
 
         let inverses = &input.lookup_inverses; // Degree 1
@@ -149,9 +150,8 @@ impl<F: PrimeField> Relation<F> for LogDerivLookupRelation {
         // if !inverse_exists.
         // Degrees:                     2 (3)       1 (2)        1              1
         let tmp = (read_term * write_term * inverses - inverse_exists) * scaling_factor; // Deg 4 (6)
-        let mut r0 = Univariate::default();
-        for i in 0..r0.evaluations.len() {
-            r0.evaluations[i] = tmp.evaluations[i];
+        for i in 0..univariate_accumulator.r0.evaluations.len() {
+            univariate_accumulator.r0.evaluations[i] += tmp.evaluations[i];
         }
 
         ///////////////////////////////////////////////////////////////////////
@@ -160,11 +160,8 @@ impl<F: PrimeField> Relation<F> for LogDerivLookupRelation {
         // i.e. enforced across the entire trace, not on a per-row basis.
         // Degrees:                       1            2 (3)            1            3 (4)
         let tmp = read_inverse * read_selector - write_inverse * read_counts; // Deg 4 (5)
-        let mut r1 = Univariate::default();
-        for i in 0..r1.evaluations.len() {
-            r1.evaluations[i] = tmp.evaluations[i];
+        for i in 0..univariate_accumulator.r1.evaluations.len() {
+            univariate_accumulator.r1.evaluations[i] += tmp.evaluations[i];
         }
-
-        Self::Acc { r0, r1 }
     }
 }

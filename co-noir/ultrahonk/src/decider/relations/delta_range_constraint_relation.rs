@@ -39,10 +39,11 @@ impl<F: PrimeField> Relation<F> for DeltaRangeConstraintRelation {
      * @param scaling_factor optional term to scale the evaluation before adding to evals.
      */
     fn accumulate(
+        univariate_accumulator: &mut Self::Acc,
         input: &ProverUnivariates<F>,
         _relation_parameters: &RelationParameters<F>,
         scaling_factor: &F,
-    ) -> Self::Acc {
+    ) {
         tracing::trace!("Accumulate DeltaRangeConstraintRelation");
 
         let w_1 = &input.polys.witness.w_l;
@@ -66,9 +67,8 @@ impl<F: PrimeField> Relation<F> for DeltaRangeConstraintRelation {
         tmp_1 *= q_delta_range;
         tmp_1 *= scaling_factor;
 
-        let mut r0 = Univariate::default();
-        for i in 0..r0.evaluations.len() {
-            r0.evaluations[i] = tmp_1.evaluations[i];
+        for i in 0..univariate_accumulator.r0.evaluations.len() {
+            univariate_accumulator.r0.evaluations[i] += tmp_1.evaluations[i];
         }
 
         ///////////////////////////////////////////////////////////////////////
@@ -78,9 +78,8 @@ impl<F: PrimeField> Relation<F> for DeltaRangeConstraintRelation {
         tmp_2 *= q_delta_range;
         tmp_2 *= scaling_factor;
 
-        let mut r1 = Univariate::default();
-        for i in 0..r1.evaluations.len() {
-            r1.evaluations[i] = tmp_2.evaluations[i];
+        for i in 0..univariate_accumulator.r1.evaluations.len() {
+            univariate_accumulator.r1.evaluations[i] += tmp_2.evaluations[i];
         }
 
         ///////////////////////////////////////////////////////////////////////
@@ -90,9 +89,8 @@ impl<F: PrimeField> Relation<F> for DeltaRangeConstraintRelation {
         tmp_3 *= q_delta_range;
         tmp_3 *= scaling_factor;
 
-        let mut r2 = Univariate::default();
-        for i in 0..r2.evaluations.len() {
-            r2.evaluations[i] = tmp_3.evaluations[i];
+        for i in 0..univariate_accumulator.r2.evaluations.len() {
+            univariate_accumulator.r2.evaluations[i] += tmp_3.evaluations[i];
         }
 
         ///////////////////////////////////////////////////////////////////////
@@ -102,11 +100,8 @@ impl<F: PrimeField> Relation<F> for DeltaRangeConstraintRelation {
         tmp_4 *= q_delta_range;
         tmp_4 *= scaling_factor;
 
-        let mut r3 = Univariate::default();
-        for i in 0..r3.evaluations.len() {
-            r3.evaluations[i] = tmp_4.evaluations[i];
+        for i in 0..univariate_accumulator.r3.evaluations.len() {
+            univariate_accumulator.r3.evaluations[i] += tmp_4.evaluations[i];
         }
-
-        Self::Acc { r0, r1, r2, r3 }
     }
 }

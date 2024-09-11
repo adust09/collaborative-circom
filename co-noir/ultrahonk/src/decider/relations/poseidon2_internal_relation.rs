@@ -67,10 +67,11 @@ impl<F: PrimeField> Relation<F> for Poseidon2InternalRelation {
      * @param scaling_factor optional term to scale the evaluation before adding to evals.
      */
     fn accumulate(
+        univariate_accumulator: &mut Self::Acc,
         input: &ProverUnivariates<F>,
         _relation_parameters: &RelationParameters<F>,
         scaling_factor: &F,
-    ) -> Self::Acc {
+    ) {
         tracing::trace!("Accumulate Poseidon2InternalRelation");
 
         let w_l = &input.polys.witness.w_l;
@@ -103,9 +104,8 @@ impl<F: PrimeField> Relation<F> for Poseidon2InternalRelation {
         let mut v1 = u1 * F::from(INTERNAL_MATRIX_DIAG_0.to_owned());
         v1 += &sum;
         let tmp = (v1 - w_l_shift) * &q_pos_by_scaling;
-        let mut r0 = Univariate::default();
-        for i in 0..r0.evaluations.len() {
-            r0.evaluations[i] = tmp.evaluations[i];
+        for i in 0..univariate_accumulator.r0.evaluations.len() {
+            univariate_accumulator.r0.evaluations[i] += tmp.evaluations[i];
         }
 
         ///////////////////////////////////////////////////////////////////////
@@ -113,9 +113,8 @@ impl<F: PrimeField> Relation<F> for Poseidon2InternalRelation {
         let mut v2 = u2 * F::from(INTERNAL_MATRIX_DIAG_1.to_owned());
         v2 += &sum;
         let tmp = (v2 - w_r_shift) * &q_pos_by_scaling;
-        let mut r1 = Univariate::default();
-        for i in 0..r1.evaluations.len() {
-            r1.evaluations[i] = tmp.evaluations[i];
+        for i in 0..univariate_accumulator.r1.evaluations.len() {
+            univariate_accumulator.r1.evaluations[i] += tmp.evaluations[i];
         }
 
         ///////////////////////////////////////////////////////////////////////
@@ -123,9 +122,8 @@ impl<F: PrimeField> Relation<F> for Poseidon2InternalRelation {
         let mut v3 = u3 * F::from(INTERNAL_MATRIX_DIAG_2.to_owned());
         v3 += &sum;
         let tmp = (v3 - w_o_shift) * &q_pos_by_scaling;
-        let mut r2 = Univariate::default();
-        for i in 0..r2.evaluations.len() {
-            r2.evaluations[i] = tmp.evaluations[i];
+        for i in 0..univariate_accumulator.r2.evaluations.len() {
+            univariate_accumulator.r2.evaluations[i] += tmp.evaluations[i];
         }
 
         ///////////////////////////////////////////////////////////////////////
@@ -133,11 +131,8 @@ impl<F: PrimeField> Relation<F> for Poseidon2InternalRelation {
         let mut v4 = u4 * F::from(INTERNAL_MATRIX_DIAG_3.to_owned());
         v4 += sum;
         let tmp = (v4 - w_4_shift) * q_pos_by_scaling;
-        let mut r3 = Univariate::default();
-        for i in 0..r3.evaluations.len() {
-            r3.evaluations[i] = tmp.evaluations[i];
+        for i in 0..univariate_accumulator.r3.evaluations.len() {
+            univariate_accumulator.r3.evaluations[i] += tmp.evaluations[i];
         }
-
-        Self::Acc { r0, r1, r2, r3 }
     }
 }

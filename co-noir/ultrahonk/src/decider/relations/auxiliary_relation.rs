@@ -74,10 +74,11 @@ impl<F: PrimeField> Relation<F> for AuxiliaryRelation {
      * @param scaling_factor optional term to scale the evaluation before adding to evals.
      */
     fn accumulate(
+        univariate_accumulator: &mut Self::Acc,
         input: &ProverUnivariates<F>,
         relation_parameters: &RelationParameters<F>,
         scaling_factor: &F,
-    ) -> Self::Acc {
+    ) {
         tracing::trace!("Accumulate AuxiliaryRelation");
 
         let eta = &relation_parameters.eta_1;
@@ -242,16 +243,13 @@ impl<F: PrimeField> Relation<F> for AuxiliaryRelation {
         let q_one_by_two_by_aux_by_scaling = q_one_by_two.to_owned() * &q_aux_by_scaling;
 
         let tmp = adjacent_values_match_if_adjacent_indices_match * &q_one_by_two_by_aux_by_scaling; // deg 5
-
-        let mut r1 = Univariate::default();
-        for i in 0..r1.evaluations.len() {
-            r1.evaluations[i] = tmp.evaluations[i];
+        for i in 0..univariate_accumulator.r1.evaluations.len() {
+            univariate_accumulator.r1.evaluations[i] += tmp.evaluations[i];
         }
 
         let tmp = q_one_by_two_by_aux_by_scaling * &index_is_monotonically_increasing; // deg 5
-        let mut r2 = Univariate::default();
-        for i in 0..r2.evaluations.len() {
-            r2.evaluations[i] = tmp.evaluations[i];
+        for i in 0..univariate_accumulator.r2.evaluations.len() {
+            univariate_accumulator.r2.evaluations[i] += tmp.evaluations[i];
         }
 
         let rom_consistency_check_identity = q_one_by_two * &memory_record_check; // deg 3 or 4
@@ -303,21 +301,18 @@ impl<F: PrimeField> Relation<F> for AuxiliaryRelation {
         let tmp =
             adjacent_values_match_if_adjacent_indices_match_and_next_access_is_a_read_operation
                 * &q_arith_by_aux_and_scaling; // deg 5 or 6
-        let mut r3 = Univariate::default();
-        for i in 0..r3.evaluations.len() {
-            r3.evaluations[i] = tmp.evaluations[i];
+        for i in 0..univariate_accumulator.r3.evaluations.len() {
+            univariate_accumulator.r3.evaluations[i] += tmp.evaluations[i];
         }
 
         let tmp = index_is_monotonically_increasing * &q_arith_by_aux_and_scaling; // deg 4
-        let mut r4 = Univariate::default();
-        for i in 0..r4.evaluations.len() {
-            r4.evaluations[i] = tmp.evaluations[i];
+        for i in 0..univariate_accumulator.r4.evaluations.len() {
+            univariate_accumulator.r4.evaluations[i] += tmp.evaluations[i];
         }
 
         let tmp = next_gate_access_type_is_boolean * q_arith_by_aux_and_scaling; // deg 4 or 6
-        let mut r5 = Univariate::default();
-        for i in 0..r5.evaluations.len() {
-            r5.evaluations[i] = tmp.evaluations[i];
+        for i in 0..univariate_accumulator.r5.evaluations.len() {
+            univariate_accumulator.r5.evaluations[i] += tmp.evaluations[i];
         }
 
         let ram_consistency_check_identity = access_check * (q_arith); // deg 3 or 5
@@ -350,18 +345,8 @@ impl<F: PrimeField> Relation<F> for AuxiliaryRelation {
             memory_identity + non_native_field_identity + limb_accumulator_identity;
         auxiliary_identity *= q_aux_by_scaling; // deg 5 or 6
 
-        let mut r0 = Univariate::default();
-        for i in 0..r0.evaluations.len() {
-            r0.evaluations[i] = auxiliary_identity.evaluations[i];
-        }
-
-        Self::Acc {
-            r0,
-            r1,
-            r2,
-            r3,
-            r4,
-            r5,
+        for i in 0..univariate_accumulator.r0.evaluations.len() {
+            univariate_accumulator.r0.evaluations[i] += auxiliary_identity.evaluations[i];
         }
     }
 }

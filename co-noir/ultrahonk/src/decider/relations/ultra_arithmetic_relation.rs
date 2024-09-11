@@ -3,8 +3,7 @@ use crate::decider::{
     types::{ProverUnivariates, RelationParameters},
     univariate::Univariate,
 };
-use ark_ec::pairing::Pairing;
-use ark_ff::{Field, PrimeField, Zero};
+use ark_ff::{PrimeField, Zero};
 
 #[derive(Clone, Debug, Default)]
 pub(crate) struct UltraArithmeticRelationAcc<F: PrimeField> {
@@ -74,10 +73,11 @@ impl<F: PrimeField> Relation<F> for UltraArithmeticRelation {
      * @param scaling_factor optional term to scale the evaluation before adding to evals.
      */
     fn accumulate(
+        univariate_accumulator: &mut Self::Acc,
         input: &ProverUnivariates<F>,
         _relation_parameters: &RelationParameters<F>,
         scaling_factor: &F,
-    ) -> Self::Acc {
+    ) {
         tracing::trace!("Accumulate UltraArithmeticRelation");
 
         let w_l = &input.polys.witness.w_l;
@@ -106,9 +106,8 @@ impl<F: PrimeField> Relation<F> for UltraArithmeticRelation {
         tmp *= q_arith;
         tmp *= scaling_factor;
 
-        let mut r0 = Univariate::default();
-        for i in 0..r0.evaluations.len() {
-            r0.evaluations[i] = tmp.evaluations[i];
+        for i in 0..univariate_accumulator.r0.evaluations.len() {
+            univariate_accumulator.r0.evaluations[i] += tmp.evaluations[i];
         }
 
         ///////////////////////////////////////////////////////////////////////
@@ -119,11 +118,8 @@ impl<F: PrimeField> Relation<F> for UltraArithmeticRelation {
         tmp *= q_arith;
         tmp *= scaling_factor;
 
-        let mut r1 = Univariate::default();
-        for i in 0..r1.evaluations.len() {
-            r1.evaluations[i] = tmp.evaluations[i];
+        for i in 0..univariate_accumulator.r1.evaluations.len() {
+            univariate_accumulator.r1.evaluations[i] += tmp.evaluations[i];
         }
-
-        Self::Acc { r0, r1 }
     }
 }
