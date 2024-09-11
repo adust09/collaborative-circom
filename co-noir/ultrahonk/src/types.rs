@@ -40,7 +40,7 @@ pub struct ShiftedWitnessEntities<T: Default> {
     pub w_l: T, // column 0
     pub w_r: T, // column 1
     pub w_o: T, // column 2
-    pub w_4: T, // column 3
+    pub w_4: T, // column 3 // TODO right place= shifted by the prover? Same as z_perm_shift?
 }
 
 #[derive(Default)]
@@ -54,6 +54,7 @@ pub struct PrecomputedEntities<T: Default> {
     pub q_arith: T,        // column 6
     pub q_delta_range: T,  // column 7
     pub q_elliptic: T,     // column 8
+    pub q_aux: T,          // column 9
     pub q_lookup: T,       // column 10
     pub sigma_1: T,        // column 13
     pub sigma_2: T,        // column 14

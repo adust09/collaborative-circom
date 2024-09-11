@@ -95,6 +95,7 @@ impl SumcheckRound {
                 q_arith,
                 q_delta_range,
                 q_elliptic,
+                q_aux,
                 q_lookup,
                 sigma_1,
                 sigma_2,
@@ -158,6 +159,8 @@ impl SumcheckRound {
             <EllipticRelation as Relation<P>>::SKIPPABLE
                 && <EllipticRelation as Relation<P>>::skip(extended_edges)
         );
+        let r4 = <EllipticRelation as Relation<P>>::Acc::default();
+
         todo!()
     }
 

@@ -1,5 +1,5 @@
 use ark_ff::{PrimeField, Zero};
-use std::ops::{Add, AddAssign, Mul, MulAssign, Sub, SubAssign};
+use std::ops::{Add, AddAssign, Mul, MulAssign, Neg, Sub, SubAssign};
 
 #[derive(Clone, Debug)]
 pub struct Univariate<F: PrimeField, const SIZE: usize> {
@@ -218,5 +218,17 @@ impl<F: PrimeField, const SIZE: usize> Zero for Univariate<F, SIZE> {
             }
         }
         true
+    }
+}
+
+impl<F: PrimeField, const SIZE: usize> Neg for Univariate<F, SIZE> {
+    type Output = Self;
+
+    fn neg(self) -> Self::Output {
+        let mut result = self;
+        for i in 0..SIZE {
+            result.evaluations[i] = -result.evaluations[i];
+        }
+        result
     }
 }

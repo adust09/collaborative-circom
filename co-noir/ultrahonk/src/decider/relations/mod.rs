@@ -1,3 +1,4 @@
+pub(crate) mod auxiliary_relation;
 pub(crate) mod delta_range_constraint_relation;
 pub(crate) mod elliptic_relation;
 pub(crate) mod permutation_relation;
