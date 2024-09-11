@@ -40,36 +40,38 @@ pub struct ShiftedWitnessEntities<T: Default> {
     pub w_l: T, // column 0
     pub w_r: T, // column 1
     pub w_o: T, // column 2
-    pub w_4: T, // column 3 // TODO right place= shifted by the prover? Same as z_perm_shift?
+    pub w_4: T, // column 3 // TODO right place? shifted by the prover? Same as z_perm_shift?
 }
 
 #[derive(Default)]
 pub struct PrecomputedEntities<T: Default> {
-    pub q_m: T,            // column 0
-    pub q_c: T,            // column 1
-    pub q_l: T,            // column 2
-    pub q_r: T,            // column 3
-    pub q_o: T,            // column 4
-    pub q_4: T,            // column 5
-    pub q_arith: T,        // column 6
-    pub q_delta_range: T,  // column 7
-    pub q_elliptic: T,     // column 8
-    pub q_aux: T,          // column 9
-    pub q_lookup: T,       // column 10
-    pub sigma_1: T,        // column 13
-    pub sigma_2: T,        // column 14
-    pub sigma_3: T,        // column 15
-    pub sigma_4: T,        // column 16
-    pub id_1: T,           // column 17
-    pub id_2: T,           // column 18
-    pub id_3: T,           // column 19
-    pub id_4: T,           // column 20
-    pub table_1: T,        // column 21
-    pub table_2: T,        // column 22
-    pub table_3: T,        // column 23
-    pub table_4: T,        // column 24
-    pub lagrange_first: T, // column 25
-    pub lagrange_last: T,  // column 26
+    pub q_m: T,                  // column 0
+    pub q_c: T,                  // column 1
+    pub q_l: T,                  // column 2
+    pub q_r: T,                  // column 3
+    pub q_o: T,                  // column 4
+    pub q_4: T,                  // column 5
+    pub q_arith: T,              // column 6
+    pub q_delta_range: T,        // column 7
+    pub q_elliptic: T,           // column 8
+    pub q_aux: T,                // column 9
+    pub q_lookup: T,             // column 10
+    pub q_poseidon2_external: T, // column 11
+    pub q_poseidon2_internal: T, // column 12
+    pub sigma_1: T,              // column 13
+    pub sigma_2: T,              // column 14
+    pub sigma_3: T,              // column 15
+    pub sigma_4: T,              // column 16
+    pub id_1: T,                 // column 17
+    pub id_2: T,                 // column 18
+    pub id_3: T,                 // column 19
+    pub id_4: T,                 // column 20
+    pub table_1: T,              // column 21
+    pub table_2: T,              // column 22
+    pub table_3: T,              // column 23
+    pub table_4: T,              // column 24
+    pub lagrange_first: T,       // column 25
+    pub lagrange_last: T,        // column 26
 }
 
 pub struct VerifyingKey<P: Pairing> {

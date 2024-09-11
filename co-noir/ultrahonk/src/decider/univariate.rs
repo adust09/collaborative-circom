@@ -7,12 +7,28 @@ pub struct Univariate<F: PrimeField, const SIZE: usize> {
 }
 
 impl<F: PrimeField, const SIZE: usize> Univariate<F, SIZE> {
+    pub fn double(self) -> Self {
+        let mut result = self;
+        result.double_in_place();
+        result
+    }
+
+    pub fn double_in_place(&mut self) {
+        for i in 0..SIZE {
+            self.evaluations[i].double_in_place();
+        }
+    }
+
     pub fn sqr(self) -> Self {
         let mut result = self;
-        for i in 0..SIZE {
-            result.evaluations[i].square_in_place();
-        }
+        result.square_in_place();
         result
+    }
+
+    pub fn square_in_place(&mut self) {
+        for i in 0..SIZE {
+            self.evaluations[i].square_in_place();
+        }
     }
 }
 

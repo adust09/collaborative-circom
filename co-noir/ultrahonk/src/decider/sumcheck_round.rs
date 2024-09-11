@@ -12,6 +12,7 @@ use crate::{
             delta_range_constraint_relation::DeltaRangeConstraintRelation,
             elliptic_relation::EllipticRelation, logderiv_lookup_relation::LogDerivLookupRelation,
             permutation_relation::UltraPermutationRelation,
+            poseidon2_external_relation::Poseidon2ExternalRelation,
         },
         types::ProverUnivariates,
     },
@@ -102,6 +103,8 @@ impl SumcheckRound {
                 q_elliptic,
                 q_aux,
                 q_lookup,
+                q_poseidon2_external,
+                q_poseidon2_internal,
                 sigma_1,
                 sigma_2,
                 sigma_3,
@@ -172,7 +175,11 @@ impl SumcheckRound {
             relation_parameters,
             scaling_factor,
         );
-
+        let r7 = Self::accumulate_one_relation_univariates::<P, Poseidon2ExternalRelation>(
+            extended_edges,
+            relation_parameters,
+            scaling_factor,
+        );
         todo!()
     }
 
