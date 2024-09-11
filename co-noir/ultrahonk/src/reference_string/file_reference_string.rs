@@ -20,7 +20,7 @@ where
 {
     pub(crate) fn new(path: &str) -> Result<Self> {
         let mut g2_x = P::G2Affine::default();
-        read_transcript_g2(&mut g2_x, path)?;
+        read_transcript_g2::<P>(&mut g2_x, path)?;
 
         Ok(Self { g2_x })
     }
@@ -41,11 +41,12 @@ pub(crate) struct FileReferenceString<P: Pairing> {
 impl<P: Pairing> FileReferenceString<P> {
     pub(crate) fn new(num_points: usize, path: &str) -> Result<Self> {
         // Implementation depends on your project.
-        let pippenger = Pippenger::<P>::from_path(path, num_points)?;
-        Ok(Self {
-            num_points,
-            pippenger,
-        })
+        // let pippenger = Pippenger::<P>::from_path(path, num_points)?;
+        // Ok(Self {
+        //     num_points,
+        //     pippenger,
+        // })
+        todo!()
     }
 
     pub(crate) fn read_from_path(_path: &str) -> Result<Self, std::io::Error> {
@@ -115,7 +116,9 @@ impl<P: Pairing> DynamicFileReferenceStringFactory<P> {
     }
 }
 
-impl<P: Pairing> ReferenceStringFactory<P> for DynamicFileReferenceStringFactory<P> {
+impl<P: Pairing + std::default::Default> ReferenceStringFactory<P>
+    for DynamicFileReferenceStringFactory<P>
+{
     type Pro = FileReferenceString<P>;
     type Ver = VerifierFileReferenceString<P>;
     fn get_prover_crs(&self, degree: usize) -> Result<Option<Arc<RwLock<Self::Pro>>>> {
