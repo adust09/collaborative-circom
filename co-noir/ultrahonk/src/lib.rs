@@ -1,7 +1,11 @@
+mod crs;
+use ark_ff::PrimeField;
+
 pub(crate) mod decider;
 pub mod field_convert;
 pub(crate) mod oink;
 pub mod prover;
+mod reference_string;
 mod transcript;
 mod types;
 // pub mod verifier;
