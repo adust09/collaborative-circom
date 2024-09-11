@@ -1,4 +1,5 @@
 pub(crate) mod delta_range_constraint_relation;
+pub(crate) mod elliptic_relation;
 pub(crate) mod permutation_relation;
 pub(crate) mod ultra_arithmetic_relation;
 

@@ -53,6 +53,7 @@ pub struct PrecomputedEntities<T: Default> {
     pub q_4: T,            // column 5
     pub q_arith: T,        // column 6
     pub q_delta_range: T,  // column 7
+    pub q_elliptic: T,     // column 8
     pub q_lookup: T,       // column 10
     pub sigma_1: T,        // column 13
     pub sigma_2: T,        // column 14

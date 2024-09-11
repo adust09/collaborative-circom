@@ -7,7 +7,7 @@ use crate::{
     decider::{
         relations::{
             delta_range_constraint_relation::DeltaRangeConstraintRelation,
-            permutation_relation::UltraPermutationRelation,
+            elliptic_relation::EllipticRelation, permutation_relation::UltraPermutationRelation,
         },
         types::ProverUnivariates,
     },
@@ -93,8 +93,9 @@ impl SumcheckRound {
                 q_o,
                 q_4,
                 q_arith,
-                q_lookup,
                 q_delta_range,
+                q_elliptic,
+                q_lookup,
                 sigma_1,
                 sigma_2,
                 sigma_3,
@@ -151,6 +152,11 @@ impl SumcheckRound {
             memory,
             challenges,
             scaling_factor,
+        );
+        // TODO we skip the EllipticRelation relation so far due to implementation issues (see the implementation file)
+        assert!(
+            <EllipticRelation as Relation<P>>::SKIPPABLE
+                && <EllipticRelation as Relation<P>>::skip(extended_edges)
         );
         todo!()
     }
