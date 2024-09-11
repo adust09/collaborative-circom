@@ -15,6 +15,10 @@ pub(crate) struct DeltaRangeConstraintRelationAcc<F: PrimeField> {
 
 pub(crate) struct DeltaRangeConstraintRelation {}
 
+impl DeltaRangeConstraintRelation {
+    pub(crate) const NUM_RELATIONS: usize = 4;
+}
+
 impl<F: PrimeField> Relation<F> for DeltaRangeConstraintRelation {
     type Acc = DeltaRangeConstraintRelationAcc<F>;
     const SKIPPABLE: bool = true;

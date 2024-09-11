@@ -39,6 +39,10 @@ pub(crate) struct Poseidon2InternalRelationAcc<F: PrimeField> {
 
 pub(crate) struct Poseidon2InternalRelation {}
 
+impl Poseidon2InternalRelation {
+    pub(crate) const NUM_RELATIONS: usize = 4;
+}
+
 impl<F: PrimeField> Relation<F> for Poseidon2InternalRelation {
     type Acc = Poseidon2InternalRelationAcc<F>;
     const SKIPPABLE: bool = true;

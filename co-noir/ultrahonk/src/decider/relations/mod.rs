@@ -9,6 +9,16 @@ pub(crate) mod ultra_arithmetic_relation;
 
 use super::types::{ProverUnivariates, RelationParameters};
 use ark_ff::PrimeField;
+use auxiliary_relation::{AuxiliaryRelation, AuxiliaryRelationAcc};
+use delta_range_constraint_relation::{
+    DeltaRangeConstraintRelation, DeltaRangeConstraintRelationAcc,
+};
+use elliptic_relation::{EllipticRelation, EllipticRelationAcc};
+use logderiv_lookup_relation::{LogDerivLookupRelation, LogDerivLookupRelationAcc};
+use permutation_relation::{UltraPermutationRelation, UltraPermutationRelationAcc};
+use poseidon2_external_relation::{Poseidon2ExternalRelation, Poseidon2ExternalRelationAcc};
+use poseidon2_internal_relation::{Poseidon2InternalRelation, Poseidon2InternalRelationAcc};
+use ultra_arithmetic_relation::{UltraArithmeticRelation, UltraArithmeticRelationAcc};
 
 pub(crate) trait Relation<F: PrimeField> {
     type Acc: Default;
@@ -28,3 +38,24 @@ pub(crate) trait Relation<F: PrimeField> {
         scaling_factor: &F,
     );
 }
+
+#[derive(Default)]
+pub(crate) struct AllRelationAcc<F: PrimeField> {
+    pub(crate) r_arith: UltraArithmeticRelationAcc<F>,
+    pub(crate) r_perm: UltraPermutationRelationAcc<F>,
+    pub(crate) r_delta: DeltaRangeConstraintRelationAcc<F>,
+    pub(crate) r_elliptic: EllipticRelationAcc<F>,
+    pub(crate) r_aux: AuxiliaryRelationAcc<F>,
+    pub(crate) r_lookup: LogDerivLookupRelationAcc<F>,
+    pub(crate) r_pos_ext: Poseidon2ExternalRelationAcc<F>,
+    pub(crate) r_pos_int: Poseidon2InternalRelationAcc<F>,
+}
+
+pub(crate) const NUM_SUBRELATIONS: usize = UltraArithmeticRelation::NUM_RELATIONS
+    + UltraPermutationRelation::NUM_RELATIONS
+    + DeltaRangeConstraintRelation::NUM_RELATIONS
+    + EllipticRelation::NUM_RELATIONS
+    + AuxiliaryRelation::NUM_RELATIONS
+    + LogDerivLookupRelation::NUM_RELATIONS
+    + Poseidon2ExternalRelation::NUM_RELATIONS
+    + Poseidon2InternalRelation::NUM_RELATIONS;

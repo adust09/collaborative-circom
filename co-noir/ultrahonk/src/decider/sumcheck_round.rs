@@ -1,15 +1,4 @@
 use super::{
-    relations::{
-        auxiliary_relation::AuxiliaryRelationAcc,
-        delta_range_constraint_relation::DeltaRangeConstraintRelationAcc,
-        elliptic_relation::EllipticRelationAcc,
-        logderiv_lookup_relation::LogDerivLookupRelationAcc,
-        permutation_relation::UltraPermutationRelationAcc,
-        poseidon2_external_relation::Poseidon2ExternalRelationAcc,
-        poseidon2_internal_relation::Poseidon2InternalRelationAcc,
-        ultra_arithmetic_relation::{UltraArithmeticRelation, UltraArithmeticRelationAcc},
-        Relation,
-    },
     types::{
         GateSeparatorPolynomial, ProverMemory, RelationParameters, MAX_PARTIAL_RELATION_LENGTH,
     },
@@ -24,6 +13,7 @@ use crate::{
             permutation_relation::UltraPermutationRelation,
             poseidon2_external_relation::Poseidon2ExternalRelation,
             poseidon2_internal_relation::Poseidon2InternalRelation,
+            ultra_arithmetic_relation::UltraArithmeticRelation, AllRelationAcc, Relation,
         },
         types::ProverUnivariates,
     },
@@ -34,18 +24,6 @@ use ark_ff::PrimeField;
 
 pub(crate) struct SumcheckRound {
     pub(crate) round_size: usize,
-}
-
-#[derive(Default)]
-struct AllRelationAcc<F: PrimeField> {
-    r_arith: UltraArithmeticRelationAcc<F>,
-    r_perm: UltraPermutationRelationAcc<F>,
-    r_delta: DeltaRangeConstraintRelationAcc<F>,
-    r_elliptic: EllipticRelationAcc<F>,
-    r_aux: AuxiliaryRelationAcc<F>,
-    r_lookup: LogDerivLookupRelationAcc<F>,
-    r_pos_ext: Poseidon2ExternalRelationAcc<F>,
-    r_pos_int: Poseidon2InternalRelationAcc<F>,
 }
 
 macro_rules! extend_macro {
@@ -146,12 +124,28 @@ impl SumcheckRound {
         );
     }
 
+    // size_t idx = 0;
+    // std::array<FF, NUM_SUBRELATIONS> tmp{ current_scalar };
+    // std::copy(challenges.begin(), challenges.end(), tmp.begin() + 1);
+    // auto scale_by_challenges = [&]<size_t, size_t>(auto& element) {
+    //     element *= tmp[idx];
+    //     idx++;
+    // };
+    // apply_to_tuple_of_tuples(tuple, scale_by_challenges);
+
     fn batch_over_relations_univariates<F: PrimeField>(
         univariate_accumulators: AllRelationAcc<F>,
         alphas: &[F; crate::NUM_ALPHAS],
-        gate_sparators: GateSeparatorPolynomial<F>,
+        gate_sparators: &GateSeparatorPolynomial<F>,
     ) -> Univariate<F, { MAX_PARTIAL_RELATION_LENGTH + 1 }> {
-        todo!()
+        tracing::trace!("batch over relations");
+
+        let mut res = Univariate::<F, { MAX_PARTIAL_RELATION_LENGTH + 1 }>::default();
+
+        let mut running_challenge = F::one();
+
+        todo!();
+        res
     }
 
     fn accumulate_one_relation_univariates<F: PrimeField, R: Relation<F>>(
@@ -178,7 +172,7 @@ impl SumcheckRound {
         relation_parameters: &RelationParameters<F>,
         scaling_factor: &F,
     ) {
-        tracing::trace!("Accumulate relation");
+        tracing::trace!("Accumulate relations");
 
         Self::accumulate_one_relation_univariates::<F, UltraArithmeticRelation>(
             &mut univariate_accumulators.r_arith,
@@ -233,7 +227,7 @@ impl SumcheckRound {
         &self,
         round_index: usize,
         relation_parameters: &RelationParameters<P::ScalarField>,
-        gate_sparators: GateSeparatorPolynomial<P::ScalarField>,
+        gate_sparators: &GateSeparatorPolynomial<P::ScalarField>,
         prover_memory: &ProverMemory<P>,
         proving_key: &ProvingKey<P>,
     ) -> Univariate<P::ScalarField, { MAX_PARTIAL_RELATION_LENGTH + 1 }> {

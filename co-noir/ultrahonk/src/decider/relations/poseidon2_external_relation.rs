@@ -15,6 +15,10 @@ pub(crate) struct Poseidon2ExternalRelationAcc<F: PrimeField> {
 
 pub(crate) struct Poseidon2ExternalRelation {}
 
+impl Poseidon2ExternalRelation {
+    pub(crate) const NUM_RELATIONS: usize = 4;
+}
+
 impl<F: PrimeField> Relation<F> for Poseidon2ExternalRelation {
     type Acc = Poseidon2ExternalRelationAcc<F>;
     const SKIPPABLE: bool = true;

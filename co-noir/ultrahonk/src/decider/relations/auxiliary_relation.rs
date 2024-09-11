@@ -31,6 +31,10 @@ pub(crate) struct AuxiliaryRelationAcc<F: PrimeField> {
 
 pub(crate) struct AuxiliaryRelation {}
 
+impl AuxiliaryRelation {
+    pub(crate) const NUM_RELATIONS: usize = 6;
+}
+
 impl<F: PrimeField> Relation<F> for AuxiliaryRelation {
     type Acc = AuxiliaryRelationAcc<F>;
     const SKIPPABLE: bool = true;

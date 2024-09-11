@@ -13,6 +13,10 @@ pub(crate) struct UltraArithmeticRelationAcc<F: PrimeField> {
 
 pub(crate) struct UltraArithmeticRelation {}
 
+impl UltraArithmeticRelation {
+    pub(crate) const NUM_RELATIONS: usize = 2;
+}
+
 impl<F: PrimeField> Relation<F> for UltraArithmeticRelation {
     type Acc = UltraArithmeticRelationAcc<F>;
     const SKIPPABLE: bool = true;

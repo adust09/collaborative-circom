@@ -14,6 +14,10 @@ pub(crate) struct LogDerivLookupRelationAcc<F: PrimeField> {
 pub(crate) struct LogDerivLookupRelation {}
 
 impl LogDerivLookupRelation {
+    pub(crate) const NUM_RELATIONS: usize = 2;
+}
+
+impl LogDerivLookupRelation {
     // Used in the inverse correctness subrelation; facilitates only computing inverses where necessary
     fn compute_inverse_exists<F: PrimeField>(
         input: &ProverUnivariates<F>,

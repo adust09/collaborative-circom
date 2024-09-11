@@ -54,7 +54,7 @@ impl<P: Pairing> Decider<P> {
         let round_univariate = sum_check_round.compute_univariate(
             round_idx,
             &self.memory.relation_parameters,
-            pow_univariate,
+            &pow_univariate,
             &self.memory,
             proving_key,
         );

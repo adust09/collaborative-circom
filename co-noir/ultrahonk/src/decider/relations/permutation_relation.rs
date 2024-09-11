@@ -14,6 +14,10 @@ pub(crate) struct UltraPermutationRelationAcc<F: PrimeField> {
 pub(crate) struct UltraPermutationRelation {}
 
 impl UltraPermutationRelation {
+    pub(crate) const NUM_RELATIONS: usize = 2;
+}
+
+impl UltraPermutationRelation {
     fn compute_grand_product_numerator<F: PrimeField>(
         input: &ProverUnivariates<F>,
         relation_parameters: &RelationParameters<F>,

@@ -13,6 +13,10 @@ pub(crate) struct EllipticRelationAcc<F: PrimeField> {
 
 pub(crate) struct EllipticRelation {}
 
+impl EllipticRelation {
+    pub(crate) const NUM_RELATIONS: usize = 2;
+}
+
 impl<F: PrimeField> Relation<F> for EllipticRelation
 // TODO The following is not generic anymore since we are now a relation over prime fields...
 // where
