@@ -134,7 +134,11 @@ impl SumcheckRound {
         let mut extended_random_polynomial = SumcheckRoundOutput::default();
         extended_random_polynomial.extend_from(&random_polynomial);
 
-        todo!()
+        univariate_accumulators.extend_and_batch_univariates(
+            result,
+            &extended_random_polynomial,
+            &gate_sparators.partial_evaluation_result,
+        )
     }
 
     /**

@@ -7,7 +7,10 @@ pub(crate) mod poseidon2_external_relation;
 pub(crate) mod poseidon2_internal_relation;
 pub(crate) mod ultra_arithmetic_relation;
 
-use super::types::{ProverUnivariates, RelationParameters};
+use super::{
+    sumcheck_round::SumcheckRoundOutput,
+    types::{ProverUnivariates, RelationParameters},
+};
 use ark_ff::PrimeField;
 use auxiliary_relation::{AuxiliaryRelation, AuxiliaryRelationAcc};
 use delta_range_constraint_relation::{
@@ -39,6 +42,15 @@ pub(crate) trait Relation<F: PrimeField> {
     );
 }
 
+pub(crate) const NUM_SUBRELATIONS: usize = UltraArithmeticRelation::NUM_RELATIONS
+    + UltraPermutationRelation::NUM_RELATIONS
+    + DeltaRangeConstraintRelation::NUM_RELATIONS
+    + EllipticRelation::NUM_RELATIONS
+    + AuxiliaryRelation::NUM_RELATIONS
+    + LogDerivLookupRelation::NUM_RELATIONS
+    + Poseidon2ExternalRelation::NUM_RELATIONS
+    + Poseidon2InternalRelation::NUM_RELATIONS;
+
 #[derive(Default)]
 pub(crate) struct AllRelationAcc<F: PrimeField> {
     pub(crate) r_arith: UltraArithmeticRelationAcc<F>,
@@ -63,13 +75,52 @@ impl<F: PrimeField> AllRelationAcc<F> {
         self.r_pos_ext.scale(&elements[19..23]);
         self.r_pos_int.scale(&elements[23..]);
     }
-}
 
-pub(crate) const NUM_SUBRELATIONS: usize = UltraArithmeticRelation::NUM_RELATIONS
-    + UltraPermutationRelation::NUM_RELATIONS
-    + DeltaRangeConstraintRelation::NUM_RELATIONS
-    + EllipticRelation::NUM_RELATIONS
-    + AuxiliaryRelation::NUM_RELATIONS
-    + LogDerivLookupRelation::NUM_RELATIONS
-    + Poseidon2ExternalRelation::NUM_RELATIONS
-    + Poseidon2InternalRelation::NUM_RELATIONS;
+    pub fn extend_and_batch_univariates(
+        &self,
+        result: &mut SumcheckRoundOutput<F>,
+        extended_random_poly: &SumcheckRoundOutput<F>,
+        partial_evaluation_result: &F,
+    ) {
+        self.r_arith.extend_and_batch_univariates(
+            result,
+            extended_random_poly,
+            partial_evaluation_result,
+        );
+        self.r_perm.extend_and_batch_univariates(
+            result,
+            extended_random_poly,
+            partial_evaluation_result,
+        );
+        self.r_delta.extend_and_batch_univariates(
+            result,
+            extended_random_poly,
+            partial_evaluation_result,
+        );
+        self.r_elliptic.extend_and_batch_univariates(
+            result,
+            extended_random_poly,
+            partial_evaluation_result,
+        );
+        self.r_aux.extend_and_batch_univariates(
+            result,
+            extended_random_poly,
+            partial_evaluation_result,
+        );
+        self.r_lookup.extend_and_batch_univariates(
+            result,
+            extended_random_poly,
+            partial_evaluation_result,
+        );
+        self.r_pos_ext.extend_and_batch_univariates(
+            result,
+            extended_random_poly,
+            partial_evaluation_result,
+        );
+        self.r_pos_int.extend_and_batch_univariates(
+            result,
+            extended_random_poly,
+            partial_evaluation_result,
+        );
+    }
+}
