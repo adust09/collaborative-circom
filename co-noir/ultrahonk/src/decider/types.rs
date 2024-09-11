@@ -8,9 +8,8 @@ pub struct ProverMemory<P: Pairing> {
     pub z_perm: Vec<P::ScalarField>,          // column 4
     pub lookup_inverses: Vec<P::ScalarField>, // column 5
     pub z_perm_shift: Vec<P::ScalarField>, // TODO this is never calculated? also the permutation relation might always be skipped right now?
-    pub public_input_delta: P::ScalarField,
     pub witness_commitments: WitnessCommitments<P>,
-    pub challenges: Challenges<P::ScalarField>,
+    pub relation_parameters: RelationParameters<P::ScalarField>,
 }
 
 pub const MAX_PARTIAL_RELATION_LENGTH: usize = 7;
@@ -34,12 +33,13 @@ pub struct WitnessCommitments<P: Pairing> {
     pub lookup_read_tags: P::G1,
 }
 
-pub struct Challenges<F: PrimeField> {
+pub struct RelationParameters<F: PrimeField> {
     pub eta_1: F,
     pub eta_2: F,
     pub eta_3: F,
     pub beta: F,
     pub gamma: F,
+    pub public_input_delta: F,
     pub alphas: [F; NUM_ALPHAS],
     pub gate_challenges: Vec<F>,
 }
@@ -110,7 +110,7 @@ impl<P: Pairing> Default for WitnessCommitments<P> {
     }
 }
 
-impl<F: PrimeField> Default for Challenges<F> {
+impl<F: PrimeField> Default for RelationParameters<F> {
     fn default() -> Self {
         Self {
             eta_1: Default::default(),
@@ -118,6 +118,7 @@ impl<F: PrimeField> Default for Challenges<F> {
             eta_3: Default::default(),
             beta: Default::default(),
             gamma: Default::default(),
+            public_input_delta: Default::default(),
             alphas: [Default::default(); NUM_ALPHAS],
             gate_challenges: Default::default(),
         }
@@ -131,23 +132,32 @@ impl<P: Pairing> Default for ProverMemory<P> {
             z_perm: Default::default(),
             lookup_inverses: Default::default(),
             z_perm_shift: Default::default(),
-            public_input_delta: Default::default(),
             witness_commitments: Default::default(),
-            challenges: Default::default(),
+            relation_parameters: Default::default(),
         }
     }
 }
 
 impl<P: Pairing> From<crate::oink::types::ProverMemory<P>> for ProverMemory<P> {
     fn from(prover_memory: crate::oink::types::ProverMemory<P>) -> Self {
+        let relation_parameters = RelationParameters {
+            eta_1: prover_memory.challenges.eta_1,
+            eta_2: prover_memory.challenges.eta_2,
+            eta_3: prover_memory.challenges.eta_3,
+            beta: prover_memory.challenges.beta,
+            gamma: prover_memory.challenges.gamma,
+            public_input_delta: prover_memory.public_input_delta,
+            alphas: prover_memory.challenges.alphas,
+            gate_challenges: Default::default(),
+        };
+
         Self {
             w_4: prover_memory.w_4,
             z_perm: prover_memory.z_perm,
             lookup_inverses: prover_memory.lookup_inverses,
             z_perm_shift: Default::default(), // TODO where does it come from?
-            public_input_delta: prover_memory.public_input_delta,
             witness_commitments: WitnessCommitments::from(prover_memory.witness_commitments),
-            challenges: Challenges::from(prover_memory.challenges),
+            relation_parameters,
         }
     }
 }
@@ -163,20 +173,6 @@ impl<P: Pairing> From<crate::oink::types::WitnessCommitments<P>> for WitnessComm
             lookup_inverses: witness_commitments.lookup_inverses,
             lookup_read_counts: witness_commitments.lookup_read_counts,
             lookup_read_tags: witness_commitments.lookup_read_tags,
-        }
-    }
-}
-
-impl<F: PrimeField> From<crate::oink::types::Challenges<F>> for Challenges<F> {
-    fn from(challenges: crate::oink::types::Challenges<F>) -> Self {
-        Self {
-            eta_1: challenges.eta_1,
-            eta_2: challenges.eta_2,
-            eta_3: challenges.eta_3,
-            beta: challenges.beta,
-            gamma: challenges.gamma,
-            alphas: challenges.alphas,
-            gate_challenges: Default::default(),
         }
     }
 }

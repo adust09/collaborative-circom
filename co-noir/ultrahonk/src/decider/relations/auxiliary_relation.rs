@@ -1,6 +1,6 @@
 use super::Relation;
 use crate::decider::{
-    types::{Challenges, ProverMemory, ProverUnivariates},
+    types::{ProverUnivariates, RelationParameters},
     univariate::Univariate,
 };
 use ark_ec::pairing::Pairing;
@@ -76,13 +76,14 @@ impl<P: Pairing> Relation<P> for AuxiliaryRelation {
      */
     fn accumulate(
         input: &ProverUnivariates<P::ScalarField>,
-        memory: &ProverMemory<P>,
-        challenges: &Challenges<P::ScalarField>,
+        relation_parameters: &RelationParameters<P::ScalarField>,
         scaling_factor: &P::ScalarField,
     ) -> Self::Acc {
-        let eta = &challenges.eta_1;
-        let eta_two = &challenges.eta_2;
-        let eta_three = &challenges.eta_3;
+        tracing::trace!("Accumulate AuxiliaryRelation");
+
+        let eta = &relation_parameters.eta_1;
+        let eta_two = &relation_parameters.eta_2;
+        let eta_three = &relation_parameters.eta_3;
 
         let w_1 = &input.polys.witness.w_l;
         let w_2 = &input.polys.witness.w_r;

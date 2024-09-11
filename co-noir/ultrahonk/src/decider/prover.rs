@@ -48,7 +48,7 @@ impl<P: Pairing> Decider<P> {
         let mut transcript = transcript::Keccak256Transcript::<P>::default();
         transcript.add_scalar(
             self.memory
-                .challenges
+                .relation_parameters
                 .gate_challenges
                 .last()
                 .expect("Element is present")

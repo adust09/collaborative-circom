@@ -1,6 +1,6 @@
 use super::Relation;
 use crate::decider::{
-    types::{Challenges, ProverMemory, ProverUnivariates},
+    types::{ProverUnivariates, RelationParameters},
     univariate::Univariate,
 };
 use ark_ec::pairing::Pairing;
@@ -41,10 +41,11 @@ impl<P: Pairing> Relation<P> for DeltaRangeConstraintRelation {
      */
     fn accumulate(
         input: &ProverUnivariates<P::ScalarField>,
-        _memory: &ProverMemory<P>,
-        _challenges: &Challenges<P::ScalarField>,
+        _relation_parameters: &RelationParameters<P::ScalarField>,
         scaling_factor: &P::ScalarField,
     ) -> Self::Acc {
+        tracing::trace!("Accumulate DeltaRangeConstraintRelation");
+
         let w_1 = &input.polys.witness.w_l;
         let w_2 = &input.polys.witness.w_r;
         let w_3 = &input.polys.witness.w_o;

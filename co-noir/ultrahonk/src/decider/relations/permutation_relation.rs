@@ -1,6 +1,6 @@
 use super::Relation;
 use crate::decider::{
-    types::{Challenges, ProverMemory, ProverUnivariates},
+    types::{ProverUnivariates, RelationParameters},
     univariate::Univariate,
 };
 use ark_ec::pairing::Pairing;
@@ -17,7 +17,7 @@ pub(crate) struct UltraPermutationRelation {}
 impl UltraPermutationRelation {
     fn compute_grand_product_numerator<P: Pairing>(
         input: &ProverUnivariates<P::ScalarField>,
-        challenges: &Challenges<P::ScalarField>,
+        relation_parameters: &RelationParameters<P::ScalarField>,
     ) -> Univariate<P::ScalarField, 7> {
         let w_1 = &input.polys.witness.w_l;
         let w_2 = &input.polys.witness.w_r;
@@ -28,8 +28,8 @@ impl UltraPermutationRelation {
         let id_3 = &input.polys.precomputed.id_3;
         let id_4 = &input.polys.precomputed.id_4;
 
-        let beta = &challenges.beta;
-        let gamma = &challenges.gamma;
+        let beta = &relation_parameters.beta;
+        let gamma = &relation_parameters.gamma;
 
         // witness degree 4; full degree 8
         (id_1.to_owned() * beta + w_1 + gamma)
@@ -40,7 +40,7 @@ impl UltraPermutationRelation {
 
     fn compute_grand_product_denominator<P: Pairing>(
         input: &ProverUnivariates<P::ScalarField>,
-        challenges: &Challenges<P::ScalarField>,
+        relation_parameters: &RelationParameters<P::ScalarField>,
     ) -> Univariate<P::ScalarField, 7> {
         let w_1 = &input.polys.witness.w_l;
         let w_2 = &input.polys.witness.w_r;
@@ -51,8 +51,8 @@ impl UltraPermutationRelation {
         let sigma_3 = &input.polys.precomputed.sigma_3;
         let sigma_4 = &input.polys.precomputed.sigma_4;
 
-        let beta = &challenges.beta;
-        let gamma = &challenges.gamma;
+        let beta = &relation_parameters.beta;
+        let gamma = &relation_parameters.gamma;
 
         // witness degree 4; full degree 8
         (sigma_1.to_owned() * beta + w_1 + gamma)
@@ -90,11 +90,12 @@ impl<P: Pairing> Relation<P> for UltraPermutationRelation {
     */
     fn accumulate(
         input: &ProverUnivariates<P::ScalarField>,
-        memory: &ProverMemory<P>,
-        challenges: &Challenges<P::ScalarField>,
+        relation_parameters: &RelationParameters<P::ScalarField>,
         scaling_factor: &P::ScalarField,
     ) -> Self::Acc {
-        let public_input_delta = &memory.public_input_delta;
+        tracing::trace!("Accumulate UltraPermutationRelation");
+
+        let public_input_delta = &relation_parameters.public_input_delta;
         let z_perm = &input.z_perm;
         let z_perm_shift = &input.z_perm_shift;
         let lagrange_first = &input.polys.precomputed.lagrange_first;
@@ -104,9 +105,9 @@ impl<P: Pairing> Relation<P> for UltraPermutationRelation {
         // total degree: deg 9 - deg 10 = deg 10
 
         let tmp = (((z_perm.to_owned() + lagrange_first)
-            * Self::compute_grand_product_numerator::<P>(input, challenges))
+            * Self::compute_grand_product_numerator::<P>(input, relation_parameters))
             - ((lagrange_last.to_owned() * public_input_delta + z_perm_shift)
-                * Self::compute_grand_product_denominator::<P>(input, challenges)))
+                * Self::compute_grand_product_denominator::<P>(input, relation_parameters)))
             * scaling_factor;
 
         let mut r0 = Univariate::default();

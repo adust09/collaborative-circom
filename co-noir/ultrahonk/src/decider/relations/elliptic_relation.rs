@@ -1,8 +1,6 @@
 use super::Relation;
-use crate::decider::{
-    types::{Challenges, ProverMemory, ProverUnivariates},
-    univariate::Univariate,
-};
+use crate::decider::types::RelationParameters;
+use crate::decider::{types::ProverUnivariates, univariate::Univariate};
 use ark_ec::CurveGroup;
 use ark_ec::{pairing::Pairing, short_weierstrass::SWCurveConfig};
 use ark_ff::{PrimeField, Zero};
@@ -39,10 +37,11 @@ impl<P: Pairing> Relation<P> for EllipticRelation
      */
     fn accumulate(
         input: &ProverUnivariates<P::ScalarField>,
-        _memory: &ProverMemory<P>,
-        _challenges: &Challenges<P::ScalarField>,
+        _relation_parameters: &RelationParameters<P::ScalarField>,
         scaling_factor: &P::ScalarField,
     ) -> Self::Acc {
+        tracing::trace!("Accumulate EllipticRelation");
+
         // TODO(@zac - williamson #2608 when Pedersen refactor is completed,
         // replace old addition relations with these ones and
         // remove endomorphism coefficient in ecc add gate(not used))

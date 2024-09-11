@@ -41,8 +41,9 @@ impl<P: Pairing> Decider<P> {
             self.setup_zk_sumcheck_data(&mut rng);
         };
 
-        let pow_univariate =
-            GateSeparatorPolynomial::new(self.memory.challenges.gate_challenges.to_owned());
+        let pow_univariate = GateSeparatorPolynomial::new(
+            self.memory.relation_parameters.gate_challenges.to_owned(),
+        );
 
         // let mut multivariate_challenge = Vec::with_capacity(multivariate_d as usize);
         let mut round_idx = 0;

@@ -48,7 +48,7 @@ impl<P: Pairing> UltraHonk<P> {
         let mut gate_challenges = Vec::with_capacity(challenge_size);
 
         let mut transcript = Keccak256Transcript::<P>::default();
-        transcript.add_scalar(memory.challenges.alphas[NUM_ALPHAS - 1]);
+        transcript.add_scalar(memory.relation_parameters.alphas[NUM_ALPHAS - 1]);
 
         gate_challenges.push(transcript.get_challenge());
         for idx in 1..challenge_size {
@@ -56,7 +56,7 @@ impl<P: Pairing> UltraHonk<P> {
             transcript.add_scalar(gate_challenges[idx - 1]);
             gate_challenges.push(transcript.get_challenge());
         }
-        memory.challenges.gate_challenges = gate_challenges;
+        memory.relation_parameters.gate_challenges = gate_challenges;
     }
 
     pub fn prove(
