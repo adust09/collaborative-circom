@@ -114,7 +114,7 @@ fn read_file_into_buffer(
 }
 
 fn get_transcript_path(dir: &str, num: usize) -> String {
-    format!("{}/monomial/transcript{:02}.dat", dir, num)
+    format!("{}/transcript{:02}.dat", dir, num)
 }
 
 fn is_file_exist(file_name: &str) -> bool {
@@ -129,7 +129,6 @@ pub(crate) fn read_transcript_g1<P: Pairing>(
     let num = 0;
     let mut num_read = 0;
     let mut path = get_transcript_path(dir, num);
-
     while Path::new(&path).exists() && num_read < degree {
         let manifest = read_manifest(&path)?;
 
@@ -152,7 +151,7 @@ pub(crate) fn read_transcript_g1<P: Pairing>(
         num_read += num_to_read;
         path = get_transcript_path(dir, num + 1);
     }
-
+    println!("this ist hte path {path}");
     if num_read < degree {
         return Err(anyhow!(
                 "Only read {} points from {}, but require {}. Is your SRS large enough? \
@@ -190,12 +189,12 @@ pub(crate) fn read_transcript_g2<P: Pairing>(g2_x: &mut P::G2Affine, dir: &str) 
 
     // Get transcript starting at g0.dat
     path = get_transcript_path(dir, 0);
-
     let manifest = read_manifest(&path)?;
 
-    let g2_buffer_offset = std::mem::size_of::<<P::G2 as CurveGroup>::BaseField>()
+    let g2_buffer_offset = std::mem::size_of::<<P::G2 as CurveGroup>::BaseField>() / 2
         * 2
         * manifest.num_g1_points as usize;
+
     let offset = std::mem::size_of::<Manifest>() + g2_buffer_offset;
 
     let mut file = File::open(&path)?;
@@ -216,7 +215,7 @@ pub(crate) fn read_transcript<P: Pairing>(
     degree: usize,
     path: &str,
 ) -> Result<()> {
-    read_transcript_g1(monomials, degree, path)?;
-    read_transcript_g2(g2_x, path)?;
+    read_transcript_g1::<P>(monomials, degree, path)?;
+    read_transcript_g2::<P>(g2_x, path)?;
     Ok(())
 }

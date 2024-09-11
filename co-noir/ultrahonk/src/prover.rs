@@ -59,18 +59,18 @@ impl<P: Pairing> UltraHonk<P> {
         memory.challenges.gate_challenges = gate_challenges;
     }
 
-    pub fn prove(
-        self,
-        proving_key: ProvingKey<P>,
-        public_inputs: Vec<P::ScalarField>,
-    ) -> HonkProofResult<()> {
-        // tracing::trace!("UltraHonk prove");
+    // pub fn prove(
+    //     self,
+    //     proving_key: ProvingKey<P>,
+    //     public_inputs: Vec<P::ScalarField>,
+    // ) -> HonkProofResult<()> {
+    //     // tracing::trace!("UltraHonk prove");
 
-        let oink = Oink::<P>::default();
-        let mut memory = ProverMemory::from(oink.prove(&proving_key, &public_inputs)?);
-        self.generate_gate_challenges(&mut memory, &proving_key);
+    //     let oink = Oink::<P>::default();
+    //     let mut memory = ProverMemory::from(oink.prove(&proving_key, &public_inputs)?);
+    //     self.generate_gate_challenges(&mut memory, &proving_key);
 
-        let decider = Decider::new(memory);
-        decider.prove(proving_key, public_inputs)
-    }
+    //     let decider = Decider::new(memory);
+    //     decider.prove(proving_key, public_inputs)
+    // }
 }
