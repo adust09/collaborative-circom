@@ -11,6 +11,14 @@ pub(crate) struct UltraArithmeticRelationAcc<F: PrimeField> {
     pub(crate) r1: Univariate<F, 5>,
 }
 
+impl<F: PrimeField> UltraArithmeticRelationAcc<F> {
+    pub fn scale(&mut self, elements: &[F]) {
+        assert!(elements.len() == UltraArithmeticRelation::NUM_RELATIONS);
+        self.r0 *= elements[0];
+        self.r1 *= elements[1];
+    }
+}
+
 pub(crate) struct UltraArithmeticRelation {}
 
 impl UltraArithmeticRelation {

@@ -51,6 +51,20 @@ pub(crate) struct AllRelationAcc<F: PrimeField> {
     pub(crate) r_pos_int: Poseidon2InternalRelationAcc<F>,
 }
 
+impl<F: PrimeField> AllRelationAcc<F> {
+    pub fn scale(&mut self, first_scalar: F, elements: &[F]) {
+        assert!(elements.len() == NUM_SUBRELATIONS - 1);
+        self.r_arith.scale(&[first_scalar, elements[0]]);
+        self.r_perm.scale(&elements[1..3]);
+        self.r_delta.scale(&elements[3..7]);
+        self.r_elliptic.scale(&elements[7..11]);
+        self.r_aux.scale(&elements[11..17]);
+        self.r_lookup.scale(&elements[17..19]);
+        self.r_pos_ext.scale(&elements[19..23]);
+        self.r_pos_int.scale(&elements[23..]);
+    }
+}
+
 pub(crate) const NUM_SUBRELATIONS: usize = UltraArithmeticRelation::NUM_RELATIONS
     + UltraPermutationRelation::NUM_RELATIONS
     + DeltaRangeConstraintRelation::NUM_RELATIONS

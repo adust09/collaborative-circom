@@ -124,25 +124,33 @@ impl SumcheckRound {
         );
     }
 
-    // size_t idx = 0;
-    // std::array<FF, NUM_SUBRELATIONS> tmp{ current_scalar };
-    // std::copy(challenges.begin(), challenges.end(), tmp.begin() + 1);
-    // auto scale_by_challenges = [&]<size_t, size_t>(auto& element) {
-    //     element *= tmp[idx];
-    //     idx++;
-    // };
-    // apply_to_tuple_of_tuples(tuple, scale_by_challenges);
-
+    /**
+     * @brief Given a tuple of tuples of extended per-relation contributions,  \f$ (t_0, t_1, \ldots,
+     * t_{\text{NUM_SUBRELATIONS}-1}) \f$ and a challenge \f$ \alpha \f$, scale them by the relation separator
+     * \f$\alpha\f$, extend to the correct degree, and take the sum multiplying by \f$pow_{\beta}\f$-contributions.
+     *
+     * @details This method receives as input the univariate accumulators computed by \ref
+     * accumulate_relation_univariates "accumulate relation univariates" after passing through the entire hypercube and
+     * applying \ref bb::RelationUtils::add_nested_tuples "add_nested_tuples" method to join the threads. The
+     * accumulators are scaled using the method \ref bb::RelationUtils< Flavor >::scale_univariates "scale univariates",
+     * extended to the degree \f$ D \f$ and summed with appropriate  \f$pow_{\beta}\f$-factors using \ref
+     * extend_and_batch_univariates "extend and batch univariates method" to return a vector \f$(\tilde{S}^i(0), \ldots,
+     * \tilde{S}^i(D))\f$.
+     *
+     * @param challenge Challenge \f$\alpha\f$.
+     * @param gate_sparators Round \f$pow_{\beta}\f$-factor given by  \f$ ( (1−u_i) + u_i\cdot \beta_i )\f$.
+     */
     fn batch_over_relations_univariates<F: PrimeField>(
-        univariate_accumulators: AllRelationAcc<F>,
+        mut univariate_accumulators: AllRelationAcc<F>,
         alphas: &[F; crate::NUM_ALPHAS],
         gate_sparators: &GateSeparatorPolynomial<F>,
     ) -> Univariate<F, { MAX_PARTIAL_RELATION_LENGTH + 1 }> {
         tracing::trace!("batch over relations");
 
-        let mut res = Univariate::<F, { MAX_PARTIAL_RELATION_LENGTH + 1 }>::default();
+        let running_challenge = F::one();
+        univariate_accumulators.scale(running_challenge, alphas);
 
-        let mut running_challenge = F::one();
+        let mut res = Univariate::<F, { MAX_PARTIAL_RELATION_LENGTH + 1 }>::default();
 
         todo!();
         res

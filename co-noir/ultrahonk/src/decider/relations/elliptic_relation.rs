@@ -11,6 +11,14 @@ pub(crate) struct EllipticRelationAcc<F: PrimeField> {
     pub(crate) r1: Univariate<F, 6>,
 }
 
+impl<F: PrimeField> EllipticRelationAcc<F> {
+    pub fn scale(&mut self, elements: &[F]) {
+        assert!(elements.len() == EllipticRelation::NUM_RELATIONS);
+        self.r0 *= elements[0];
+        self.r1 *= elements[1];
+    }
+}
+
 pub(crate) struct EllipticRelation {}
 
 impl EllipticRelation {

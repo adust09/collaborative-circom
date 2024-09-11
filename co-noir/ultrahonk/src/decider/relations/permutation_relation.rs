@@ -11,6 +11,14 @@ pub(crate) struct UltraPermutationRelationAcc<F: PrimeField> {
     pub(crate) r1: Univariate<F, 3>,
 }
 
+impl<F: PrimeField> UltraPermutationRelationAcc<F> {
+    pub fn scale(&mut self, elements: &[F]) {
+        assert!(elements.len() == UltraPermutationRelation::NUM_RELATIONS);
+        self.r0 *= elements[0];
+        self.r1 *= elements[1];
+    }
+}
+
 pub(crate) struct UltraPermutationRelation {}
 
 impl UltraPermutationRelation {

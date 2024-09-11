@@ -13,6 +13,16 @@ pub(crate) struct Poseidon2ExternalRelationAcc<F: PrimeField> {
     pub(crate) r3: Univariate<F, 7>,
 }
 
+impl<F: PrimeField> Poseidon2ExternalRelationAcc<F> {
+    pub fn scale(&mut self, elements: &[F]) {
+        assert!(elements.len() == Poseidon2ExternalRelation::NUM_RELATIONS);
+        self.r0 *= elements[0];
+        self.r1 *= elements[1];
+        self.r2 *= elements[2];
+        self.r3 *= elements[3];
+    }
+}
+
 pub(crate) struct Poseidon2ExternalRelation {}
 
 impl Poseidon2ExternalRelation {

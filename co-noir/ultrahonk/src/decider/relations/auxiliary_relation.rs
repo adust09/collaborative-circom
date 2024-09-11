@@ -29,6 +29,18 @@ pub(crate) struct AuxiliaryRelationAcc<F: PrimeField> {
     pub(crate) r5: Univariate<F, 6>,
 }
 
+impl<F: PrimeField> AuxiliaryRelationAcc<F> {
+    pub fn scale(&mut self, elements: &[F]) {
+        assert!(elements.len() == AuxiliaryRelation::NUM_RELATIONS);
+        self.r0 *= elements[0];
+        self.r1 *= elements[1];
+        self.r2 *= elements[2];
+        self.r3 *= elements[3];
+        self.r4 *= elements[4];
+        self.r5 *= elements[5];
+    }
+}
+
 pub(crate) struct AuxiliaryRelation {}
 
 impl AuxiliaryRelation {

@@ -13,6 +13,16 @@ pub(crate) struct DeltaRangeConstraintRelationAcc<F: PrimeField> {
     pub(crate) r3: Univariate<F, 6>,
 }
 
+impl<F: PrimeField> DeltaRangeConstraintRelationAcc<F> {
+    pub fn scale(&mut self, elements: &[F]) {
+        assert!(elements.len() == DeltaRangeConstraintRelation::NUM_RELATIONS);
+        self.r0 *= elements[0];
+        self.r1 *= elements[1];
+        self.r2 *= elements[2];
+        self.r3 *= elements[3];
+    }
+}
+
 pub(crate) struct DeltaRangeConstraintRelation {}
 
 impl DeltaRangeConstraintRelation {
