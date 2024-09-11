@@ -22,7 +22,7 @@ use crate::{
 use ark_ec::pairing::Pairing;
 use ark_ff::PrimeField;
 
-type SumcheckRoundOutput<F> = Univariate<F, { MAX_PARTIAL_RELATION_LENGTH + 1 }>;
+pub(crate) type SumcheckRoundOutput<F> = Univariate<F, { MAX_PARTIAL_RELATION_LENGTH + 1 }>;
 
 pub(crate) struct SumcheckRound {
     pub(crate) round_size: usize,
@@ -31,7 +31,7 @@ pub(crate) struct SumcheckRound {
 macro_rules! extend_macro {
     ($src:expr, $des:expr, $idx:expr, ($($el:ident),*)) => {{
         $(
-            Self::extend_to(&$src.$el, &mut $des.$el, $idx);
+            $des.$el.extend_from(&$src.$el[$idx..$idx+2]);
         )*
     }};
 }
@@ -40,21 +40,6 @@ impl SumcheckRound {
     pub(crate) fn new(initial_round_size: usize) -> Self {
         SumcheckRound {
             round_size: initial_round_size,
-        }
-    }
-
-    fn extend_to<F: PrimeField>(
-        poly: &[F],
-        res: &mut Univariate<F, MAX_PARTIAL_RELATION_LENGTH>,
-        idx: usize,
-    ) {
-        res.evaluations[0] = poly[idx];
-        res.evaluations[1] = poly[idx + 1];
-
-        // We only need to implement LENGTH = 2
-        let delta = res.evaluations[1] - res.evaluations[0];
-        for i in 2..MAX_PARTIAL_RELATION_LENGTH {
-            res.evaluations[i] = res.evaluations[i - 1] + delta;
         }
     }
 
@@ -144,6 +129,11 @@ impl SumcheckRound {
         univariate_accumulators: AllRelationAcc<F>,
         gate_sparators: &GateSeparatorPolynomial<F>,
     ) {
+        // Pow-Factor  \f$ (1-X) + X\beta_i \f$
+        let random_polynomial = [F::one(), gate_sparators.current_element()];
+        let mut extended_random_polynomial = SumcheckRoundOutput::default();
+        extended_random_polynomial.extend_from(&random_polynomial);
+
         todo!()
     }
 

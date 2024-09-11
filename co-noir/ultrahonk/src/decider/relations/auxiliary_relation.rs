@@ -1,5 +1,6 @@
 use super::Relation;
 use crate::decider::{
+    sumcheck_round::{SumcheckRound, SumcheckRoundOutput},
     types::{ProverUnivariates, RelationParameters},
     univariate::Univariate,
 };
@@ -38,6 +39,28 @@ impl<F: PrimeField> AuxiliaryRelationAcc<F> {
         self.r3 *= elements[3];
         self.r4 *= elements[4];
         self.r5 *= elements[5];
+    }
+
+    // TODO check the true
+    pub fn extend_and_batch_univariates(
+        &self,
+        result: &mut SumcheckRoundOutput<F>,
+        extended_random_poly: &SumcheckRoundOutput<F>,
+        partial_evaluation_result: &F,
+    ) {
+        self.r0.extend_and_batch_univariates(
+            result,
+            extended_random_poly,
+            partial_evaluation_result,
+            true,
+        );
+
+        self.r1.extend_and_batch_univariates(
+            result,
+            extended_random_poly,
+            partial_evaluation_result,
+            true,
+        );
     }
 }
 

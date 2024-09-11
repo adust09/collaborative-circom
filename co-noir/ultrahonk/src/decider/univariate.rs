@@ -7,6 +7,12 @@ pub struct Univariate<F: PrimeField, const SIZE: usize> {
 }
 
 impl<F: PrimeField, const SIZE: usize> Univariate<F, SIZE> {
+    pub const SIZE: usize = SIZE;
+
+    pub fn new(evaluations: [F; SIZE]) -> Self {
+        Self { evaluations }
+    }
+
     pub fn double(self) -> Self {
         let mut result = self;
         result.double_in_place();
@@ -29,6 +35,48 @@ impl<F: PrimeField, const SIZE: usize> Univariate<F, SIZE> {
         for i in 0..SIZE {
             self.evaluations[i].square_in_place();
         }
+    }
+
+    /**
+     * @brief Given a univariate f represented by {f(domain_start), ..., f(domain_end - 1)}, compute the
+     * evaluations {f(domain_end),..., f(extended_domain_end -1)} and return the Univariate represented by
+     * {f(domain_start),..., f(extended_domain_end -1)}
+     *
+     * @details Write v_i = f(x_i) on a the domain {x_{domain_start}, ..., x_{domain_end-1}}. To efficiently
+     * compute the needed values of f, we use the barycentric formula
+     *      - f(x) = B(x) Σ_{i=domain_start}^{domain_end-1} v_i / (d_i*(x-x_i))
+     * where
+     *      - B(x) = Π_{i=domain_start}^{domain_end-1} (x-x_i)
+     *      - d_i  = Π_{j ∈ {domain_start, ..., domain_end-1}, j≠i} (x_i-x_j) for i ∈ {domain_start, ...,
+     * domain_end-1}
+     *
+     * When the domain size is two, extending f = v0(1-X) + v1X to a new value involves just one addition
+     * and a subtraction: setting Δ = v1-v0, the values of f(X) are f(0)=v0, f(1)= v0 + Δ, v2 = f(1) + Δ, v3
+     * = f(2) + Δ...
+     *
+     */
+    pub(crate) fn extend_from(&mut self, poly: &[F]) {
+        self.evaluations[0] = poly[0];
+        self.evaluations[1] = poly[1];
+
+        // We only need to implement LENGTH = 2
+        // TODO this is not the case anymore...
+        assert_eq!(poly.len(), 2);
+        let delta = self.evaluations[1] - self.evaluations[0];
+        for i in 2..SIZE {
+            self.evaluations[i] = self.evaluations[i - 1] + delta;
+        }
+    }
+
+    pub(crate) fn extend_and_batch_univariates<const SIZE2: usize>(
+        &self,
+        result: &mut Univariate<F, SIZE2>,
+        extended_random_poly: &Univariate<F, SIZE2>,
+        partial_evaluation_result: &F,
+        linear_independant: bool,
+    ) {
+        // let extended =
+        todo!()
     }
 }
 
