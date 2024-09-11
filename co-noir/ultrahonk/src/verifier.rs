@@ -22,18 +22,18 @@ pub struct OpeningClaim<P: Pairing> {
     pub(crate) commitment: P::G1,
 }
 
-impl<P: Pairing> Default for UltraHonkVerifier<P> {
-    fn default() -> Self {
-        Self::new()
-    }
-}
+// impl<P: Pairing> Default for UltraHonkVerifier<P> {
+//     fn default() -> Self {
+//         Self::new()
+//     }
+// }
 
-impl<P: Pairing> UltraHonkVerifier<P> {
-    pub fn new() -> Self {
-        Self {
-            phantom_data: PhantomData,
-        }
-    }
+// impl<P: Pairing> UltraHonkVerifier<P> {
+//     pub fn new() -> Self {
+//         Self {
+//             phantom_data: PhantomData,
+//         }
+//     }
 
     pub fn verify(
         self,
