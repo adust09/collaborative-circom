@@ -7,6 +7,7 @@ pub struct ProverMemory<P: Pairing> {
     pub w_4: Vec<P::ScalarField>,             // column 3
     pub z_perm: Vec<P::ScalarField>,          // column 4
     pub lookup_inverses: Vec<P::ScalarField>, // column 5
+    pub z_perm_shift: Vec<P::ScalarField>, // TODO this is never calculated? also the permutation relation might always be skipped right now?
     pub public_input_delta: P::ScalarField,
     pub witness_commitments: WitnessCommitments<P>,
     pub challenges: Challenges<P::ScalarField>,
@@ -18,6 +19,7 @@ pub struct ProverUnivariates<F: PrimeField> {
     pub w_4: Univariate<F, MAX_PARTIAL_RELATION_LENGTH>, // column 3
     pub z_perm: Univariate<F, MAX_PARTIAL_RELATION_LENGTH>, // column 4
     pub lookup_inverses: Univariate<F, MAX_PARTIAL_RELATION_LENGTH>, // column 5
+    pub z_perm_shift: Univariate<F, MAX_PARTIAL_RELATION_LENGTH>, // TODO this is never calculated? also the permutation relation might always be skipped right now?
     pub polys: AllEntities<Univariate<F, MAX_PARTIAL_RELATION_LENGTH>>,
 }
 
@@ -128,6 +130,7 @@ impl<P: Pairing> Default for ProverMemory<P> {
             w_4: Default::default(),
             z_perm: Default::default(),
             lookup_inverses: Default::default(),
+            z_perm_shift: Default::default(),
             public_input_delta: Default::default(),
             witness_commitments: Default::default(),
             challenges: Default::default(),
@@ -141,6 +144,7 @@ impl<P: Pairing> From<crate::oink::types::ProverMemory<P>> for ProverMemory<P> {
             w_4: prover_memory.w_4,
             z_perm: prover_memory.z_perm,
             lookup_inverses: prover_memory.lookup_inverses,
+            z_perm_shift: Default::default(), // TODO where does it come from?
             public_input_delta: prover_memory.public_input_delta,
             witness_commitments: WitnessCommitments::from(prover_memory.witness_commitments),
             challenges: Challenges::from(prover_memory.challenges),

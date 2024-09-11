@@ -1,9 +1,10 @@
+pub(crate) mod permutation_relation;
 pub(crate) mod ultra_arithmetic_relation;
 
-use super::types::ProverUnivariates;
-use ark_ff::PrimeField;
+use super::types::{Challenges, ProverMemory, ProverUnivariates};
+use ark_ec::pairing::Pairing;
 
-pub(crate) trait Relation<F: PrimeField> {
+pub(crate) trait Relation<P: Pairing> {
     type Acc: Default;
     const SKIPPABLE: bool;
 
@@ -13,6 +14,11 @@ pub(crate) trait Relation<F: PrimeField> {
         }
     }
 
-    fn skip(input: &ProverUnivariates<F>) -> bool;
-    fn accumulate(input: &ProverUnivariates<F>, scaling_factor: &F) -> Self::Acc;
+    fn skip(input: &ProverUnivariates<P::ScalarField>) -> bool;
+    fn accumulate(
+        input: &ProverUnivariates<P::ScalarField>,
+        memory: &ProverMemory<P>,
+        challenges: &Challenges<P::ScalarField>,
+        scaling_factor: &P::ScalarField,
+    ) -> Self::Acc;
 }

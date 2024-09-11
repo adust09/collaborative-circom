@@ -1,6 +1,5 @@
 use super::prover::Decider;
 use crate::decider::sumcheck_round::SumcheckRound;
-use crate::oink::verifier::RelationParameters;
 use crate::{decider::types::GateSeparatorPolynomial, get_msb};
 use crate::{transcript, types::ProvingKey};
 use ark_ec::pairing::Pairing;

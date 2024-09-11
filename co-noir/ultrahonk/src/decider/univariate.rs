@@ -34,6 +34,16 @@ impl<F: PrimeField, const SIZE: usize> Add<&Self> for Univariate<F, SIZE> {
     }
 }
 
+impl<F: PrimeField, const SIZE: usize> Add<&F> for Univariate<F, SIZE> {
+    type Output = Self;
+
+    fn add(self, rhs: &F) -> Self::Output {
+        let mut result = self;
+        result += rhs;
+        result
+    }
+}
+
 impl<F: PrimeField, const SIZE: usize> AddAssign for Univariate<F, SIZE> {
     fn add_assign(&mut self, rhs: Self) {
         for i in 0..SIZE {
@@ -50,6 +60,14 @@ impl<F: PrimeField, const SIZE: usize> AddAssign<&Self> for Univariate<F, SIZE> 
     }
 }
 
+impl<F: PrimeField, const SIZE: usize> AddAssign<&F> for Univariate<F, SIZE> {
+    fn add_assign(&mut self, rhs: &F) {
+        for i in 0..SIZE {
+            self.evaluations[i] += rhs;
+        }
+    }
+}
+
 impl<F: PrimeField, const SIZE: usize> Sub<u64> for Univariate<F, SIZE> {
     type Output = Self;
 
@@ -57,6 +75,16 @@ impl<F: PrimeField, const SIZE: usize> Sub<u64> for Univariate<F, SIZE> {
         let mut result = self;
         let rhs = F::from(rhs);
 
+        result -= rhs;
+        result
+    }
+}
+
+impl<F: PrimeField, const SIZE: usize> Sub for Univariate<F, SIZE> {
+    type Output = Self;
+
+    fn sub(self, rhs: Self) -> Self::Output {
+        let mut result = self;
         result -= rhs;
         result
     }
@@ -76,6 +104,14 @@ impl<F: PrimeField, const SIZE: usize> SubAssign<F> for Univariate<F, SIZE> {
     fn sub_assign(&mut self, rhs: F) {
         for i in 0..SIZE {
             self.evaluations[i] -= rhs;
+        }
+    }
+}
+
+impl<F: PrimeField, const SIZE: usize> SubAssign for Univariate<F, SIZE> {
+    fn sub_assign(&mut self, rhs: Self) {
+        for i in 0..SIZE {
+            self.evaluations[i] -= rhs.evaluations[i];
         }
     }
 }

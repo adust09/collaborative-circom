@@ -1,11 +1,12 @@
 use super::{
     relations::{ultra_arithmetic_relation::UltraArithmeticRelation, Relation},
-    types::{GateSeparatorPolynomial, ProverMemory, MAX_PARTIAL_RELATION_LENGTH},
+    types::{Challenges, GateSeparatorPolynomial, ProverMemory, MAX_PARTIAL_RELATION_LENGTH},
     univariate::Univariate,
 };
 use crate::{
-    decider::types::ProverUnivariates,
-    oink::verifier::RelationParameters,
+    decider::{
+        relations::permutation_relation::UltraPermutationRelation, types::ProverUnivariates,
+    },
     types::{Polynomials, ProvingKey},
 };
 use ark_ec::pairing::Pairing;
@@ -56,7 +57,7 @@ impl SumcheckRound {
             &prover_memory,
             extended_edges,
             edge_index,
-            (w_4, z_perm, lookup_inverses)
+            (w_4, z_perm, z_perm_shift, lookup_inverses)
         );
 
         // WitnessEntities
@@ -107,28 +108,37 @@ impl SumcheckRound {
         );
     }
 
-    fn accumulate_one_relation_univariates<P: Pairing, R: Relation<P::ScalarField>>(
+    fn accumulate_one_relation_univariates<P: Pairing, R: Relation<P>>(
         // acc
         extended_edges: &ProverUnivariates<P::ScalarField>,
-        relation_parameters: RelationParameters<P>,
+        memory: &ProverMemory<P>,
+        challenges: &Challenges<P::ScalarField>,
         scaling_factor: &P::ScalarField,
     ) -> R::Acc {
         if R::SKIPPABLE && R::skip(extended_edges) {
             return R::Acc::default();
         }
 
-        R::accumulate(extended_edges, scaling_factor)
+        R::accumulate(extended_edges, memory, challenges, scaling_factor)
     }
 
     fn accumulate_relation_univariates<P: Pairing>(
         // acc
         extended_edges: &ProverUnivariates<P::ScalarField>,
-        relation_parameters: RelationParameters<P>,
+        memory: &ProverMemory<P>,
+        challenges: &Challenges<P::ScalarField>,
         scaling_factor: &P::ScalarField,
     ) {
         let r1 = Self::accumulate_one_relation_univariates::<P, UltraArithmeticRelation>(
             extended_edges,
-            relation_parameters,
+            memory,
+            challenges,
+            scaling_factor,
+        );
+        let r2 = Self::accumulate_one_relation_univariates::<P, UltraPermutationRelation>(
+            extended_edges,
+            memory,
+            challenges,
             scaling_factor,
         );
         todo!()
@@ -137,7 +147,7 @@ impl SumcheckRound {
     pub(crate) fn compute_univariate<P: Pairing>(
         &self,
         round_index: usize,
-        relation_parameters: RelationParameters<P>,
+        challenges: &Challenges<P::ScalarField>,
         gate_sparators: GateSeparatorPolynomial<P::ScalarField>,
         alphas: [P::ScalarField; crate::NUM_ALPHAS],
         prover_memory: &ProverMemory<P>,

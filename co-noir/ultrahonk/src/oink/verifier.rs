@@ -1,5 +1,3 @@
-use std::marker::PhantomData;
-
 use crate::oink::types::WitnessCommitments;
 use crate::transcript::Keccak256Transcript;
 use crate::types::VerifyingKey;
@@ -7,6 +5,7 @@ use crate::{prover, NUM_ALPHAS};
 use ark_ec::pairing::Pairing;
 use ark_ff::Field;
 use prover::HonkProofError;
+use std::marker::PhantomData;
 
 pub(crate) struct OinkOutput<P: Pairing> {
     relation_parameters: RelationParameters<P>,
