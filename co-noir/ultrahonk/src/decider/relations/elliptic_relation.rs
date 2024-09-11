@@ -1,4 +1,5 @@
 use super::Relation;
+use crate::decider::sumcheck_round::SumcheckRoundOutput;
 use crate::decider::types::RelationParameters;
 use crate::decider::{types::ProverUnivariates, univariate::Univariate};
 use ark_ec::short_weierstrass::SWCurveConfig;
@@ -16,6 +17,27 @@ impl<F: PrimeField> EllipticRelationAcc<F> {
         assert!(elements.len() == EllipticRelation::NUM_RELATIONS);
         self.r0 *= elements[0];
         self.r1 *= elements[1];
+    }
+
+    pub fn extend_and_batch_univariates(
+        &self,
+        result: &mut SumcheckRoundOutput<F>,
+        extended_random_poly: &SumcheckRoundOutput<F>,
+        partial_evaluation_result: &F,
+    ) {
+        self.r0.extend_and_batch_univariates(
+            result,
+            extended_random_poly,
+            partial_evaluation_result,
+            true,
+        );
+
+        self.r1.extend_and_batch_univariates(
+            result,
+            extended_random_poly,
+            partial_evaluation_result,
+            true,
+        );
     }
 }
 

@@ -41,7 +41,6 @@ impl<F: PrimeField> AuxiliaryRelationAcc<F> {
         self.r5 *= elements[5];
     }
 
-    // TODO check the true
     pub fn extend_and_batch_univariates(
         &self,
         result: &mut SumcheckRoundOutput<F>,
@@ -56,6 +55,34 @@ impl<F: PrimeField> AuxiliaryRelationAcc<F> {
         );
 
         self.r1.extend_and_batch_univariates(
+            result,
+            extended_random_poly,
+            partial_evaluation_result,
+            true,
+        );
+
+        self.r2.extend_and_batch_univariates(
+            result,
+            extended_random_poly,
+            partial_evaluation_result,
+            true,
+        );
+
+        self.r3.extend_and_batch_univariates(
+            result,
+            extended_random_poly,
+            partial_evaluation_result,
+            true,
+        );
+
+        self.r4.extend_and_batch_univariates(
+            result,
+            extended_random_poly,
+            partial_evaluation_result,
+            true,
+        );
+
+        self.r5.extend_and_batch_univariates(
             result,
             extended_random_poly,
             partial_evaluation_result,

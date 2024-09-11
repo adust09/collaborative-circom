@@ -2,6 +2,7 @@ use std::str::FromStr;
 
 use super::Relation;
 use crate::decider::{
+    sumcheck_round::SumcheckRoundOutput,
     types::{ProverUnivariates, RelationParameters},
     univariate::Univariate,
 };
@@ -44,6 +45,41 @@ impl<F: PrimeField> Poseidon2InternalRelationAcc<F> {
         self.r1 *= elements[1];
         self.r2 *= elements[2];
         self.r3 *= elements[3];
+    }
+
+    pub fn extend_and_batch_univariates(
+        &self,
+        result: &mut SumcheckRoundOutput<F>,
+        extended_random_poly: &SumcheckRoundOutput<F>,
+        partial_evaluation_result: &F,
+    ) {
+        self.r0.extend_and_batch_univariates(
+            result,
+            extended_random_poly,
+            partial_evaluation_result,
+            true,
+        );
+
+        self.r1.extend_and_batch_univariates(
+            result,
+            extended_random_poly,
+            partial_evaluation_result,
+            true,
+        );
+
+        self.r2.extend_and_batch_univariates(
+            result,
+            extended_random_poly,
+            partial_evaluation_result,
+            true,
+        );
+
+        self.r3.extend_and_batch_univariates(
+            result,
+            extended_random_poly,
+            partial_evaluation_result,
+            true,
+        );
     }
 }
 
