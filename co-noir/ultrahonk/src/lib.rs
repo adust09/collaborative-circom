@@ -5,7 +5,7 @@ pub(crate) mod oink;
 pub mod prover;
 mod transcript;
 mod types;
-// pub mod verifier;
+mod verifier;
 
 // from http://supertech.csail.mit.edu/papers/debruijn.pdf
 pub(crate) fn get_msb(inp: u32) -> u8 {
