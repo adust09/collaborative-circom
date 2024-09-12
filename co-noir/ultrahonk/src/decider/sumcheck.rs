@@ -1,7 +1,7 @@
 use super::prover::Decider;
 use super::types::MemoryElements;
 use crate::decider::sumcheck_round::{SumcheckRound, SumcheckRoundOutput};
-use crate::decider::types::PartiallyEvaluatePolys;
+use crate::decider::types::{ClaimedEvaluations, PartiallyEvaluatePolys};
 use crate::transcript::Keccak256Transcript;
 use crate::types::{Polynomials, ProvingKey};
 use crate::CONST_PROOF_SIZE_LOG_N;
@@ -17,6 +17,14 @@ macro_rules! partially_evaluate_macro {
             } else {
                 Self::partially_evaluate_poly(&$src.$el, &mut $des.$el, $round_size, $round_challenge);
             }
+        )*
+    }};
+}
+
+macro_rules! transcipt_macro {
+    ($transcipt:expr, $src:expr, ($($el:ident),*)) => {{
+        $(
+            $transcipt.add_scalar($src.$el);
         )*
     }};
 }
@@ -93,6 +101,65 @@ impl<P: Pairing> Decider<P> {
             round_size,
             round_challenge,
             INPLACE,
+            (
+                q_m,
+                q_c,
+                q_l,
+                q_r,
+                q_o,
+                q_4,
+                q_arith,
+                q_delta_range,
+                q_elliptic,
+                q_aux,
+                q_lookup,
+                q_poseidon2_external,
+                q_poseidon2_internal,
+                sigma_1,
+                sigma_2,
+                sigma_3,
+                sigma_4,
+                id_1,
+                id_2,
+                id_3,
+                id_4,
+                table_1,
+                table_2,
+                table_3,
+                table_4,
+                lagrange_first,
+                lagrange_last
+            )
+        );
+    }
+
+    pub(crate) fn add_evals_to_transcript(
+        transcript: &mut Keccak256Transcript<P>,
+        evaluations: &ClaimedEvaluations<P::ScalarField>,
+    ) {
+        tracing::trace!("Add Evals to Transcript");
+
+        // Memory
+        transcipt_macro!(
+            transcript,
+            &evaluations.memory,
+            (w_4, z_perm, z_perm_shift, lookup_inverses)
+        );
+
+        // WitnessEntities
+        transcipt_macro!(
+            transcript,
+            &evaluations.polys.witness,
+            (w_l, w_r, w_o, lookup_read_counts, lookup_read_tags)
+        );
+
+        // ShiftedWitnessEntities
+        transcipt_macro!(transcript, &evaluations.polys.shifted, (w_l, w_r, w_o, w_4));
+
+        // PrecomputedEntities
+        transcipt_macro!(
+            transcript,
+            &evaluations.polys.precomputed,
             (
                 q_m,
                 q_c,
@@ -233,6 +300,11 @@ impl<P: Pairing> Decider<P> {
 
         // Claimed evaluations of Prover polynomials are extracted and added to the transcript. When Flavor has ZK, the
         // evaluations of all witnesses are masked.
+        let mut multivariate_evaluations = ClaimedEvaluations::default();
+        todo!();
+
+        transcript_inout.add_scalar(round_challenge);
+        Self::add_evals_to_transcript(&mut transcript, &multivariate_evaluations);
 
         todo!("continue")
     }

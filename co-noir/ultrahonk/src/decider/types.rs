@@ -23,6 +23,12 @@ pub struct PartiallyEvaluatePolys<F: PrimeField> {
 }
 
 #[derive(Default)]
+pub struct ClaimedEvaluations<F: PrimeField> {
+    pub memory: MemoryElements<F>,
+    pub polys: AllEntities<F>,
+}
+
+#[derive(Default)]
 pub struct MemoryElements<T> {
     pub w_4: T,             // column 3
     pub z_perm: T,          // column 4
