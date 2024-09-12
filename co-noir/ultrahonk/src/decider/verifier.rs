@@ -11,40 +11,40 @@ use ark_ec::VariableBaseMSM;
 use ark_ff::Field;
 use std::{io, marker::PhantomData};
 
-// pub struct DeciderVerifier<P: Pairing> {
-//     phantom_data: PhantomData<P>,
-// }
+pub struct DeciderVerifier<P: Pairing> {
+    phantom_data: PhantomData<P>,
+}
 
-// impl<P: Pairing> Default for DeciderVerifier<P> {
-//     fn default() -> Self {
-//         Self::new()
-//     }
-// }
+impl<P: Pairing> Default for DeciderVerifier<P> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
-// impl<P: Pairing> DeciderVerifier<P> {
-//     pub fn new() -> Self {
-//         Self {
-//             phantom_data: PhantomData,
-//         }
-//     }
-//     pub fn verify(
-//         self,
-//         honk_proof: PhantomData<P>,
-//         vk: VerifyingKey<P>,
-//         public_inputs: Vec<P::ScalarField>,
-//         relation_parameters: RelationParameters<P>, //weg damit
-//         witness_comms: WitnessCommitments<P>,       //weg damit
-//     ) -> bool {
-//         // tracing::trace!("Decider verification");
-//         let mut transcript = Keccak256Transcript::<P>::default();
-//         let log_circuit_size = get_msb(vk.circuit_size.clone());
-//         let oink_output = oink::verifier::OinkVerifier::<P>::new(
-//             transcript,
-//             vk,
-//             relation_parameters,
-//             witness_comms,
-//         )
-//         .verify(public_inputs);
+impl<P: Pairing> DeciderVerifier<P> {
+    pub fn new() -> Self {
+        Self {
+            phantom_data: PhantomData,
+        }
+    }
+    pub fn verify(
+        self,
+        honk_proof: PhantomData<P>,
+        vk: VerifyingKey<P>,
+        public_inputs: Vec<P::ScalarField>,
+        relation_parameters: RelationParameters<P>, //weg damit
+        witness_comms: WitnessCommitments<P>,       //weg damit
+    ) -> bool {
+        // tracing::trace!("Decider verification");
+        let mut transcript = Keccak256Transcript::<P>::default();
+        let log_circuit_size = get_msb(vk.circuit_size.clone());
+        let oink_output = oink::verifier::OinkVerifier::<P>::new(
+            transcript,
+            vk,
+            relation_parameters,
+            witness_comms,
+        )
+        .verify(public_inputs);
 
         let mut transcript = Keccak256Transcript::<P>::default();
         let mut gate_challenges = Vec::with_capacity(log_circuit_size as usize);
