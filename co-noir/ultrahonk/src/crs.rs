@@ -30,6 +30,9 @@ struct Manifest {
 }
 
 // Barretenberg changed the structure for the .dat files, therefore there are two slightly different implementations
+// the new one (when installing) barretenberg can be found under ~/.bb-crs (or downloaded from https://aztec-ignition.s3.amazonaws.com/MAIN%20IGNITION/flat/g1.dat or g2.dat, but the first one is 6 gb large)
+// the older ones can be downloaded with ~/aztec-packages/barretenberg/cpp/srs_db/download_srs.sh (iirc), these are separated into 20 files, for info see also ~/aztec-packages/barretenberg/cpp/srs_db/transcript_spec.md
+
 struct NewFileStructure<P: Pairing> {
     phantom_data: PhantomData<P>,
 }
