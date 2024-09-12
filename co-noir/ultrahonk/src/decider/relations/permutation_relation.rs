@@ -52,14 +52,14 @@ impl UltraPermutationRelation {
         input: &ProverUnivariates<F>,
         relation_parameters: &RelationParameters<F>,
     ) -> Univariate<F, 7> {
-        let w_1 = &input.polys.witness.w_l;
-        let w_2 = &input.polys.witness.w_r;
-        let w_3 = &input.polys.witness.w_o;
+        let w_1 = input.polys.witness.w_l();
+        let w_2 = input.polys.witness.w_r();
+        let w_3 = input.polys.witness.w_o();
         let w_4 = &input.memory.w_4;
-        let id_1 = &input.polys.precomputed.id_1;
-        let id_2 = &input.polys.precomputed.id_2;
-        let id_3 = &input.polys.precomputed.id_3;
-        let id_4 = &input.polys.precomputed.id_4;
+        let id_1 = input.polys.precomputed.id_1();
+        let id_2 = input.polys.precomputed.id_2();
+        let id_3 = input.polys.precomputed.id_3();
+        let id_4 = input.polys.precomputed.id_4();
 
         let beta = &relation_parameters.beta;
         let gamma = &relation_parameters.gamma;
@@ -75,14 +75,14 @@ impl UltraPermutationRelation {
         input: &ProverUnivariates<F>,
         relation_parameters: &RelationParameters<F>,
     ) -> Univariate<F, 7> {
-        let w_1 = &input.polys.witness.w_l;
-        let w_2 = &input.polys.witness.w_r;
-        let w_3 = &input.polys.witness.w_o;
+        let w_1 = input.polys.witness.w_l();
+        let w_2 = input.polys.witness.w_r();
+        let w_3 = input.polys.witness.w_o();
         let w_4 = &input.memory.w_4;
-        let sigma_1 = &input.polys.precomputed.sigma_1;
-        let sigma_2 = &input.polys.precomputed.sigma_2;
-        let sigma_3 = &input.polys.precomputed.sigma_3;
-        let sigma_4 = &input.polys.precomputed.sigma_4;
+        let sigma_1 = input.polys.precomputed.sigma_1();
+        let sigma_2 = input.polys.precomputed.sigma_2();
+        let sigma_3 = input.polys.precomputed.sigma_3();
+        let sigma_4 = input.polys.precomputed.sigma_4();
 
         let beta = &relation_parameters.beta;
         let gamma = &relation_parameters.gamma;
@@ -133,8 +133,8 @@ impl<F: PrimeField> Relation<F> for UltraPermutationRelation {
         let public_input_delta = &relation_parameters.public_input_delta;
         let z_perm = &input.memory.z_perm;
         let z_perm_shift = &input.memory.z_perm_shift;
-        let lagrange_first = &input.polys.precomputed.lagrange_first;
-        let lagrange_last = &input.polys.precomputed.lagrange_last;
+        let lagrange_first = input.polys.precomputed.lagrange_first();
+        let lagrange_last = input.polys.precomputed.lagrange_last();
 
         // witness degree: deg 5 - deg 5 = deg 5
         // total degree: deg 9 - deg 10 = deg 10

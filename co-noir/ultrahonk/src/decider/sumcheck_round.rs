@@ -57,57 +57,9 @@ impl SumcheckRound {
             (w_4, z_perm, z_perm_shift, lookup_inverses)
         );
 
-        // WitnessEntities
-        extend_macro!(
-            &multivariates.witness,
-            &mut extended_edges.polys.witness,
-            edge_index,
-            (w_l, w_r, w_o, lookup_read_counts, lookup_read_tags)
-        );
-
-        // ShiftedWitnessEntities
-        extend_macro!(
-            &multivariates.shifted,
-            &mut extended_edges.polys.shifted,
-            edge_index,
-            (w_l, w_r, w_o, w_4)
-        );
-
-        // PrecomputedEntities
-        extend_macro!(
-            &multivariates.precomputed,
-            &mut extended_edges.polys.precomputed,
-            edge_index,
-            (
-                q_m,
-                q_c,
-                q_l,
-                q_r,
-                q_o,
-                q_4,
-                q_arith,
-                q_delta_range,
-                q_elliptic,
-                q_aux,
-                q_lookup,
-                q_poseidon2_external,
-                q_poseidon2_internal,
-                sigma_1,
-                sigma_2,
-                sigma_3,
-                sigma_4,
-                id_1,
-                id_2,
-                id_3,
-                id_4,
-                table_1,
-                table_2,
-                table_3,
-                table_4,
-                lagrange_first,
-                lagrange_last
-            )
-        );
+        for (src, des) in multivariates.iter().zip(extended_edges.polys.iter_mut()) {
+            des.extend_from(&src[edge_index..edge_index + 2]);
+        }
     }
 
     /**

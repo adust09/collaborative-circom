@@ -74,65 +74,16 @@ impl<P: Pairing> Decider<P> {
             (w_4, z_perm, z_perm_shift, lookup_inverses)
         );
 
-        // WitnessEntities
-        partially_evaluate_macro!(
-            &polys.witness,
-            &mut partially_evaluated_poly.polys.witness,
-            round_size,
-            round_challenge,
-            INPLACE,
-            (w_l, w_r, w_o, lookup_read_counts, lookup_read_tags)
-        );
-
-        // ShiftedWitnessEntities
-        partially_evaluate_macro!(
-            &polys.shifted,
-            &mut partially_evaluated_poly.polys.shifted,
-            round_size,
-            round_challenge,
-            INPLACE,
-            (w_l, w_r, w_o, w_4)
-        );
-
-        // PrecomputedEntities
-        partially_evaluate_macro!(
-            &polys.precomputed,
-            &mut partially_evaluated_poly.polys.precomputed,
-            round_size,
-            round_challenge,
-            INPLACE,
-            (
-                q_m,
-                q_c,
-                q_l,
-                q_r,
-                q_o,
-                q_4,
-                q_arith,
-                q_delta_range,
-                q_elliptic,
-                q_aux,
-                q_lookup,
-                q_poseidon2_external,
-                q_poseidon2_internal,
-                sigma_1,
-                sigma_2,
-                sigma_3,
-                sigma_4,
-                id_1,
-                id_2,
-                id_3,
-                id_4,
-                table_1,
-                table_2,
-                table_3,
-                table_4,
-                lagrange_first,
-                lagrange_last
-            )
-        );
+        for (src, des) in polys.iter().zip(partially_evaluated_poly.polys.iter_mut()) {
+            if INPLACE {
+                Self::partially_evaluate_poly_inplace(des, round_size, round_challenge);
+            } else {
+                Self::partially_evaluate_poly(src, des, round_size, round_challenge);
+            }
+        }
     }
 
+    // TODO order is probably wrong
     pub(crate) fn add_evals_to_transcript(
         transcript: &mut Keccak256Transcript<P>,
         evaluations: &ClaimedEvaluations<P::ScalarField>,
@@ -147,49 +98,9 @@ impl<P: Pairing> Decider<P> {
         );
 
         // WitnessEntities
-        transcipt_macro!(
-            transcript,
-            &evaluations.polys.witness,
-            (w_l, w_r, w_o, lookup_read_counts, lookup_read_tags)
-        );
-
-        // ShiftedWitnessEntities
-        transcipt_macro!(transcript, &evaluations.polys.shifted, (w_l, w_r, w_o, w_4));
-
-        // PrecomputedEntities
-        transcipt_macro!(
-            transcript,
-            &evaluations.polys.precomputed,
-            (
-                q_m,
-                q_c,
-                q_l,
-                q_r,
-                q_o,
-                q_4,
-                q_arith,
-                q_delta_range,
-                q_elliptic,
-                q_aux,
-                q_lookup,
-                q_poseidon2_external,
-                q_poseidon2_internal,
-                sigma_1,
-                sigma_2,
-                sigma_3,
-                sigma_4,
-                id_1,
-                id_2,
-                id_3,
-                id_4,
-                table_1,
-                table_2,
-                table_3,
-                table_4,
-                lagrange_first,
-                lagrange_last
-            )
-        );
+        for src in evaluations.polys.iter() {
+            transcript.add_scalar(*src);
+        }
     }
 
     pub(crate) fn sumcheck_prove(

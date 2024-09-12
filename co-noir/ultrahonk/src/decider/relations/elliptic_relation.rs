@@ -57,7 +57,7 @@ impl<F: PrimeField> Relation<F> for EllipticRelation
 
     fn skip(input: &ProverUnivariates<F>) -> bool {
         <Self as Relation<F>>::check_skippable();
-        input.polys.precomputed.q_elliptic.is_zero()
+        input.polys.precomputed.q_elliptic().is_zero()
     }
 
     /**
@@ -82,17 +82,17 @@ impl<F: PrimeField> Relation<F> for EllipticRelation
         // replace old addition relations with these ones and
         // remove endomorphism coefficient in ecc add gate(not used))
 
-        let x_1 = &input.polys.witness.w_r;
-        let y_1 = &input.polys.witness.w_o;
+        let x_1 = input.polys.witness.w_r();
+        let y_1 = input.polys.witness.w_o();
 
-        let x_2 = &input.polys.shifted.w_l;
-        let y_2 = &input.polys.shifted.w_4;
-        let x_3 = &input.polys.shifted.w_o;
-        let y_3 = &input.polys.shifted.w_r;
+        let x_2 = input.polys.shifted.w_l();
+        let y_2 = input.polys.shifted.w_4();
+        let x_3 = input.polys.shifted.w_o();
+        let y_3 = input.polys.shifted.w_r();
 
-        let q_sign = &input.polys.precomputed.q_l;
-        let q_elliptic = &input.polys.precomputed.q_elliptic;
-        let q_is_double = &input.polys.precomputed.q_m;
+        let q_sign = input.polys.precomputed.q_l();
+        let q_elliptic = input.polys.precomputed.q_elliptic();
+        let q_is_double = input.polys.precomputed.q_m();
 
         // Contribution (1) point addition, x-coordinate check
         // q_elliptic * (x3 + x2 + x1)(x2 - x1)(x2 - x1) - y2^2 - y1^2 + 2(y2y1)*q_sign = 0

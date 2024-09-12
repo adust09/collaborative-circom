@@ -23,55 +23,22 @@ pub struct AllEntities<T: Default> {
     pub shifted: ShiftedWitnessEntities<T>,
 }
 
-#[derive(Default)]
-pub struct WitnessEntities<T: Default> {
-    pub w_l: T, // column 0
-    pub w_r: T, // column 1
-    pub w_o: T, // column 2
-    // pub w_4: T, // column 3 -> computed by prover
-    // pub z_perm : T, // column 4 -> computed by prover
-    // pub lookup_inverses: T,    // column 5 -> computed by prover
-    pub lookup_read_counts: T, // column 6
-    pub lookup_read_tags: T,   // column 7
-}
+impl<T: Default> AllEntities<T> {
+    pub fn iter(&self) -> impl Iterator<Item = &T> {
+        self.witness
+            .elements
+            .iter()
+            .chain(self.precomputed.elements.iter())
+            .chain(self.shifted.elements.iter())
+    }
 
-#[derive(Default)]
-pub struct ShiftedWitnessEntities<T: Default> {
-    pub w_l: T, // column 0
-    pub w_r: T, // column 1
-    pub w_o: T, // column 2
-    pub w_4: T, // column 3 // TODO right place? shifted by the prover? Same as z_perm_shift?
-}
-
-#[derive(Default)]
-pub struct PrecomputedEntities<T: Default> {
-    pub q_m: T,                  // column 0
-    pub q_c: T,                  // column 1
-    pub q_l: T,                  // column 2
-    pub q_r: T,                  // column 3
-    pub q_o: T,                  // column 4
-    pub q_4: T,                  // column 5
-    pub q_arith: T,              // column 6
-    pub q_delta_range: T,        // column 7
-    pub q_elliptic: T,           // column 8
-    pub q_aux: T,                // column 9
-    pub q_lookup: T,             // column 10
-    pub q_poseidon2_external: T, // column 11
-    pub q_poseidon2_internal: T, // column 12
-    pub sigma_1: T,              // column 13
-    pub sigma_2: T,              // column 14
-    pub sigma_3: T,              // column 15
-    pub sigma_4: T,              // column 16
-    pub id_1: T,                 // column 17
-    pub id_2: T,                 // column 18
-    pub id_3: T,                 // column 19
-    pub id_4: T,                 // column 20
-    pub table_1: T,              // column 21
-    pub table_2: T,              // column 22
-    pub table_3: T,              // column 23
-    pub table_4: T,              // column 24
-    pub lagrange_first: T,       // column 25
-    pub lagrange_last: T,        // column 26
+    pub fn iter_mut(&mut self) -> impl Iterator<Item = &mut T> {
+        self.witness
+            .elements
+            .iter_mut()
+            .chain(self.precomputed.elements.iter_mut())
+            .chain(self.shifted.elements.iter_mut())
+    }
 }
 
 pub struct VerifyingKey<P: Pairing> {
@@ -80,4 +47,212 @@ pub struct VerifyingKey<P: Pairing> {
     pub num_public_inputs: u32,
     pub pub_inputs_offset: u32,
     pub polynomials: Polynomials<P::ScalarField>,
+}
+
+#[derive(Default)]
+pub struct WitnessEntities<T: Default> {
+    pub elements: [T; 5],
+}
+
+#[derive(Default)]
+pub struct ShiftedWitnessEntities<T: Default> {
+    pub elements: [T; 4],
+}
+
+#[derive(Default)]
+pub struct PrecomputedEntities<T: Default> {
+    pub elements: [T; 27],
+}
+
+impl<T: Default> WitnessEntities<T> {
+    const W_L: usize = 0; // column 0
+    const W_R: usize = 1; // column 1
+    const W_O: usize = 2; // column 2
+    const LOOKUP_READ_COUNTS: usize = 3; // column 6
+    const LOOKUP_READ_TAGS: usize = 4; // column 7
+
+    // const W_4: usize  // column 3 (computed by prover)
+    // const Z_PERM: usize  // column 4 (computed by prover)
+    // const LOOKUP_INVERSES: usize // column 5 (computed by prover);
+
+    pub fn w_l(&self) -> &T {
+        &self.elements[Self::W_L]
+    }
+
+    pub fn w_r(&self) -> &T {
+        &self.elements[Self::W_R]
+    }
+
+    pub fn w_o(&self) -> &T {
+        &self.elements[Self::W_O]
+    }
+
+    pub fn lookup_read_counts(&self) -> &T {
+        &self.elements[Self::LOOKUP_READ_COUNTS]
+    }
+
+    pub fn lookup_read_tags(&self) -> &T {
+        &self.elements[Self::LOOKUP_READ_TAGS]
+    }
+}
+
+impl<T: Default> ShiftedWitnessEntities<T> {
+    const W_L: usize = 0; // column 0
+    const W_R: usize = 1; // column 1
+    const W_O: usize = 2; // column 2
+    const W_4: usize = 3; // column 3 // TODO right place? shifted by the prover? Same as z_perm_shift?
+
+    pub fn w_l(&self) -> &T {
+        &self.elements[Self::W_L]
+    }
+
+    pub fn w_r(&self) -> &T {
+        &self.elements[Self::W_R]
+    }
+
+    pub fn w_o(&self) -> &T {
+        &self.elements[Self::W_O]
+    }
+
+    pub fn w_4(&self) -> &T {
+        &self.elements[Self::W_4]
+    }
+}
+
+impl<T: Default> PrecomputedEntities<T> {
+    const Q_M: usize = 0; // column 0
+    const Q_C: usize = 1; // column 1
+    const Q_L: usize = 2; // column 2
+    const Q_R: usize = 3; // column 3
+    const Q_O: usize = 4; // column 4
+    const Q_4: usize = 5; // column 5
+    const Q_ARITH: usize = 6; // column 6
+    const Q_DELTA_RANGE: usize = 7; // column 7
+    const Q_ELLIPTIC: usize = 8; // column 8
+    const Q_AUX: usize = 9; // column 9
+    const Q_LOOKUP: usize = 10; // column 10
+    const Q_POSEIDON2_EXTERNAL: usize = 11; // column 11
+    const Q_POSEIDON2_INTERNAL: usize = 12; // column 12
+    const SIGMA_1: usize = 13; // column 13
+    const SIGMA_2: usize = 14; // column 14
+    const SIGMA_3: usize = 15; // column 15
+    const SIGMA_4: usize = 16; // column 16
+    const ID_1: usize = 17; // column 17
+    const ID_2: usize = 18; // column 18
+    const ID_3: usize = 19; // column 19
+    const ID_4: usize = 20; // column 20
+    const TABLE_1: usize = 21; // column 21
+    const TABLE_2: usize = 22; // column 22
+    const TABLE_3: usize = 23; // column 23
+    const TABLE_4: usize = 24; // column 24
+    const LAGRANGE_FIRST: usize = 25; // column 25
+    const LAGRANGE_LAST: usize = 26; // column 26
+
+    pub fn q_m(&self) -> &T {
+        &self.elements[Self::Q_M]
+    }
+
+    pub fn q_c(&self) -> &T {
+        &self.elements[Self::Q_C]
+    }
+
+    pub fn q_l(&self) -> &T {
+        &self.elements[Self::Q_L]
+    }
+
+    pub fn q_r(&self) -> &T {
+        &self.elements[Self::Q_R]
+    }
+
+    pub fn q_o(&self) -> &T {
+        &self.elements[Self::Q_O]
+    }
+
+    pub fn q_4(&self) -> &T {
+        &self.elements[Self::Q_4]
+    }
+
+    pub fn q_arith(&self) -> &T {
+        &self.elements[Self::Q_ARITH]
+    }
+
+    pub fn q_delta_range(&self) -> &T {
+        &self.elements[Self::Q_DELTA_RANGE]
+    }
+
+    pub fn q_elliptic(&self) -> &T {
+        &self.elements[Self::Q_ELLIPTIC]
+    }
+
+    pub fn q_aux(&self) -> &T {
+        &self.elements[Self::Q_AUX]
+    }
+
+    pub fn q_lookup(&self) -> &T {
+        &self.elements[Self::Q_LOOKUP]
+    }
+
+    pub fn q_poseidon2_external(&self) -> &T {
+        &self.elements[Self::Q_POSEIDON2_EXTERNAL]
+    }
+
+    pub fn q_poseidon2_internal(&self) -> &T {
+        &self.elements[Self::Q_POSEIDON2_INTERNAL]
+    }
+
+    pub fn sigma_1(&self) -> &T {
+        &self.elements[Self::SIGMA_1]
+    }
+
+    pub fn sigma_2(&self) -> &T {
+        &self.elements[Self::SIGMA_2]
+    }
+
+    pub fn sigma_3(&self) -> &T {
+        &self.elements[Self::SIGMA_3]
+    }
+
+    pub fn sigma_4(&self) -> &T {
+        &self.elements[Self::SIGMA_4]
+    }
+
+    pub fn id_1(&self) -> &T {
+        &self.elements[Self::ID_1]
+    }
+
+    pub fn id_2(&self) -> &T {
+        &self.elements[Self::ID_2]
+    }
+
+    pub fn id_3(&self) -> &T {
+        &self.elements[Self::ID_3]
+    }
+
+    pub fn id_4(&self) -> &T {
+        &self.elements[Self::ID_4]
+    }
+
+    pub fn table_1(&self) -> &T {
+        &self.elements[Self::TABLE_1]
+    }
+
+    pub fn table_2(&self) -> &T {
+        &self.elements[Self::TABLE_2]
+    }
+
+    pub fn table_3(&self) -> &T {
+        &self.elements[Self::TABLE_3]
+    }
+
+    pub fn table_4(&self) -> &T {
+        &self.elements[Self::TABLE_4]
+    }
+
+    pub fn lagrange_first(&self) -> &T {
+        &self.elements[Self::LAGRANGE_FIRST]
+    }
+
+    pub fn lagrange_last(&self) -> &T {
+        &self.elements[Self::LAGRANGE_LAST]
+    }
 }
