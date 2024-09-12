@@ -218,10 +218,10 @@ impl<F: PrimeField> ClaimedEvaluations<F> {
 }
 
 impl<T: Default> MemoryElements<T> {
-    const W_4: usize = 1; // column 3
-    const Z_PERM: usize = 2; // column 4
-    const LOOKUP_INVERSES: usize = 3; // column 5
-    const Z_PERM_SHIFT: usize = 4; // TODO this is never calculated? also the permutation relation might always be skipped right now?
+    const W_4: usize = 0; // column 3
+    const Z_PERM: usize = 1; // column 4
+    const LOOKUP_INVERSES: usize = 2; // column 5
+    const Z_PERM_SHIFT: usize = 3; // TODO this is never calculated? also the permutation relation might always be skipped right now?
 
     pub fn iter(&self) -> impl Iterator<Item = &T> {
         self.elements.iter()
