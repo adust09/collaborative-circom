@@ -9,8 +9,8 @@ use ark_ec::pairing::Pairing;
 use ark_ff::{PrimeField, Zero};
 
 pub struct SumcheckOutput<F: PrimeField> {
-    claimed_evaluations: ClaimedEvaluations<F>,
-    challenges: Vec<F>,
+    pub(crate) claimed_evaluations: ClaimedEvaluations<F>,
+    pub(crate) challenges: Vec<F>,
 }
 
 // Keep in mind, the UltraHonk protocol (UltraFlavor) does not per default have ZK

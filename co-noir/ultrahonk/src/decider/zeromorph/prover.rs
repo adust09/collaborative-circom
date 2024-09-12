@@ -1,9 +1,10 @@
-use super::{prover::Decider, sumcheck::prover::SumcheckOutput};
+use super::{
+    super::{prover::Decider, sumcheck::prover::SumcheckOutput},
+    types::{PolyF, PolyG, PolyGShift},
+};
 use crate::{
-    get_msb,
-    transcript::{self, Keccak256Transcript},
-    types::ProvingKey,
-    CONST_PROOF_SIZE_LOG_N, N_MAX,
+    decider::types::ClaimedEvaluations, get_msb, transcript::Keccak256Transcript,
+    types::ProvingKey, CONST_PROOF_SIZE_LOG_N, N_MAX,
 };
 use ark_ec::pairing::Pairing;
 use ark_ff::{Field, PrimeField};
@@ -203,12 +204,99 @@ impl<P: Pairing> Decider<P> {
         batched_polynomial
     }
 
-    pub(super) fn zeromorph_prove(
+    fn get_f_polyomials<'a>(
+        &'a self,
+        proving_key: &'a ProvingKey<P>,
+    ) -> PolyF<'a, Vec<P::ScalarField>> {
+        let memory = [
+            self.memory.memory.w_4(),
+            self.memory.memory.z_perm(),
+            self.memory.memory.lookup_inverses(),
+        ];
+
+        PolyF {
+            precomputed: &proving_key.polynomials.precomputed,
+            witness: &proving_key.polynomials.witness,
+            memory,
+        }
+    }
+
+    fn get_g_shift_evaluations(
+        evaluations: &ClaimedEvaluations<P::ScalarField>,
+    ) -> PolyGShift<P::ScalarField> {
+        PolyGShift {
+            tables: &evaluations.polys.shifted_tables,
+            wires: &evaluations.polys.shifted_witness,
+            z_perm: &evaluations.memory.z_perm_shift(),
+        }
+    }
+
+    fn get_g_polyomials<'a>(
+        &'a self,
+        proving_key: &'a ProvingKey<P>,
+    ) -> PolyG<'a, Vec<P::ScalarField>> {
+        let tables = [
+            proving_key.polynomials.precomputed.table_1(),
+            proving_key.polynomials.precomputed.table_2(),
+            proving_key.polynomials.precomputed.table_3(),
+            proving_key.polynomials.precomputed.table_4(),
+        ];
+
+        let wires = [
+            proving_key.polynomials.witness.w_l(),
+            proving_key.polynomials.witness.w_r(),
+            proving_key.polynomials.witness.w_o(),
+            self.memory.memory.w_4(),
+        ];
+
+        PolyG {
+            tables,
+            wires,
+            z_perm: self.memory.memory.z_perm(),
+        }
+    }
+
+    fn get_f_evaluations(
+        evaluations: &ClaimedEvaluations<P::ScalarField>,
+    ) -> PolyF<P::ScalarField> {
+        let memory = [
+            evaluations.memory.w_4(),
+            evaluations.memory.z_perm(),
+            evaluations.memory.lookup_inverses(),
+        ];
+
+        PolyF {
+            precomputed: &evaluations.polys.precomputed,
+            witness: &evaluations.polys.witness,
+            memory,
+        }
+    }
+
+    /**
+     * @brief  * @brief Returns a univariate opening claim equivalent to a set of multilinear evaluation claims for
+     * unshifted polynomials f_i and to-be-shifted polynomials g_i to be subsequently proved with a univariate PCS
+     *
+     * @param f_polynomials Unshifted polynomials
+     * @param g_polynomials To-be-shifted polynomials (of which the shifts h_i were evaluated by sumcheck)
+     * @param evaluations Set of evaluations v_i = f_i(u), w_i = h_i(u) = g_i_shifted(u)
+     * @param multilinear_challenge Multilinear challenge point u
+     * @param commitment_key
+     * @param transcript
+     *
+     * @todo https://github.com/AztecProtocol/barretenberg/issues/1030: document concatenation trick
+     */
+    pub(crate) fn zeromorph_prove(
         &self,
-        transcript: Keccak256Transcript<P>,
+        mut transcript: Keccak256Transcript<P>,
         proving_key: &ProvingKey<P>,
         sumcheck_output: SumcheckOutput<P::ScalarField>,
     ) {
+        let circuit_size = proving_key.circuit_size;
+        let f_polynomials = self.get_f_polyomials(proving_key);
+        let g_polynomials = self.get_g_polyomials(proving_key);
+        let f_evaluations = Self::get_f_evaluations(&sumcheck_output.claimed_evaluations);
+        let g_shift_evaluations =
+            Self::get_g_shift_evaluations(&sumcheck_output.claimed_evaluations);
 
         // std::mem::swap(&mut transcript, transcript_inout);
         // // Generate batching challenge \rho and powers 1,...,\rho^{m-1}

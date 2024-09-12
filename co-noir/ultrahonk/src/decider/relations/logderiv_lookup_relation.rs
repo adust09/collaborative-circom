@@ -69,9 +69,9 @@ impl LogDerivLookupRelation {
         let w_1 = input.polys.witness.w_l();
         let w_2 = input.polys.witness.w_r();
         let w_3 = input.polys.witness.w_o();
-        let w_1_shift = input.polys.shifted.w_l();
-        let w_2_shift = input.polys.shifted.w_r();
-        let w_3_shift = input.polys.shifted.w_o();
+        let w_1_shift = input.polys.shifted_witness.w_l();
+        let w_2_shift = input.polys.shifted_witness.w_r();
+        let w_3_shift = input.polys.shifted_witness.w_o();
         let table_index = input.polys.precomputed.q_o();
         let negative_column_1_step_size = input.polys.precomputed.q_r();
         let negative_column_2_step_size = input.polys.precomputed.q_m();

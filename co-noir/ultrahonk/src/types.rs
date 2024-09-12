@@ -20,7 +20,8 @@ pub struct ProverCrs<P: Pairing> {
 pub struct AllEntities<T: Default> {
     pub witness: WitnessEntities<T>,
     pub precomputed: PrecomputedEntities<T>,
-    pub shifted: ShiftedWitnessEntities<T>,
+    pub shifted_witness: ShiftedWitnessEntities<T>,
+    pub shifted_tables: ShiftedTableEntities<T>,
 }
 
 impl<T: Default> AllEntities<T> {
@@ -28,14 +29,16 @@ impl<T: Default> AllEntities<T> {
         self.witness
             .iter()
             .chain(self.precomputed.iter())
-            .chain(self.shifted.iter())
+            .chain(self.shifted_witness.iter())
+            .chain(self.shifted_tables.iter())
     }
 
     pub fn iter_mut(&mut self) -> impl Iterator<Item = &mut T> {
         self.witness
             .iter_mut()
             .chain(self.precomputed.iter_mut())
-            .chain(self.shifted.iter_mut())
+            .chain(self.shifted_witness.iter_mut())
+            .chain(self.shifted_tables.iter_mut())
     }
 }
 
@@ -54,6 +57,11 @@ pub struct WitnessEntities<T: Default> {
 
 #[derive(Default)]
 pub struct ShiftedWitnessEntities<T: Default> {
+    pub elements: [T; 4],
+}
+
+#[derive(Default)]
+pub struct ShiftedTableEntities<T: Default> {
     pub elements: [T; 4],
 }
 
@@ -130,6 +138,37 @@ impl<T: Default> ShiftedWitnessEntities<T> {
 
     pub fn w_4(&self) -> &T {
         &self.elements[Self::W_4]
+    }
+}
+
+impl<T: Default> ShiftedTableEntities<T> {
+    const TABLE_1: usize = 0; // column 0
+    const TABLE_2: usize = 1; // column 1
+    const TABLE_3: usize = 2; // column 2
+    const TABLE_4: usize = 3; // column 3
+
+    pub fn iter(&self) -> impl Iterator<Item = &T> {
+        self.elements.iter()
+    }
+
+    pub fn iter_mut(&mut self) -> impl Iterator<Item = &mut T> {
+        self.elements.iter_mut()
+    }
+
+    pub fn table_1(&self) -> &T {
+        &self.elements[Self::TABLE_1]
+    }
+
+    pub fn table_2(&self) -> &T {
+        &self.elements[Self::TABLE_2]
+    }
+
+    pub fn table_3(&self) -> &T {
+        &self.elements[Self::TABLE_3]
+    }
+
+    pub fn table_4(&self) -> &T {
+        &self.elements[Self::TABLE_4]
     }
 }
 

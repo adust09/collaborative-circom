@@ -129,10 +129,10 @@ impl<F: PrimeField> Relation<F> for Poseidon2InternalRelation {
         let w_r = input.polys.witness.w_r();
         let w_o = input.polys.witness.w_o();
         let w_4 = input.memory.w_4();
-        let w_l_shift = input.polys.shifted.w_l();
-        let w_r_shift = input.polys.shifted.w_r();
-        let w_o_shift = input.polys.shifted.w_o();
-        let w_4_shift = input.polys.shifted.w_4();
+        let w_l_shift = input.polys.shifted_witness.w_l();
+        let w_r_shift = input.polys.shifted_witness.w_r();
+        let w_o_shift = input.polys.shifted_witness.w_o();
+        let w_4_shift = input.polys.shifted_witness.w_4();
         let q_l = input.polys.precomputed.q_l();
         let q_poseidon2_internal = input.polys.precomputed.q_poseidon2_internal();
 

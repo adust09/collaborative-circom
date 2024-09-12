@@ -85,10 +85,10 @@ impl<F: PrimeField> Relation<F> for EllipticRelation
         let x_1 = input.polys.witness.w_r();
         let y_1 = input.polys.witness.w_o();
 
-        let x_2 = input.polys.shifted.w_l();
-        let y_2 = input.polys.shifted.w_4();
-        let x_3 = input.polys.shifted.w_o();
-        let y_3 = input.polys.shifted.w_r();
+        let x_2 = input.polys.shifted_witness.w_l();
+        let y_2 = input.polys.shifted_witness.w_4();
+        let x_3 = input.polys.shifted_witness.w_o();
+        let y_3 = input.polys.shifted_witness.w_r();
 
         let q_sign = input.polys.precomputed.q_l();
         let q_elliptic = input.polys.precomputed.q_elliptic();

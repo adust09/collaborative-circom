@@ -105,9 +105,9 @@ impl<P: Pairing> Oink<P> {
         let w_1 = &proving_key.polynomials.witness.w_l()[i];
         let w_2 = &proving_key.polynomials.witness.w_r()[i];
         let w_3 = &proving_key.polynomials.witness.w_o()[i];
-        let w_1_shift = &proving_key.polynomials.shifted.w_l()[i];
-        let w_2_shift = &proving_key.polynomials.shifted.w_r()[i];
-        let w_3_shift = &proving_key.polynomials.shifted.w_o()[i];
+        let w_1_shift = &proving_key.polynomials.shifted_witness.w_l()[i];
+        let w_2_shift = &proving_key.polynomials.shifted_witness.w_r()[i];
+        let w_3_shift = &proving_key.polynomials.shifted_witness.w_o()[i];
         let table_index = &proving_key.polynomials.precomputed.q_o()[i];
         let negative_column_1_step_size = &proving_key.polynomials.precomputed.q_r()[i];
         let negative_column_2_step_size = &proving_key.polynomials.precomputed.q_m()[i];
