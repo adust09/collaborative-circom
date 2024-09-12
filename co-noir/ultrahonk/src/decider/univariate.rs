@@ -74,7 +74,7 @@ impl<F: PrimeField, const SIZE: usize> Univariate<F, SIZE> {
             let b = poly[1] - a - poly[0];
             let a2 = a.double();
             let mut a_mul = a2.to_owned();
-            for i in 0..poly.len() - 2 {
+            for _ in 0..poly.len() - 2 {
                 a_mul += a2;
             }
             let mut extra = a_mul + a + b;
@@ -83,7 +83,77 @@ impl<F: PrimeField, const SIZE: usize> Univariate<F, SIZE> {
                 extra += a2;
             }
         } else if poly.len() == 4 {
-            todo!("extend other cases")
+            // To compute a barycentric extension, we can compute the coefficients of the univariate.
+            // We have the evaluation of the polynomial at the domain (which is assumed to be 0, 1, 2, 3).
+            // Therefore, we have the 4 linear equations from plugging into f(x) = ax^3 + bx^2 + cx + d:
+            //          a*0 + b*0 + c*0 + d = f(0)
+            //          a*1 + b*1 + c*1 + d = f(1)
+            //          a*2^3 + b*2^2 + c*2 + d = f(2)
+            //          a*3^3 + b*3^2 + c*3 + d = f(3)
+            // These equations can be rewritten as a matrix equation M * [a, b, c, d] = [f(0), f(1), f(2),
+            // f(3)], where M is:
+            //          0,  0,  0,  1
+            //          1,  1,  1,  1
+            //          2^3, 2^2, 2,  1
+            //          3^3, 3^2, 3,  1
+            // We can invert this matrix in order to compute a, b, c, d:
+            //      -1/6,	1/2,	-1/2,	1/6
+            //      1,	    -5/2,	2,	    -1/2
+            //      -11/6,	3,	    -3/2,	1/3
+            //      1,	    0,	    0,	    0
+            // To compute these values, we can multiply everything by 6 and multiply by inverse_six at the
+            // end for each coefficient The resulting computation here does 18 field adds, 6 subtracts, 3
+            // muls to compute a, b, c, and d.
+            let inverse_six = F::from(6u64).inverse().unwrap();
+
+            let zero_times_3 = poly[0].double() + poly[0];
+            let zero_times_6 = zero_times_3.double();
+            let zero_times_12 = zero_times_6.double();
+            let one_times_3 = poly[1].double() + poly[1];
+            let one_times_6 = one_times_3.double();
+            let two_times_3 = poly[2].double() + poly[2];
+            let three_times_2 = poly[3].double();
+            let three_times_3 = three_times_2 + poly[3];
+
+            let one_minus_two_times_3 = one_times_3 - two_times_3;
+            let one_minus_two_times_6 = one_minus_two_times_3 + one_minus_two_times_3;
+            let one_minus_two_times_12 = one_minus_two_times_6 + one_minus_two_times_6;
+            let a = (one_minus_two_times_3 + poly[3] - poly[0]) * inverse_six; // compute a in 1 muls and 4 adds
+            let b =
+                (zero_times_6 - one_minus_two_times_12 - one_times_3 - three_times_3) * inverse_six;
+            let c = (poly[0] - zero_times_12
+                + one_minus_two_times_12
+                + one_times_6
+                + two_times_3
+                + three_times_2)
+                * inverse_six;
+
+            // Then, outside of the a, b, c, d computation, we need to do some extra precomputation
+            // This work is 3 field muls, 8 adds
+            let a_plus_b = a + b;
+            let a_plus_b_times_2 = a_plus_b + a_plus_b;
+            let start_idx_sqr = (poly.len() - 1) * (poly.len() - 1);
+            let idx_sqr_three = start_idx_sqr + start_idx_sqr + start_idx_sqr;
+            let mut idx_sqr_three_times_a = F::from(idx_sqr_three as u64) * a;
+            let mut x_a_term = F::from(6 * (poly.len() - 1) as u64) * a;
+            let three_a = a + a + a;
+            let six_a = three_a + three_a;
+
+            let three_a_plus_two_b = a_plus_b_times_2 + a;
+            let mut linear_term =
+                F::from(poly.len() as u64 - 1) * three_a_plus_two_b + (a_plus_b + c);
+
+            // For each new evaluation, we do only 6 field additions and 0 muls.
+            for i in 4..SIZE {
+                self.evaluations[i] = self.evaluations[i - 1] + idx_sqr_three_times_a + linear_term;
+
+                idx_sqr_three_times_a + linear_term;
+
+                idx_sqr_three_times_a += x_a_term + three_a;
+                x_a_term += six_a;
+
+                linear_term += three_a_plus_two_b;
+            }
         } else {
             for k in poly.len()..SIZE {
                 self.evaluations[k] = F::zero();
