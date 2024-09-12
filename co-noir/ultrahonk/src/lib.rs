@@ -4,7 +4,6 @@ use ark_ff::PrimeField;
 pub(crate) mod decider;
 pub(crate) mod oink;
 pub mod prover;
-mod tests;
 mod transcript;
 mod types;
 // pub mod verifier;
