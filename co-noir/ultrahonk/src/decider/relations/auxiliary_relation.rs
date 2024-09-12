@@ -155,7 +155,7 @@ impl<F: PrimeField> Relation<F> for AuxiliaryRelation {
         let w_1 = input.polys.witness.w_l();
         let w_2 = input.polys.witness.w_r();
         let w_3 = input.polys.witness.w_o();
-        let w_4 = &input.memory.w_4;
+        let w_4 = input.memory.w_4();
         let w_1_shift = input.polys.shifted.w_l();
         let w_2_shift = input.polys.shifted.w_r();
         let w_3_shift = input.polys.shifted.w_o();

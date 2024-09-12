@@ -55,7 +55,7 @@ impl UltraPermutationRelation {
         let w_1 = input.polys.witness.w_l();
         let w_2 = input.polys.witness.w_r();
         let w_3 = input.polys.witness.w_o();
-        let w_4 = &input.memory.w_4;
+        let w_4 = input.memory.w_4();
         let id_1 = input.polys.precomputed.id_1();
         let id_2 = input.polys.precomputed.id_2();
         let id_3 = input.polys.precomputed.id_3();
@@ -78,7 +78,7 @@ impl UltraPermutationRelation {
         let w_1 = input.polys.witness.w_l();
         let w_2 = input.polys.witness.w_r();
         let w_3 = input.polys.witness.w_o();
-        let w_4 = &input.memory.w_4;
+        let w_4 = input.memory.w_4();
         let sigma_1 = input.polys.precomputed.sigma_1();
         let sigma_2 = input.polys.precomputed.sigma_2();
         let sigma_3 = input.polys.precomputed.sigma_3();
@@ -103,7 +103,7 @@ impl<F: PrimeField> Relation<F> for UltraPermutationRelation {
         <Self as Relation<F>>::check_skippable();
         // If z_perm == z_perm_shift, this implies that none of the wire values for the present input are involved in
         // non-trivial copy constraints.
-        (input.memory.z_perm.to_owned() - &input.memory.z_perm_shift).is_zero()
+        (input.memory.z_perm().to_owned() - input.memory.z_perm_shift()).is_zero()
     }
 
     /**
@@ -131,8 +131,8 @@ impl<F: PrimeField> Relation<F> for UltraPermutationRelation {
         tracing::trace!("Accumulate UltraPermutationRelation");
 
         let public_input_delta = &relation_parameters.public_input_delta;
-        let z_perm = &input.memory.z_perm;
-        let z_perm_shift = &input.memory.z_perm_shift;
+        let z_perm = input.memory.z_perm();
+        let z_perm_shift = input.memory.z_perm_shift();
         let lagrange_first = input.polys.precomputed.lagrange_first();
         let lagrange_last = input.polys.precomputed.lagrange_last();
 

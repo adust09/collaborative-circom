@@ -9,26 +9,6 @@ use crate::{decider::types::GateSeparatorPolynomial, get_msb};
 use ark_ec::pairing::Pairing;
 use ark_ff::Zero;
 
-macro_rules! partially_evaluate_macro {
-    ($src:expr, $des:expr, $round_size:expr, $round_challenge:expr, $inplace:expr, ($($el:ident),*)) => {{
-        $(
-            if $inplace {
-                Self::partially_evaluate_poly_inplace(&mut $des.$el, $round_size, $round_challenge);
-            } else {
-                Self::partially_evaluate_poly(&$src.$el, &mut $des.$el, $round_size, $round_challenge);
-            }
-        )*
-    }};
-}
-
-macro_rules! transcipt_macro {
-    ($transcipt:expr, $src:expr, ($($el:ident),*)) => {{
-        $(
-            $transcipt.add_scalar($src.$el);
-        )*
-    }};
-}
-
 // Keep in mind, the UltraHonk protocol (UltraFlavor) does not per default have ZK
 impl<P: Pairing> Decider<P> {
     pub(crate) fn partially_evaluate_poly(
@@ -63,18 +43,11 @@ impl<P: Pairing> Decider<P> {
         tracing::trace!("Partially_evaluate");
 
         // Barretenberg uses multithreading here
-
-        // Memory
-        partially_evaluate_macro!(
-            memory,
-            &mut partially_evaluated_poly.memory,
-            round_size,
-            round_challenge,
-            INPLACE,
-            (w_4, z_perm, z_perm_shift, lookup_inverses)
-        );
-
-        for (src, des) in polys.iter().zip(partially_evaluated_poly.polys.iter_mut()) {
+        for (src, des) in memory
+            .iter()
+            .chain(polys.iter())
+            .zip(partially_evaluated_poly.iter_mut())
+        {
             if INPLACE {
                 Self::partially_evaluate_poly_inplace(des, round_size, round_challenge);
             } else {
@@ -90,15 +63,7 @@ impl<P: Pairing> Decider<P> {
     ) {
         tracing::trace!("Add Evals to Transcript");
 
-        // Memory
-        transcipt_macro!(
-            transcript,
-            &evaluations.memory,
-            (w_4, z_perm, z_perm_shift, lookup_inverses)
-        );
-
-        // WitnessEntities
-        for src in evaluations.polys.iter() {
+        for src in evaluations.iter() {
             transcript.add_scalar(*src);
         }
     }

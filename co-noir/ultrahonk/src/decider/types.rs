@@ -30,10 +30,7 @@ pub struct ClaimedEvaluations<F: PrimeField> {
 
 #[derive(Default)]
 pub struct MemoryElements<T> {
-    pub w_4: T,             // column 3
-    pub z_perm: T,          // column 4
-    pub lookup_inverses: T, // column 5
-    pub z_perm_shift: T, // TODO this is never calculated? also the permutation relation might always be skipped right now?
+    pub elements: [T; 4],
 }
 
 pub struct WitnessCommitments<P: Pairing> {
@@ -185,5 +182,68 @@ impl<P: Pairing> From<crate::oink::types::WitnessCommitments<P>> for WitnessComm
             lookup_read_counts: witness_commitments.lookup_read_counts,
             lookup_read_tags: witness_commitments.lookup_read_tags,
         }
+    }
+}
+
+impl<F: PrimeField> ProverUnivariates<F> {
+    pub fn iter(&self) -> impl Iterator<Item = &Univariate<F, MAX_PARTIAL_RELATION_LENGTH>> {
+        self.memory.iter().chain(self.polys.iter())
+    }
+
+    pub fn iter_mut(
+        &mut self,
+    ) -> impl Iterator<Item = &mut Univariate<F, MAX_PARTIAL_RELATION_LENGTH>> {
+        self.memory.iter_mut().chain(self.polys.iter_mut())
+    }
+}
+
+impl<F: PrimeField> PartiallyEvaluatePolys<F> {
+    pub fn iter(&self) -> impl Iterator<Item = &Vec<F>> {
+        self.memory.iter().chain(self.polys.iter())
+    }
+
+    pub fn iter_mut(&mut self) -> impl Iterator<Item = &mut Vec<F>> {
+        self.memory.iter_mut().chain(self.polys.iter_mut())
+    }
+}
+
+impl<F: PrimeField> ClaimedEvaluations<F> {
+    pub fn iter(&self) -> impl Iterator<Item = &F> {
+        self.memory.iter().chain(self.polys.iter())
+    }
+
+    pub fn iter_mut(&mut self) -> impl Iterator<Item = &mut F> {
+        self.memory.iter_mut().chain(self.polys.iter_mut())
+    }
+}
+
+impl<T: Default> MemoryElements<T> {
+    const W_4: usize = 1; // column 3
+    const Z_PERM: usize = 2; // column 4
+    const LOOKUP_INVERSES: usize = 3; // column 5
+    const Z_PERM_SHIFT: usize = 4; // TODO this is never calculated? also the permutation relation might always be skipped right now?
+
+    pub fn iter(&self) -> impl Iterator<Item = &T> {
+        self.elements.iter()
+    }
+
+    pub fn iter_mut(&mut self) -> impl Iterator<Item = &mut T> {
+        self.elements.iter_mut()
+    }
+
+    pub fn w_4(&self) -> &T {
+        &self.elements[Self::W_4]
+    }
+
+    pub fn z_perm(&self) -> &T {
+        &self.elements[Self::Z_PERM]
+    }
+
+    pub fn lookup_inverses(&self) -> &T {
+        &self.elements[Self::LOOKUP_INVERSES]
+    }
+
+    pub fn z_perm_shift(&self) -> &T {
+        &self.elements[Self::Z_PERM_SHIFT]
     }
 }

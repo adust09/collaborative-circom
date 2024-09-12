@@ -26,18 +26,16 @@ pub struct AllEntities<T: Default> {
 impl<T: Default> AllEntities<T> {
     pub fn iter(&self) -> impl Iterator<Item = &T> {
         self.witness
-            .elements
             .iter()
-            .chain(self.precomputed.elements.iter())
-            .chain(self.shifted.elements.iter())
+            .chain(self.precomputed.iter())
+            .chain(self.shifted.iter())
     }
 
     pub fn iter_mut(&mut self) -> impl Iterator<Item = &mut T> {
         self.witness
-            .elements
             .iter_mut()
-            .chain(self.precomputed.elements.iter_mut())
-            .chain(self.shifted.elements.iter_mut())
+            .chain(self.precomputed.iter_mut())
+            .chain(self.shifted.iter_mut())
     }
 }
 
@@ -75,6 +73,14 @@ impl<T: Default> WitnessEntities<T> {
     // const Z_PERM: usize  // column 4 (computed by prover)
     // const LOOKUP_INVERSES: usize // column 5 (computed by prover);
 
+    pub fn iter(&self) -> impl Iterator<Item = &T> {
+        self.elements.iter()
+    }
+
+    pub fn iter_mut(&mut self) -> impl Iterator<Item = &mut T> {
+        self.elements.iter_mut()
+    }
+
     pub fn w_l(&self) -> &T {
         &self.elements[Self::W_L]
     }
@@ -101,6 +107,14 @@ impl<T: Default> ShiftedWitnessEntities<T> {
     const W_R: usize = 1; // column 1
     const W_O: usize = 2; // column 2
     const W_4: usize = 3; // column 3 // TODO right place? shifted by the prover? Same as z_perm_shift?
+
+    pub fn iter(&self) -> impl Iterator<Item = &T> {
+        self.elements.iter()
+    }
+
+    pub fn iter_mut(&mut self) -> impl Iterator<Item = &mut T> {
+        self.elements.iter_mut()
+    }
 
     pub fn w_l(&self) -> &T {
         &self.elements[Self::W_L]
@@ -147,6 +161,14 @@ impl<T: Default> PrecomputedEntities<T> {
     const TABLE_4: usize = 24; // column 24
     const LAGRANGE_FIRST: usize = 25; // column 25
     const LAGRANGE_LAST: usize = 26; // column 26
+
+    pub fn iter(&self) -> impl Iterator<Item = &T> {
+        self.elements.iter()
+    }
+
+    pub fn iter_mut(&mut self) -> impl Iterator<Item = &mut T> {
+        self.elements.iter_mut()
+    }
 
     pub fn q_m(&self) -> &T {
         &self.elements[Self::Q_M]

@@ -27,14 +27,6 @@ pub(crate) struct SumcheckRound {
     pub(crate) round_size: usize,
 }
 
-macro_rules! extend_macro {
-    ($src:expr, $des:expr, $idx:expr, ($($el:ident),*)) => {{
-        $(
-            $des.$el.extend_from(&$src.$el[$idx..$idx+2]);
-        )*
-    }};
-}
-
 impl SumcheckRound {
     pub(crate) fn new(initial_round_size: usize) -> Self {
         SumcheckRound {
@@ -49,15 +41,12 @@ impl SumcheckRound {
         edge_index: usize,
     ) {
         tracing::trace!("Extend edges");
-        // Memory
-        extend_macro!(
-            &memory,
-            &mut extended_edges.memory,
-            edge_index,
-            (w_4, z_perm, z_perm_shift, lookup_inverses)
-        );
 
-        for (src, des) in multivariates.iter().zip(extended_edges.polys.iter_mut()) {
+        for (src, des) in memory
+            .iter()
+            .chain(multivariates.iter())
+            .zip(extended_edges.iter_mut())
+        {
             des.extend_from(&src[edge_index..edge_index + 2]);
         }
     }
