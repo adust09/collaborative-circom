@@ -36,16 +36,17 @@ impl<P: Pairing> Decider<P> {
      * @details See https://hackmd.io/dlf9xEwhTQyE3hiGbq4FsA?view for a complete description of the unrolled protocol.
      *
      * */
-    fn execute_pcs_rounds(&self) {
-        // let prover_opening_claim = Self::zeromorph_prove();
+    fn execute_pcs_rounds(
+        &self,
+        transcript: transcript::Keccak256Transcript<P>,
+        proving_key: &ProvingKey<P>,
+        sumcheck_output: SumcheckOutput<P::ScalarField>,
+    ) {
+        let prover_opening_claim = self.zeromorph_prove(transcript, proving_key, sumcheck_output);
         todo!();
     }
 
-    pub fn prove(
-        self,
-        proving_key: ProvingKey<P>,
-        public_inputs: Vec<P::ScalarField>,
-    ) -> HonkProofResult<()> {
+    pub fn prove(self, proving_key: &ProvingKey<P>) -> HonkProofResult<()> {
         tracing::trace!("Decider prove");
 
         let mut transcript = transcript::Keccak256Transcript::<P>::default();
@@ -59,10 +60,11 @@ impl<P: Pairing> Decider<P> {
         );
 
         // Run sumcheck subprotocol.
-        let sumcheck_output = self.execute_relation_check_rounds(&mut transcript, &proving_key);
+        let sumcheck_output = self.execute_relation_check_rounds(&mut transcript, proving_key);
+
         // Fiat-Shamir: rho, y, x, z
         // Execute Zeromorph multilinear PCS
-        self.execute_pcs_rounds();
+        self.execute_pcs_rounds(transcript, proving_key, sumcheck_output);
 
         todo!("output the proof");
         Ok(())

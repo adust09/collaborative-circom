@@ -61,16 +61,17 @@ impl<P: Pairing> UltraHonk<P> {
 
     pub fn prove(
         self,
-        proving_key: ProvingKey<P>,
-        public_inputs: Vec<P::ScalarField>,
+        proving_key: &ProvingKey<P>,
+        public_inputs: &[P::ScalarField],
     ) -> HonkProofResult<()> {
         tracing::trace!("UltraHonk prove");
 
         let oink = Oink::<P>::default();
-        let mut memory = ProverMemory::from(oink.prove(&proving_key, &public_inputs)?);
-        self.generate_gate_challenges(&mut memory, &proving_key);
+        let mut memory = ProverMemory::from(oink.prove(proving_key, public_inputs)?);
+        self.generate_gate_challenges(&mut memory, proving_key);
 
         let decider = Decider::new(memory);
-        decider.prove(proving_key, public_inputs)
+        decider.prove(proving_key)?;
+        todo!("What is the proof")
     }
 }
