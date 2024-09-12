@@ -13,3 +13,4 @@ pub struct OpeningPair<F: PrimeField> {
     pub(crate) challenge: F,
     pub(crate) evaluation: F,
 }
+pub mod verifier;

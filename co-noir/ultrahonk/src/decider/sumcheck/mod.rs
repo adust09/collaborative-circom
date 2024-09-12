@@ -8,3 +8,4 @@ pub struct SumcheckOutput<F: PrimeField> {
     pub(crate) claimed_evaluations: ClaimedEvaluations<F>,
     pub(crate) challenges: Vec<F>,
 }
+pub mod verifier;
