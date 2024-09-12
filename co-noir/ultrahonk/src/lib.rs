@@ -24,6 +24,8 @@ pub(crate) fn get_msb(inp: u32) -> u8 {
 }
 
 pub(crate) const NUM_ALPHAS: usize = decider::relations::NUM_SUBRELATIONS - 1;
+// The log of the max circuit size assumed in order to achieve constant sized Honk proofs
+// TODO(https://github.com/AztecProtocol/barretenberg/issues/1046): Remove the need for const sized proofs
 pub(crate) const CONST_PROOF_SIZE_LOG_N: usize = 28;
 pub(crate) const N_MAX: usize = 1 << 25;
 

@@ -1,11 +1,13 @@
 use super::prover::Decider;
 use super::types::MemoryElements;
-use crate::decider::sumcheck_round::SumcheckRound;
+use crate::decider::sumcheck_round::{SumcheckRound, SumcheckRoundOutput};
 use crate::decider::types::PartiallyEvaluatePolys;
 use crate::transcript::Keccak256Transcript;
 use crate::types::{Polynomials, ProvingKey};
+use crate::CONST_PROOF_SIZE_LOG_N;
 use crate::{decider::types::GateSeparatorPolynomial, get_msb};
 use ark_ec::pairing::Pairing;
+use ark_ff::Zero;
 
 macro_rules! partially_evaluate_macro {
     ($src:expr, $des:expr, $round_size:expr, $round_challenge:expr, $inplace:expr, ($($el:ident),*)) => {{
@@ -201,7 +203,8 @@ impl<P: Pairing> Decider<P> {
                 transcript.add_scalar(*val);
             }
             round_challenge = transcript.get_challenge();
-            multivariate_challenge.push(round_challenge); // Prepare sumcheck book-keeping table for the next round
+            multivariate_challenge.push(round_challenge);
+            // Prepare sumcheck book-keeping table for the next round
             Self::partially_evaluate::<true>(
                 &mut partially_evaluated_polys,
                 &proving_key.polynomials,
@@ -212,6 +215,25 @@ impl<P: Pairing> Decider<P> {
             gate_separators.partially_evaluate(round_challenge);
             sum_check_round.round_size >>= 1;
         }
+
+        // Zero univariates are used to pad the proof to the fixed size CONST_PROOF_SIZE_LOG_N.
+        for _ in multivariate_d as usize..CONST_PROOF_SIZE_LOG_N {
+            let mut transcript: crate::transcript::Transcript<
+                sha3::digest::core_api::CoreWrapper<sha3::Keccak256Core>,
+                P,
+            > = Keccak256Transcript::<P>::default();
+            transcript.add_scalar(round_challenge);
+
+            for _ in 0..SumcheckRoundOutput::<P::ScalarField>::SIZE {
+                transcript.add_scalar(P::ScalarField::zero());
+            }
+            round_challenge = transcript.get_challenge();
+            multivariate_challenge.push(round_challenge);
+        }
+
+        // Claimed evaluations of Prover polynomials are extracted and added to the transcript. When Flavor has ZK, the
+        // evaluations of all witnesses are masked.
+
         todo!("continue")
     }
 }
