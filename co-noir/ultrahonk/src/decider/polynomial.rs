@@ -29,7 +29,11 @@ impl<F: PrimeField> Polynomial<F> {
         self.add_scaled_slice(&src.coefficients, scalar);
     }
 
+    // Can only shift by 1
     pub(crate) fn shifted(&self) -> &[F] {
+        assert!(!self.coefficients.is_empty());
+        assert!(self.coefficients[0].is_zero());
+        assert!(self.coefficients.last().unwrap().is_zero());
         &self.coefficients[1..]
     }
 }

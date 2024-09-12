@@ -339,7 +339,7 @@ impl<P: Pairing> Decider<P> {
         f_polynomial += g_batched.shifted();
         // f_polynomial += concatenated_batched; // No groups
 
-        // // Compute the multilinear quotients q_k = q_k(X_0, ..., X_{k-1})
+        // Compute the multilinear quotients q_k = q_k(X_0, ..., X_{k-1})
         // let quotients = Self::compute_multilinear_quotients(f_polynomial, u_challenge);
         // // Compute and send commitments C_{q_k} = [q_k], k = 0,...,d-1
         // for idx in 0..log_n {
