@@ -171,7 +171,7 @@ impl<F: PrimeField> Relation<F> for LogDerivLookupRelation {
     ) {
         tracing::trace!("Accumulate LogDerivLookupRelation");
 
-        let inverses = &input.lookup_inverses; // Degree 1
+        let inverses = &input.memory.lookup_inverses; // Degree 1
         let read_counts = &input.polys.witness.lookup_read_counts; // Degree 1
         let read_selector = &input.polys.precomputed.q_lookup; // Degree 1
 

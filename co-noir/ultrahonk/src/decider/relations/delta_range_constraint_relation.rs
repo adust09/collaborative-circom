@@ -100,7 +100,7 @@ impl<F: PrimeField> Relation<F> for DeltaRangeConstraintRelation {
         let w_1 = &input.polys.witness.w_l;
         let w_2 = &input.polys.witness.w_r;
         let w_3 = &input.polys.witness.w_o;
-        let w_4 = &input.w_4;
+        let w_4 = &input.memory.w_4;
         let w_1_shift = &input.polys.shifted.w_l;
         let q_delta_range = &input.polys.precomputed.q_delta_range;
         let minus_one = -F::one();

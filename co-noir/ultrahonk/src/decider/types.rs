@@ -4,10 +4,7 @@ use ark_ec::pairing::Pairing;
 use ark_ff::PrimeField;
 
 pub struct ProverMemory<P: Pairing> {
-    pub w_4: Vec<P::ScalarField>,             // column 3
-    pub z_perm: Vec<P::ScalarField>,          // column 4
-    pub lookup_inverses: Vec<P::ScalarField>, // column 5
-    pub z_perm_shift: Vec<P::ScalarField>, // TODO this is never calculated? also the permutation relation might always be skipped right now?
+    pub memory: MemoryElements<Vec<P::ScalarField>>,
     pub witness_commitments: WitnessCommitments<P>,
     pub relation_parameters: RelationParameters<P::ScalarField>,
 }
@@ -15,20 +12,22 @@ pub struct ProverMemory<P: Pairing> {
 pub const MAX_PARTIAL_RELATION_LENGTH: usize = 7;
 #[derive(Default)]
 pub struct ProverUnivariates<F: PrimeField> {
-    pub w_4: Univariate<F, MAX_PARTIAL_RELATION_LENGTH>, // column 3
-    pub z_perm: Univariate<F, MAX_PARTIAL_RELATION_LENGTH>, // column 4
-    pub lookup_inverses: Univariate<F, MAX_PARTIAL_RELATION_LENGTH>, // column 5
-    pub z_perm_shift: Univariate<F, MAX_PARTIAL_RELATION_LENGTH>, // TODO this is never calculated? also the permutation relation might always be skipped right now?
+    pub memory: MemoryElements<Univariate<F, MAX_PARTIAL_RELATION_LENGTH>>,
     pub polys: AllEntities<Univariate<F, MAX_PARTIAL_RELATION_LENGTH>>,
 }
 
 #[derive(Default)]
 pub struct PartiallyEvaluatePolys<F: PrimeField> {
-    pub w_4: Vec<F>,             // column 3
-    pub z_perm: Vec<F>,          // column 4
-    pub lookup_inverses: Vec<F>, // column 5
-    pub z_perm_shift: Vec<F>, // TODO this is never calculated? also the permutation relation might always be skipped right now?
+    pub memory: MemoryElements<Vec<F>>,
     pub polys: AllEntities<Vec<F>>,
+}
+
+#[derive(Default)]
+pub struct MemoryElements<T> {
+    pub w_4: T,             // column 3
+    pub z_perm: T,          // column 4
+    pub lookup_inverses: T, // column 5
+    pub z_perm_shift: T, // TODO this is never calculated? also the permutation relation might always be skipped right now?
 }
 
 pub struct WitnessCommitments<P: Pairing> {
@@ -140,10 +139,7 @@ impl<F: PrimeField> Default for RelationParameters<F> {
 impl<P: Pairing> Default for ProverMemory<P> {
     fn default() -> Self {
         Self {
-            w_4: Default::default(),
-            z_perm: Default::default(),
-            lookup_inverses: Default::default(),
-            z_perm_shift: Default::default(),
+            memory: Default::default(),
             witness_commitments: Default::default(),
             relation_parameters: Default::default(),
         }
@@ -164,10 +160,7 @@ impl<P: Pairing> From<crate::oink::types::ProverMemory<P>> for ProverMemory<P> {
         };
 
         Self {
-            w_4: prover_memory.w_4,
-            z_perm: prover_memory.z_perm,
-            lookup_inverses: prover_memory.lookup_inverses,
-            z_perm_shift: Default::default(), // TODO where does it come from?
+            memory: Default::default(),
             witness_commitments: WitnessCommitments::from(prover_memory.witness_commitments),
             relation_parameters,
         }

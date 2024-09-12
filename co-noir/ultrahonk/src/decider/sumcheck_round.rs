@@ -1,6 +1,6 @@
 use super::{
     types::{
-        GateSeparatorPolynomial, ProverMemory, RelationParameters, MAX_PARTIAL_RELATION_LENGTH,
+        GateSeparatorPolynomial, MemoryElements, RelationParameters, MAX_PARTIAL_RELATION_LENGTH,
     },
     univariate::Univariate,
 };
@@ -17,9 +17,8 @@ use crate::{
         },
         types::ProverUnivariates,
     },
-    types::{Polynomials, ProvingKey},
+    types::Polynomials,
 };
-use ark_ec::pairing::Pairing;
 use ark_ff::PrimeField;
 
 pub(crate) type SumcheckRoundOutput<F> = Univariate<F, { MAX_PARTIAL_RELATION_LENGTH + 1 }>;
@@ -43,17 +42,17 @@ impl SumcheckRound {
         }
     }
 
-    fn extend_edges<P: Pairing>(
-        extended_edges: &mut ProverUnivariates<P::ScalarField>,
-        multivariates: &Polynomials<P::ScalarField>,
-        prover_memory: &ProverMemory<P>,
+    fn extend_edges<F: PrimeField>(
+        extended_edges: &mut ProverUnivariates<F>,
+        multivariates: &Polynomials<F>,
+        memory: &MemoryElements<Vec<F>>,
         edge_index: usize,
     ) {
         tracing::trace!("Extend edges");
         // Memory
         extend_macro!(
-            &prover_memory,
-            extended_edges,
+            &memory,
+            &mut extended_edges.memory,
             edge_index,
             (w_4, z_perm, z_perm_shift, lookup_inverses)
         );
@@ -247,31 +246,26 @@ impl SumcheckRound {
         );
     }
 
-    pub(crate) fn compute_univariate<P: Pairing>(
+    pub(crate) fn compute_univariate<F: PrimeField>(
         &self,
         round_index: usize,
-        relation_parameters: &RelationParameters<P::ScalarField>,
-        gate_sparators: &GateSeparatorPolynomial<P::ScalarField>,
-        prover_memory: &ProverMemory<P>,
-        proving_key: &ProvingKey<P>,
-    ) -> SumcheckRoundOutput<P::ScalarField> {
+        relation_parameters: &RelationParameters<F>,
+        gate_sparators: &GateSeparatorPolynomial<F>,
+        memory: &MemoryElements<Vec<F>>,
+        polynomials: &Polynomials<F>,
+    ) -> SumcheckRoundOutput<F> {
         tracing::trace!("Sumcheck round {}", round_index);
 
         // Barretenberg uses multithreading here
 
         // Construct extended edge containers
-        let mut extended_edge = ProverUnivariates::<P::ScalarField>::default();
+        let mut extended_edge = ProverUnivariates::<F>::default();
 
-        let mut univariate_accumulators = AllRelationAcc::<P::ScalarField>::default();
+        let mut univariate_accumulators = AllRelationAcc::<F>::default();
 
         // Accumulate the contribution from each sub-relation accross each edge of the hyper-cube
         for edge_idx in (0..self.round_size).step_by(2) {
-            Self::extend_edges(
-                &mut extended_edge,
-                &proving_key.polynomials,
-                prover_memory,
-                edge_idx,
-            );
+            Self::extend_edges(&mut extended_edge, polynomials, memory, edge_idx);
             // Compute the \f$ \ell \f$-th edge's univariate contribution,
             // scale it by the corresponding \f$ pow_{\beta} \f$ contribution and add it to the accumulators for \f$
             // \tilde{S}^i(X_i) \f$. If \f$ \ell \f$'s binary representation is given by \f$ (\ell_{i+1},\ldots,
