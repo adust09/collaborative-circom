@@ -1,7 +1,6 @@
-use super::prover::Decider;
-use super::types::MemoryElements;
-use crate::decider::sumcheck_round::{SumcheckRound, SumcheckRoundOutput};
-use crate::decider::types::{ClaimedEvaluations, PartiallyEvaluatePolys};
+use crate::decider::prover::Decider;
+use crate::decider::sumcheck::sumcheck_round::{SumcheckRound, SumcheckRoundOutput};
+use crate::decider::types::{ClaimedEvaluations, MemoryElements, PartiallyEvaluatePolys};
 use crate::transcript::Keccak256Transcript;
 use crate::types::{Polynomials, ProvingKey};
 use crate::CONST_PROOF_SIZE_LOG_N;

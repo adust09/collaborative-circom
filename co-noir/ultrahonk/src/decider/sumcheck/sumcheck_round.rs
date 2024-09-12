@@ -1,4 +1,4 @@
-use super::{
+use super::super::{
     types::{
         GateSeparatorPolynomial, MemoryElements, RelationParameters, MAX_PARTIAL_RELATION_LENGTH,
     },

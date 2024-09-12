@@ -2,7 +2,7 @@ use std::str::FromStr;
 
 use super::Relation;
 use crate::decider::{
-    sumcheck_round::SumcheckRoundOutput,
+    sumcheck::sumcheck_round::SumcheckRoundOutput,
     types::{ProverUnivariates, RelationParameters},
     univariate::Univariate,
 };

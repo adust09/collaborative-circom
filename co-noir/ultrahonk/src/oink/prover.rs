@@ -25,7 +25,7 @@ use crate::{
     types::{ProverCrs, ProvingKey},
 };
 use ark_ec::{pairing::Pairing, VariableBaseMSM};
-use ark_ff::{Field, One, Zero};
+use ark_ff::{One, Zero};
 use itertools::izip;
 use std::marker::PhantomData;
 
@@ -368,11 +368,11 @@ impl<P: Pairing> Oink<P> {
         // We only commit to the fourth wire polynomial after adding memory records
 
         self.memory.witness_commitments.w_l =
-            Self::commit(&proving_key.polynomials.witness.w_l(), &proving_key.crs)?;
+            Self::commit(proving_key.polynomials.witness.w_l(), &proving_key.crs)?;
         self.memory.witness_commitments.w_r =
-            Self::commit(&proving_key.polynomials.witness.w_r(), &proving_key.crs)?;
+            Self::commit(proving_key.polynomials.witness.w_r(), &proving_key.crs)?;
         self.memory.witness_commitments.w_o =
-            Self::commit(&proving_key.polynomials.witness.w_o(), &proving_key.crs)?;
+            Self::commit(proving_key.polynomials.witness.w_o(), &proving_key.crs)?;
 
         transcript.add_point(self.memory.witness_commitments.w_l.into());
         transcript.add_point(self.memory.witness_commitments.w_r.into());
@@ -410,11 +410,11 @@ impl<P: Pairing> Oink<P> {
 
         // Commit to lookup argument polynomials and the finalized (i.e. with memory records) fourth wire polynomial
         self.memory.witness_commitments.lookup_read_counts = Self::commit(
-            &proving_key.polynomials.witness.lookup_read_counts(),
+            proving_key.polynomials.witness.lookup_read_counts(),
             &proving_key.crs,
         )?;
         self.memory.witness_commitments.lookup_read_tags = Self::commit(
-            &proving_key.polynomials.witness.lookup_read_tags(),
+            proving_key.polynomials.witness.lookup_read_tags(),
             &proving_key.crs,
         )?;
         self.memory.witness_commitments.w_4 = Self::commit(&self.memory.w_4, &proving_key.crs)?;

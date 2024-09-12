@@ -147,8 +147,6 @@ impl<F: PrimeField, const SIZE: usize> Univariate<F, SIZE> {
             for i in 4..SIZE {
                 self.evaluations[i] = self.evaluations[i - 1] + idx_sqr_three_times_a + linear_term;
 
-                idx_sqr_three_times_a + linear_term;
-
                 idx_sqr_three_times_a += x_a_term + three_a;
                 x_a_term += six_a;
 

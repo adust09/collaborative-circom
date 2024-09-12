@@ -1,5 +1,5 @@
 use super::Relation;
-use crate::decider::sumcheck_round::SumcheckRoundOutput;
+use crate::decider::sumcheck::sumcheck_round::SumcheckRoundOutput;
 use crate::decider::types::RelationParameters;
 use crate::decider::{types::ProverUnivariates, univariate::Univariate};
 use ark_ec::short_weierstrass::SWCurveConfig;
