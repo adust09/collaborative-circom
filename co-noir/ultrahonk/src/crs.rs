@@ -69,10 +69,44 @@ fn write_manifest(filename: &str, manifest: &Manifest) -> Result<()> {
     Ok(())
 }
 
-fn convert_endianness_inplace(buffer: &mut [u8]) {
+fn convert_endianness_inplace_og(buffer: &mut [u8]) {
     for i in (0..buffer.len()).step_by(8) {
         let be = BigEndian::read_u64(&buffer[i..i + 8]);
         LittleEndian::write_u64(&mut buffer[i..i + 8], be);
+    }
+}
+
+fn convert_endianness_inplace(buffer: &mut [u8]) {
+    for chunk in buffer.chunks_mut(32) {
+        if chunk.len() == 32 {
+            let mut reversed = [0u8; 32];
+            for i in 0..4 {
+                let start = i * 8;
+                let end = (i + 1) * 8;
+                let reverse_start = chunk.len() - end;
+                let reverse_end = chunk.len() - start;
+
+                // Copy the reversed 8-byte segment
+                reversed[start..end].copy_from_slice(&chunk[reverse_start..reverse_end]);
+            }
+
+            // Convert endianness in the reversed chunk
+            for i in 0..4 {
+                let start = i * 8;
+                let end = (i + 1) * 8;
+                let be = BigEndian::read_u64(&reversed[start..end]);
+                LittleEndian::write_u64(&mut chunk[start..end], be);
+            }
+        }
+    }
+}
+fn read_elements_from_buffer_og<G: AffineRepr>(elements: &mut [G], buffer: &mut [u8]) {
+    for (element, chunk) in elements.iter_mut().zip(buffer.chunks_exact_mut(64)) {
+        convert_endianness_inplace_og(chunk);
+        #[allow(clippy::redundant_slicing)]
+        if let Ok(val) = G::deserialize_uncompressed_unchecked(&chunk[..]) {
+            *element = val;
+        }
     }
 }
 
@@ -124,11 +158,77 @@ fn is_file_exist(file_name: &str) -> bool {
 pub(crate) fn read_transcript_g1<P: Pairing>(
     monomials: &mut [P::G1Affine],
     degree: usize,
+) -> Result<()> {
+    let num_read = 0;
+    let path = "/home/fabsits/collaborative-circom/co-noir/ultrahonk/crs/bn254_g1.dat".to_string();
+
+    let g1_file_size = std::fs::metadata(&path)?.len() as usize;
+    assert!(g1_file_size % 64 == 0); //g1_file_size >= num_points * 64 &&
+    let num_to_read = g1_file_size / 64;
+    let g1_buffer_size = std::mem::size_of::<<P::G1 as CurveGroup>::BaseField>() * 2 * num_to_read;
+
+    let mut buffer = vec![0_u8; g1_buffer_size];
+
+    let file = File::open(&path)?;
+    let mut file = file.take(g1_buffer_size as u64);
+    assert!(Path::new(&path).exists());
+    file.read_exact(&mut buffer[..])?;
+    // We must pass the size actually read to the second call, not the desired
+    // g1_buffer_size as the file may have been smaller than this.
+    let monomials = &mut monomials[num_read..];
+    read_elements_from_buffer(monomials, &mut buffer);
+    Ok(())
+}
+
+pub(crate) fn read_transcript_g2<P: Pairing>(g2_x: &mut P::G2Affine, dir: &str) -> Result<()> {
+    let g2_size = std::mem::size_of::<<P::G2 as CurveGroup>::BaseField>() * 2;
+
+    assert!(std::mem::size_of::<P::G2Affine>() >= g2_size);
+    let path = "crs/bn254_g2.dat".to_string();
+
+    // if Path::new(&path).exists() {
+    let mut buffer = vec![0; g2_size];
+
+    let file = File::open(&path)?;
+    let mut file = file.take(g2_size as u64);
+    file.read_exact(&mut buffer[..])?;
+    convert_endianness_inplace(&mut buffer);
+    *g2_x = P::G2Affine::deserialize_uncompressed(&mut &buffer[..])
+        .map_err(|e| anyhow!("Failed to deserialize G2Affine from transcript file: {}", e))?;
+
+    Ok(())
+}
+
+pub(crate) fn read_transcript<P: Pairing>(
+    monomials: &mut [P::G1Affine],
+    g2_x: &mut P::G2Affine,
+    degree: usize,
+    path: &str,
+) -> Result<()> {
+    read_transcript_g1::<P>(monomials, degree)?;
+    read_transcript_g2::<P>(g2_x, path)?;
+    Ok(())
+}
+pub(crate) fn read_transcript_og<P: Pairing>(
+    monomials: &mut [P::G1Affine],
+    g2_x: &mut P::G2Affine,
+    degree: usize,
+    path: &str,
+) -> Result<()> {
+    read_transcript_g1_og::<P>(monomials, degree, path)?;
+    read_transcript_g2_og::<P>(g2_x, path)?;
+    Ok(())
+}
+
+pub(crate) fn read_transcript_g1_og<P: Pairing>(
+    monomials: &mut [P::G1Affine],
+    degree: usize,
     dir: &str,
 ) -> Result<()> {
     let num = 0;
     let mut num_read = 0;
     let mut path = get_transcript_path(dir, num);
+
     while Path::new(&path).exists() && num_read < degree {
         let manifest = read_manifest(&path)?;
 
@@ -142,16 +242,17 @@ pub(crate) fn read_transcript_g1<P: Pairing>(
         file.seek(SeekFrom::Start(offset as u64))?;
         let mut file = file.take(g1_buffer_size as u64);
         file.read_exact(&mut buffer[..])?;
+        println!("this is the buffer {}", buffer.len());
 
         // We must pass the size actually read to the second call, not the desired
         // g1_buffer_size as the file may have been smaller than this.
         let monomial = &mut monomials[num_read..];
-        read_elements_from_buffer(monomial, &mut buffer);
-
+        read_elements_from_buffer_og(monomial, &mut buffer);
+        println!("num_read {num_read}");
         num_read += num_to_read;
         path = get_transcript_path(dir, num + 1);
     }
-    println!("this ist hte path {path}");
+
     if num_read < degree {
         return Err(anyhow!(
                 "Only read {} points from {}, but require {}. Is your SRS large enough? \
@@ -167,7 +268,7 @@ pub(crate) fn read_transcript_g1<P: Pairing>(
     Ok(())
 }
 
-pub(crate) fn read_transcript_g2<P: Pairing>(g2_x: &mut P::G2Affine, dir: &str) -> Result<()> {
+pub(crate) fn read_transcript_g2_og<P: Pairing>(g2_x: &mut P::G2Affine, dir: &str) -> Result<()> {
     let g2_size = std::mem::size_of::<<P::G2 as CurveGroup>::BaseField>() * 2;
     assert!(std::mem::size_of::<P::G2Affine>() >= g2_size);
     let mut path = format!("{}/g2.dat", dir);
@@ -189,12 +290,12 @@ pub(crate) fn read_transcript_g2<P: Pairing>(g2_x: &mut P::G2Affine, dir: &str) 
 
     // Get transcript starting at g0.dat
     path = get_transcript_path(dir, 0);
+
     let manifest = read_manifest(&path)?;
 
-    let g2_buffer_offset = std::mem::size_of::<<P::G2 as CurveGroup>::BaseField>() / 2
+    let g2_buffer_offset = std::mem::size_of::<<P::G2 as CurveGroup>::BaseField>()
         * 2
         * manifest.num_g1_points as usize;
-
     let offset = std::mem::size_of::<Manifest>() + g2_buffer_offset;
 
     let mut file = File::open(&path)?;
@@ -206,16 +307,5 @@ pub(crate) fn read_transcript_g2<P: Pairing>(g2_x: &mut P::G2Affine, dir: &str) 
     *g2_x = P::G2Affine::deserialize_uncompressed(&mut &buf[..])
         .map_err(|e| anyhow!("Failed to deserialize G2Affine from transcript file: {}", e))?;
 
-    Ok(())
-}
-
-pub(crate) fn read_transcript<P: Pairing>(
-    monomials: &mut [P::G1Affine],
-    g2_x: &mut P::G2Affine,
-    degree: usize,
-    path: &str,
-) -> Result<()> {
-    read_transcript_g1::<P>(monomials, degree, path)?;
-    read_transcript_g2::<P>(g2_x, path)?;
     Ok(())
 }
