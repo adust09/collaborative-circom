@@ -1,4 +1,5 @@
 pub(crate) mod barycentric;
+pub(crate) mod polynomial;
 pub(crate) mod prover;
 pub(crate) mod relations;
 pub(crate) mod sumcheck;

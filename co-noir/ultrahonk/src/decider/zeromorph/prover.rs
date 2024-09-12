@@ -3,19 +3,16 @@ use super::{
     types::{PolyF, PolyG, PolyGShift},
 };
 use crate::{
-    decider::types::ClaimedEvaluations, get_msb, transcript::Keccak256Transcript,
-    types::ProvingKey, CONST_PROOF_SIZE_LOG_N, N_MAX,
+    decider::{polynomial::Polynomial, types::ClaimedEvaluations},
+    get_msb,
+    transcript::Keccak256Transcript,
+    types::ProvingKey,
+    CONST_PROOF_SIZE_LOG_N, N_MAX,
 };
 use ark_ec::pairing::Pairing;
-use ark_ff::{Field, PrimeField};
+use ark_ff::{Field, PrimeField, Zero};
 
 impl<P: Pairing> Decider<P> {
-    fn add_scaled<F: PrimeField>(polynomial: &mut Vec<F>, scalars: &Vec<F>, batching_scalar: F) {
-        for (i, &other_value) in scalars.iter().enumerate() {
-            polynomial[i] += batching_scalar * other_value;
-        }
-    }
-
     fn compute_multilinear_quotients(
         polynomial: Vec<P::ScalarField>,
         u_challenge: Vec<P::ScalarField>,
@@ -318,65 +315,29 @@ impl<P: Pairing> Decider<P> {
         // evaluations produced by sumcheck of h_i = g_i_shifted.
         let mut batched_evaluation = P::ScalarField::ZERO;
         let mut batching_scalar = P::ScalarField::ONE;
-        let mut f_batched = Vec::<P::ScalarField>::with_capacity(n); // batched unshifted polynomials
-        let mut g_batched = Vec::<P::ScalarField>::with_capacity(n); // batched to-be-shifted polynomials
+        let mut f_batched = Polynomial::new_zero(n); // batched unshifted polynomials
 
-        // //todo: check if this is really correct
-        // for (value1, value2) in f_polynomials.iter().zip(f_evaluations.iter()) {
-        //     // for (i, &other_value) in value1.iter().enumerate() {
-        //     //     //this is Self::add_scaled, see cpp/src/barretenberg/polynomials/polynomial.cpp
-        //     //     f_batched[i] += batching_scalar * other_value;
-        //     // }
-        //     Self::add_scaled(&mut f_batched, value1, batching_scalar);
-        //     batched_evaluation += batching_scalar * value2;
-        //     batching_scalar *= rho;
-        // }
-        // for (value1, value2) in g_polynomials.iter().zip(g_shift_evaluations.iter()) {
-        //     // for (i, &other_value) in value1.iter().enumerate() {
-        //     //     g_batched[i] += batching_scalar * other_value;
-        //     // }
-        //     Self::add_scaled(&mut g_batched, value1, batching_scalar);
-        //     batched_evaluation += batching_scalar * value2;
-        //     batching_scalar *= rho;
-        // }
+        for (f_poly, f_eval) in f_polynomials.iter().zip(f_evaluations.iter()) {
+            f_batched.add_scaled_slice(f_poly, &batching_scalar);
+            batched_evaluation += batching_scalar * f_eval;
+            batching_scalar *= rho;
+        }
 
-        // let num_groups = concatenation_groups.len();
-        // let num_chunks_per_group = if concatenation_groups.is_empty() {
-        //     0
-        // } else {
-        //     concatenation_groups[0].len()
-        // };
+        let mut g_batched = Polynomial::new_zero(n); // batched to-be-shifted polynomials
 
-        // let mut concatenated_batched = Vec::<P::ScalarField>::with_capacity(n); // Concatenated polynomials
+        for (g_poly, g_shift_eval) in g_polynomials.iter().zip(g_shift_evaluations.iter()) {
+            g_batched.add_scaled_slice(g_poly, &batching_scalar);
+            batched_evaluation += batching_scalar * g_shift_eval;
+            batching_scalar *= rho;
+        }
 
-        // // construct concatention_groups_batched
-        // let mut concatenation_groups_batched: Vec<Vec<P::ScalarField>> =
-        //     Vec::with_capacity(num_chunks_per_group);
+        // We don't have groups, so we skip a lot now
 
-        // for _ in 0..num_chunks_per_group {
-        //     concatenation_groups_batched.push(Vec::with_capacity(n));
-        // }
-
-        // // For each group
-        // for i in 0..num_groups {
-        //     for (k, &other_value) in concatenated_polynomials[i].iter().enumerate() {
-        //         concatenated_batched[k] += batching_scalar * other_value;
-        //     }
-
-        //     // For each element in a group
-        //     for j in 0..num_chunks_per_group {
-        //         for (k, &other_value) in concatenation_groups[i][j].iter().enumerate() {
-        //             concatenation_groups_batched[j][k] += batching_scalar * other_value;
-        //         }
-        //     }
-
-        //     batched_evaluation += batching_scalar * concatenated_evaluations[i];
-        //     batching_scalar *= rho;
-        // }
-
-        // let f_polynomial = f_batched;
-        // // TODO f_polynomial += g_batched.shifted();
-        // // f_polynomial += concatenated_batched;
+        // Compute the full batched polynomial f = f_batched + g_batched.shifted() = f_batched + h_batched. This is the
+        // polynomial for which we compute the quotients q_k and prove f(u) = v_batched.
+        let mut f_polynomial = f_batched;
+        f_polynomial += g_batched.shifted();
+        // f_polynomial += concatenated_batched; // No groups
 
         // // Compute the multilinear quotients q_k = q_k(X_0, ..., X_{k-1})
         // let quotients = Self::compute_multilinear_quotients(f_polynomial, u_challenge);
