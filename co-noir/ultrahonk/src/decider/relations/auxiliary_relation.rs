@@ -1,6 +1,6 @@
 use super::Relation;
 use crate::decider::{
-    sumcheck_round::{SumcheckRound, SumcheckRoundOutput},
+    sumcheck_round::SumcheckRoundOutput,
     types::{ProverUnivariates, RelationParameters},
     univariate::Univariate,
 };

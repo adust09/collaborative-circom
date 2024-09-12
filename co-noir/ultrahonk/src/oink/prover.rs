@@ -19,6 +19,7 @@
 
 use super::types::ProverMemory;
 use crate::{
+    batch_invert,
     prover::{HonkProofError, HonkProofResult},
     transcript::Keccak256Transcript,
     types::{ProverCrs, ProvingKey},
@@ -177,9 +178,7 @@ impl<P: Pairing> Oink<P> {
             self.memory.lookup_inverses[i] = read_term * write_term;
         }
 
-        for inv in self.memory.lookup_inverses.iter_mut() {
-            inv.inverse_in_place();
-        }
+        batch_invert(&mut self.memory.lookup_inverses);
     }
 
     fn compute_public_input_delta(
@@ -304,9 +303,7 @@ impl<P: Pairing> Oink<P> {
         }
 
         // invert denominator
-        for den in denominator.iter_mut() {
-            den.inverse_in_place();
-        }
+        batch_invert(&mut denominator);
 
         // Step (3) Compute z_perm[i] = numerator[i] / denominator[i]
         self.memory.z_perm.resize(

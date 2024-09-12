@@ -1,3 +1,5 @@
+use ark_ff::PrimeField;
+
 pub(crate) mod decider;
 pub(crate) mod oink;
 pub mod prover;
@@ -24,3 +26,28 @@ pub(crate) fn get_msb(inp: u32) -> u8 {
 pub(crate) const NUM_ALPHAS: usize = decider::relations::NUM_SUBRELATIONS - 1;
 pub(crate) const CONST_PROOF_SIZE_LOG_N: usize = 28;
 pub(crate) const N_MAX: usize = 1 << 25;
+
+fn batch_invert<F: PrimeField>(coeffs: &mut [F]) {
+    // This better?
+    // for inv in coeffs.iter_mut() {
+    //     inv.inverse_in_place();
+    // }
+
+    // Assumes that all elements are invertible
+    let n = coeffs.len();
+    let mut temporaries = Vec::with_capacity(n);
+    let mut acc = F::one();
+    for c in coeffs.iter() {
+        temporaries.push(acc);
+        debug_assert!(!c.is_zero());
+        acc *= c;
+    }
+
+    acc.inverse_in_place().unwrap();
+
+    for (c, t) in coeffs.iter_mut().zip(temporaries.into_iter()) {
+        let tmp = t * acc;
+        acc *= &*c;
+        *c = tmp;
+    }
+}

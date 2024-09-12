@@ -1,6 +1,8 @@
 use ark_ff::{PrimeField, Zero};
 use std::ops::{Add, AddAssign, Mul, MulAssign, Neg, Sub, SubAssign};
 
+use crate::decider::barycentric::Barycentric;
+
 #[derive(Clone, Debug)]
 pub struct Univariate<F: PrimeField, const SIZE: usize> {
     pub(crate) evaluations: [F; SIZE],
@@ -56,6 +58,7 @@ impl<F: PrimeField, const SIZE: usize> Univariate<F, SIZE> {
      *
      */
     pub(crate) fn extend_from(&mut self, poly: &[F]) {
+        assert!(poly.len() <= SIZE);
         self.evaluations[..poly.len()].copy_from_slice(poly);
 
         if poly.len() == 2 {
@@ -63,10 +66,35 @@ impl<F: PrimeField, const SIZE: usize> Univariate<F, SIZE> {
             for i in 2..SIZE {
                 self.evaluations[i] = self.evaluations[i - 1] + delta;
             }
-            return;
+        } else if poly.len() == 3 {
+            todo!("extend other cases")
+        } else if poly.len() == 4 {
+            todo!("extend other cases")
+        } else {
+            for k in poly.len()..SIZE {
+                self.evaluations[k] = F::zero();
+
+                let big_domain = Barycentric::construct_big_domain(poly.len(), SIZE);
+                let lagrange_denominators =
+                    Barycentric::construct_lagrange_denominators(poly.len(), &big_domain);
+                let dominator_inverses = Barycentric::construct_denominator_inverses(
+                    SIZE,
+                    &big_domain,
+                    &lagrange_denominators,
+                );
+                let full_numerator_values =
+                    Barycentric::construct_full_numerator_values(poly.len(), SIZE, &big_domain);
+
+                // compute each term v_j / (d_j*(x-x_j)) of the sum
+                for (j, term) in poly.iter().enumerate() {
+                    let mut term = *term;
+                    term *= &dominator_inverses[poly.len() * k + j];
+                    self.evaluations[k] += term;
+                }
+                // scale the sum by the value of of B(x)
+                self.evaluations[k] *= &full_numerator_values[k];
+            }
         }
-        // TODO this is not the case anymore...
-        todo!("extend other cases")
     }
 
     pub(crate) fn extend_and_batch_univariates<const SIZE2: usize>(
