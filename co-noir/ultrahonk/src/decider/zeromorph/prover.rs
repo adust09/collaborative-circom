@@ -110,7 +110,7 @@ impl<P: Pairing> Decider<P> {
             //     //this is Self::add_scaled, see cpp/src/barretenberg/polynomials/polynomial.cpp
             //     result[i] += -y_power * x_power * other_value;
             // }
-            Self::add_scaled(&mut result, &quotients[k], -y_power * x_power);
+            // Self::add_scaled(&mut result, &quotients[k], -y_power * x_power);
 
             y_power *= y_challenge; // update batching scalar y^k
         }
@@ -131,7 +131,7 @@ impl<P: Pairing> Decider<P> {
 
         // Initialize Z_x with x * \sum_{i=0}^{m-1} f_i + \sum_{i=0}^{l-1} g_i
         let mut result = g_batched.clone();
-        Self::add_scaled(&mut result, &f_batched, x_challenge);
+        // Self::add_scaled(&mut result, &f_batched, x_challenge);
 
         // Compute Z_x -= v * x * \Phi_n(x)
         let phi_numerator = x_challenge.pow([n as u64]) - P::ScalarField::ONE; // x^N - 1
@@ -159,7 +159,7 @@ impl<P: Pairing> Decider<P> {
             scalar *= x_challenge;
             scalar *= -P::ScalarField::ONE;
 
-            Self::add_scaled(&mut result, &quotients[k], scalar);
+            // Self::add_scaled(&mut result, &quotients[k], scalar);
         }
 
         // If necessary, add to Z_x the contribution related to concatenated polynomials:
@@ -168,7 +168,7 @@ impl<P: Pairing> Decider<P> {
             let x_to_minicircuit_n = x_challenge.pow([minicircuit_n as u64]); // power of x used to shift polynomials to the right
             let mut running_shift = x_challenge;
             for group in &concatenation_groups_batched {
-                Self::add_scaled(&mut result, group, running_shift);
+                // Self::add_scaled(&mut result, group, running_shift);
                 running_shift *= x_to_minicircuit_n;
             }
         }
@@ -184,7 +184,7 @@ impl<P: Pairing> Decider<P> {
         let n = zeta_x.len();
         assert!(n <= N_MAX);
         let mut batched_polynomial = zeta_x.clone();
-        Self::add_scaled(&mut batched_polynomial, &z_x, z_challenge);
+        // Self::add_scaled(&mut batched_polynomial, &z_x, z_challenge);
 
         /*
         // TODO(#742): To complete the degree check, we need to do an opening proof for x_challenge with a univariate
