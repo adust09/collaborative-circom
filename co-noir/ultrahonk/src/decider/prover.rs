@@ -8,13 +8,13 @@ pub struct Decider<P: Pairing> {
     phantom_data: PhantomData<P>,
 }
 
-// impl<P: Pairing> Decider<P> {
-//     pub fn new(memory: ProverMemory<P>) -> Self {
-//         Self {
-//             memory,
-//             phantom_data: PhantomData,
-//         }
-//     }
+impl<P: Pairing> Decider<P> {
+    pub fn new(memory: ProverMemory<P>) -> Self {
+        Self {
+            memory,
+            phantom_data: PhantomData,
+        }
+    }
 
     /**
      * @brief Run Sumcheck to establish that ∑_i pow(\vec{β*})f_i(ω) = e*. This results in u = (u_1,...,u_d) sumcheck round
@@ -66,11 +66,7 @@ pub struct Decider<P: Pairing> {
         // Execute Zeromorph multilinear PCS
         self.execute_pcs_rounds(transcript, proving_key, sumcheck_output);
 
-//         todo!("output the proof");
-//         Ok(())
-//     }
-// }
-//         todo!("output the proof");
-//         Ok(())
-//     }
-// }
+        todo!("output the proof");
+        Ok(())
+    }
+}
