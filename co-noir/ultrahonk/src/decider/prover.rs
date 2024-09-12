@@ -1,4 +1,4 @@
-use super::types::ProverMemory;
+use super::{sumcheck::prover::SumcheckOutput, types::ProverMemory};
 use crate::{prover::HonkProofResult, transcript, types::ProvingKey};
 use ark_ec::pairing::Pairing;
 use std::marker::PhantomData;
@@ -8,8 +8,6 @@ pub struct Decider<P: Pairing> {
     phantom_data: PhantomData<P>,
 }
 
-//TODO: polynomial struct?
-
 impl<P: Pairing> Decider<P> {
     pub fn new(memory: ProverMemory<P>) -> Self {
         Self {
@@ -18,21 +16,26 @@ impl<P: Pairing> Decider<P> {
         }
     }
 
-    // Run sumcheck subprotocol.
+    /**
+     * @brief Run Sumcheck to establish that ∑_i pow(\vec{β*})f_i(ω) = e*. This results in u = (u_1,...,u_d) sumcheck round
+     * challenges and all evaluations at u being calculated.
+     *
+     */
     fn execute_relation_check_rounds(
         &self,
         transcript: &mut transcript::Keccak256Transcript<P>,
         proving_key: &ProvingKey<P>,
-    ) {
+    ) -> SumcheckOutput<P::ScalarField> {
         // This is just Sumcheck.prove
-
-        self.sumcheck_prove(transcript, proving_key);
-
-        todo!();
+        self.sumcheck_prove(transcript, proving_key)
     }
 
-    // Fiat-Shamir: rho, y, x, z
-    // Execute Zeromorph multilinear PCS
+    /**
+     * @brief Execute the ZeroMorph protocol to produce an opening claim for the multilinear evaluations produced by
+     * Sumcheck and then produce an opening proof with a univariate PCS.
+     * @details See https://hackmd.io/dlf9xEwhTQyE3hiGbq4FsA?view for a complete description of the unrolled protocol.
+     *
+     * */
     fn execute_pcs_rounds(&self) {
         // let prover_opening_claim = Self::zeromorph_prove();
         todo!();
@@ -56,7 +59,7 @@ impl<P: Pairing> Decider<P> {
         );
 
         // Run sumcheck subprotocol.
-        self.execute_relation_check_rounds(&mut transcript, &proving_key);
+        let sumcheck_output = self.execute_relation_check_rounds(&mut transcript, &proving_key);
         // Fiat-Shamir: rho, y, x, z
         // Execute Zeromorph multilinear PCS
         self.execute_pcs_rounds();
