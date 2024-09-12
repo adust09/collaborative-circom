@@ -227,7 +227,7 @@ impl<P: Pairing> Decider<P> {
         PolyGShift {
             tables: &evaluations.polys.shifted_tables,
             wires: &evaluations.polys.shifted_witness,
-            z_perm: &evaluations.memory.z_perm_shift(),
+            z_perm: evaluations.memory.z_perm_shift(),
         }
     }
 
@@ -297,29 +297,29 @@ impl<P: Pairing> Decider<P> {
         let f_evaluations = Self::get_f_evaluations(&sumcheck_output.claimed_evaluations);
         let g_shift_evaluations =
             Self::get_g_shift_evaluations(&sumcheck_output.claimed_evaluations);
+        let multilinear_challenge = &sumcheck_output.challenges;
+        let commitment_key = &proving_key.crs;
 
-        // std::mem::swap(&mut transcript, transcript_inout);
-        // // Generate batching challenge \rho and powers 1,...,\rho^{m-1}
-        // let rho = transcript.get_challenge();
-        // let mut transcript = transcript::Keccak256Transcript::<P>::default();
-        // transcript.add_scalar(rho);
+        // Generate batching challenge \rho and powers 1,...,\rho^{m-1}
+        let rho = transcript.get_challenge();
+        let mut transcript = Keccak256Transcript::<P>::default();
+        transcript.add_scalar(rho);
 
-        // // Extract multilinear challenge u and claimed multilinear evaluations from Sumcheck output
-        // // std::span<const FF> u_challenge = multilinear_challenge;
-        // let u_challenge = multilinear_challenge;
-        // let log_n = crate::get_msb(circuit_size);
-        // let n = 1 << log_n;
+        // Extract multilinear challenge u and claimed multilinear evaluations from Sumcheck output
+        let u_challenge = multilinear_challenge;
+        let log_n = crate::get_msb(circuit_size);
+        let n = 1 << log_n;
 
-        // // Compute batching of unshifted polynomials f_i and to-be-shifted polynomials g_i:
-        // // f_batched = sum_{i=0}^{m-1}\rho^i*f_i and g_batched = sum_{i=0}^{l-1}\rho^{m+i}*g_i,
-        // // and also batched evaluation
-        // // v = sum_{i=0}^{m-1}\rho^i*f_i(u) + sum_{i=0}^{l-1}\rho^{m+i}*h_i(u).
-        // // Note: g_batched is formed from the to-be-shifted polynomials, but the batched evaluation incorporates the
-        // // evaluations produced by sumcheck of h_i = g_i_shifted.
-        // let mut batched_evaluation = P::ScalarField::ZERO;
-        // let mut batching_scalar = P::ScalarField::ONE;
-        // let mut f_batched = Vec::<P::ScalarField>::with_capacity(n); // batched unshifted polynomials
-        // let mut g_batched = Vec::<P::ScalarField>::with_capacity(n); // batched to-be-shifted polynomials
+        // Compute batching of unshifted polynomials f_i and to-be-shifted polynomials g_i:
+        // f_batched = sum_{i=0}^{m-1}\rho^i*f_i and g_batched = sum_{i=0}^{l-1}\rho^{m+i}*g_i,
+        // and also batched evaluation
+        // v = sum_{i=0}^{m-1}\rho^i*f_i(u) + sum_{i=0}^{l-1}\rho^{m+i}*h_i(u).
+        // Note: g_batched is formed from the to-be-shifted polynomials, but the batched evaluation incorporates the
+        // evaluations produced by sumcheck of h_i = g_i_shifted.
+        let mut batched_evaluation = P::ScalarField::ZERO;
+        let mut batching_scalar = P::ScalarField::ONE;
+        let mut f_batched = Vec::<P::ScalarField>::with_capacity(n); // batched unshifted polynomials
+        let mut g_batched = Vec::<P::ScalarField>::with_capacity(n); // batched to-be-shifted polynomials
 
         // //todo: check if this is really correct
         // for (value1, value2) in f_polynomials.iter().zip(f_evaluations.iter()) {
