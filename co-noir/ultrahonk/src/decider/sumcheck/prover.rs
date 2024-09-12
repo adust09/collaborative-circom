@@ -6,7 +6,12 @@ use crate::types::{Polynomials, ProvingKey};
 use crate::CONST_PROOF_SIZE_LOG_N;
 use crate::{decider::types::GateSeparatorPolynomial, get_msb};
 use ark_ec::pairing::Pairing;
-use ark_ff::Zero;
+use ark_ff::{PrimeField, Zero};
+
+pub struct SumcheckOutput<F: PrimeField> {
+    claimed_evaluations: ClaimedEvaluations<F>,
+    challenges: Vec<F>,
+}
 
 // Keep in mind, the UltraHonk protocol (UltraFlavor) does not per default have ZK
 impl<P: Pairing> Decider<P> {
@@ -71,7 +76,7 @@ impl<P: Pairing> Decider<P> {
         &self,
         transcript_inout: &mut Keccak256Transcript<P>,
         proving_key: &ProvingKey<P>,
-    ) {
+    ) -> SumcheckOutput<P::ScalarField> {
         tracing::trace!("Sumcheck prove");
 
         // Get the challenges and refresh the transcript
@@ -181,6 +186,9 @@ impl<P: Pairing> Decider<P> {
         transcript_inout.add_scalar(round_challenge);
         Self::add_evals_to_transcript(&mut transcript, &multivariate_evaluations);
 
-        todo!("continue")
+        SumcheckOutput {
+            claimed_evaluations: multivariate_evaluations,
+            challenges: multivariate_challenge,
+        }
     }
 }
