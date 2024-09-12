@@ -1,7 +1,5 @@
 mod crs;
 use ark_ff::PrimeField;
-
-mod crs;
 pub(crate) mod decider;
 pub(crate) mod oink;
 pub mod prover;

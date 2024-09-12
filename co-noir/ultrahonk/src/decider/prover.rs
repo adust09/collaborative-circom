@@ -47,7 +47,7 @@ impl<P: Pairing> Decider<P> {
     }
 
     pub fn prove(self, proving_key: &ProvingKey<P>) -> HonkProofResult<()> {
-        tracing::trace!("Decider prove");
+        // tracing::trace!("Decider prove");
 
         let mut transcript = transcript::Keccak256Transcript::<P>::default();
         transcript.add_scalar(
