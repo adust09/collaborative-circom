@@ -290,13 +290,4 @@ impl SumcheckRound {
             gate_sparators,
         )
     }
-
-    pub(crate) fn partially_evaluate_poly<P: Pairing>(
-        &self,
-        polynomials: Vec<P::ScalarField>,
-        round_challenge: P::ScalarField,
-    ) {
-        // Barretenberg uses multithreading here
-        todo!()
-    }
 }

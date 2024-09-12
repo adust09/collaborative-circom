@@ -22,6 +22,15 @@ pub struct ProverUnivariates<F: PrimeField> {
     pub polys: AllEntities<Univariate<F, MAX_PARTIAL_RELATION_LENGTH>>,
 }
 
+#[derive(Default)]
+pub struct PartiallyEvaluatePolys<F: PrimeField> {
+    pub w_4: Vec<F>,             // column 3
+    pub z_perm: Vec<F>,          // column 4
+    pub lookup_inverses: Vec<F>, // column 5
+    pub z_perm_shift: Vec<F>, // TODO this is never calculated? also the permutation relation might always be skipped right now?
+    pub polys: AllEntities<Vec<F>>,
+}
+
 pub struct WitnessCommitments<P: Pairing> {
     pub w_l: P::G1,
     pub w_r: P::G1,
@@ -47,7 +56,6 @@ pub struct RelationParameters<F: PrimeField> {
 pub struct GateSeparatorPolynomial<F: PrimeField> {
     betas: Vec<F>,
     pub(crate) beta_products: Vec<F>,
-    //TODO dont know if only verifier needs the following, then maybe separate struct for this
     pub(crate) partial_evaluation_result: F,
     current_element_idx: usize,
     pub(crate) periodicity: usize,

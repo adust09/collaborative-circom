@@ -1,97 +1,163 @@
 use super::prover::Decider;
 use crate::decider::sumcheck_round::SumcheckRound;
+use crate::decider::types::PartiallyEvaluatePolys;
+use crate::transcript::Keccak256Transcript;
+use crate::types::{Polynomials, ProvingKey};
 use crate::{decider::types::GateSeparatorPolynomial, get_msb};
-use crate::{transcript, types::ProvingKey};
 use ark_ec::pairing::Pairing;
-use ark_ff::UniformRand;
-use rand::{thread_rng, Rng};
+
+macro_rules! partially_evaluate_macro {
+    ($src:expr, $des:expr, $round_size:expr, $round_challenge:expr, ($($el:ident),*)) => {{
+        $(
+            Self::partially_evaluate_poly(&$src.$el, &mut $des.$el, $round_size, $round_challenge);
+        )*
+    }};
+}
 
 // Keep in mind, the UltraHonk protocol (UltraFlavor) does not per default have ZK
-// The UltraFlavorWithZK has ZK
-pub(crate) const HAS_ZK: bool = false;
-
 impl<P: Pairing> Decider<P> {
-    fn setup_zk_sumcheck_data<R: Rng>(&self, rng: &mut R) {
-        const NUM_ALL_WITNESS_ENTITIES: usize = 13;
+    pub(crate) fn partially_evaluate_poly(
+        poly_src: &[P::ScalarField],
+        poly_des: &mut [P::ScalarField],
+        round_size: usize,
+        round_challenge: &P::ScalarField,
+    ) {
+        for i in (0..round_size).step_by(2) {
+            poly_des[i >> 1] = poly_src[i] + (poly_src[i + 1] - poly_src[i]) * round_challenge;
+        }
+    }
 
-        let eval_masking_scalars = (0..NUM_ALL_WITNESS_ENTITIES)
-            .map(|_| P::ScalarField::rand(rng))
-            .collect::<Vec<_>>();
+    pub(crate) fn partially_evaluate(
+        &self,
+        polys: &Polynomials<P::ScalarField>,
+        round_size: usize,
+        round_challenge: &P::ScalarField,
+    ) -> PartiallyEvaluatePolys<P::ScalarField> {
+        tracing::trace!("Partially_evaluate");
 
-        todo!("Not yet implemented");
+        let mut res = PartiallyEvaluatePolys::default();
+        // Barretenberg uses multithreading here
+
+        // Memory
+        partially_evaluate_macro!(
+            &self.memory,
+            res,
+            round_size,
+            round_challenge,
+            (w_4, z_perm, z_perm_shift, lookup_inverses)
+        );
+
+        // WitnessEntities
+        partially_evaluate_macro!(
+            &polys.witness,
+            &mut res.polys.witness,
+            round_size,
+            round_challenge,
+            (w_l, w_r, w_o, lookup_read_counts, lookup_read_tags)
+        );
+
+        // ShiftedWitnessEntities
+        partially_evaluate_macro!(
+            &polys.shifted,
+            &mut res.polys.shifted,
+            round_size,
+            round_challenge,
+            (w_l, w_r, w_o, w_4)
+        );
+
+        // PrecomputedEntities
+        partially_evaluate_macro!(
+            &polys.precomputed,
+            &mut res.polys.precomputed,
+            round_size,
+            round_challenge,
+            (
+                q_m,
+                q_c,
+                q_l,
+                q_r,
+                q_o,
+                q_4,
+                q_arith,
+                q_delta_range,
+                q_elliptic,
+                q_aux,
+                q_lookup,
+                q_poseidon2_external,
+                q_poseidon2_internal,
+                sigma_1,
+                sigma_2,
+                sigma_3,
+                sigma_4,
+                id_1,
+                id_2,
+                id_3,
+                id_4,
+                table_1,
+                table_2,
+                table_3,
+                table_4,
+                lagrange_first,
+                lagrange_last
+            )
+        );
+        res
     }
 
     pub(crate) fn sumcheck_prove(
         &self,
-        transcript: &mut transcript::Keccak256Transcript<P>,
+        transcript_inout: &mut Keccak256Transcript<P>,
         proving_key: &ProvingKey<P>,
     ) {
         tracing::trace!("Sumcheck prove");
 
-        // TODO another RNG?
-        let mut rng = thread_rng();
+        // Get the challenges and refresh the transcript
+        let mut transcript = Keccak256Transcript::<P>::default();
+        std::mem::swap(&mut transcript, transcript_inout);
 
         let multivariate_n = proving_key.circuit_size;
         let multivariate_d = get_msb(multivariate_n);
-        // TODO check this
-        let sum_check_round = SumcheckRound::new(multivariate_n as usize);
-        // In case the Flavor has ZK, we populate sumcheck data structure with randomness, compute correcting term for
-        // the total sum, etc.
-        if HAS_ZK {
-            self.setup_zk_sumcheck_data(&mut rng);
-        };
 
-        let pow_univariate = GateSeparatorPolynomial::new(
+        let mut sum_check_round = SumcheckRound::new(multivariate_n as usize);
+
+        let mut gate_separators = GateSeparatorPolynomial::new(
             self.memory.relation_parameters.gate_challenges.to_owned(),
         );
 
-        // let mut multivariate_challenge = Vec::with_capacity(multivariate_d as usize);
+        let mut multivariate_challenge = Vec::with_capacity(multivariate_d as usize);
         let mut round_idx = 0;
         // In the first round, we compute the first univariate polynomial and populate the book-keeping table of
         // #partially_evaluated_polynomials, which has \f$ n/2 \f$ rows and \f$ N \f$ columns. When the Flavor has ZK,
         // compute_univariate also takes into account the zk_sumcheck_data.
-
         let round_univariate = sum_check_round.compute_univariate(
             round_idx,
             &self.memory.relation_parameters,
-            &pow_univariate,
+            &gate_separators,
             &self.memory,
             proving_key,
         );
 
-        todo!("first round");
+        for val in multivariate_challenge.iter() {
+            transcript.add_scalar(*val);
+        }
+        let round_challenge = transcript.get_challenge();
+        multivariate_challenge.push(round_challenge);
 
-        // multivariate_challenge.push(transcript.get_challenge());
-        // let mut transcript = transcript::Keccak256Transcript::<P>::default();
-        // transcript.add_scalar(multivariate_challenge[0]);
-        // for round_idx in 1..multivariate_d {
-        //     let round_univariate= sum_check_round.compute_univariate(round_idx,partially_evaluated_polynomials, relation_parameters, pow_univariate, alpha)
-        //     transcript.add_scalar(round_univariate);
-        //     let round_challenge= transcript.get_challenge();
-        //     multivariate_challenge.push(round_challenge);
-        //     let mut transcript = transcript::Keccak256Transcript::<P>::default();
-        //     transcript.add_scalar(round_challenge);
-        //     // need SumcheckRound struct here:
-        //     sum_check_round.partially_evaluate_poly(partially_evaluated_polynomials, round_challenge);
-        //     pow_univariate.partially_evaluate(round_challenge);
-        //     sum_check_round.round_size = sum_check_round.round_size >> 1;
-        // }
+        let mut transcript: crate::transcript::Transcript<
+            sha3::digest::core_api::CoreWrapper<sha3::Keccak256Core>,
+            P,
+        > = Keccak256Transcript::<P>::default();
 
-        // // auto zero_univariate = bb::Univariate<FF, Flavor::BATCHED_RELATION_PARTIAL_LENGTH>::zero();
-        // let placeholder=347;
+        let partially_evaluated_polys = self.partially_evaluate(
+            &proving_key.polynomials,
+            multivariate_n as usize,
+            &round_challenge,
+        );
 
-        // let zero_univariate= Vec::<P::ScalarField>::with_capacity(placeholder);
-        // for idx in multivariate_d as usize .. crate::CONST_PROOF_SIZE_LOG_N  {
-        //     zero_univariate.iter().for_each(|inst| {
-        //         transcript.add_scalar(*inst);
-        //     }); // TODO is this really what we want?
-        //     let round_challenge=transcript.get_challenge();
-        //     multivariate_challenge.push(round_challenge);
-        //     let mut transcript = transcript::Keccak256Transcript::<P>::default();
-        //     transcript.add_scalar(round_challenge);
-        // }
-
-        // Final round: Extract multivariate evaluations from #partially_evaluated_polynomials and add to transcript
+        gate_separators.partially_evaluate(round_challenge);
+        sum_check_round.round_size >>= 1; // TODO(#224)(Cody): Maybe partially_evaluate should do this and
+                                          // release memory?        // All but final round
+                                          // We operate on partially_evaluated_polynomials in place.
 
         todo!("return multivariate_challenge and multivariate_evaluations")
     }
