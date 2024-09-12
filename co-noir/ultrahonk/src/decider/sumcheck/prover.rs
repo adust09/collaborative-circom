@@ -15,7 +15,7 @@ pub struct SumcheckOutput<F: PrimeField> {
 
 // Keep in mind, the UltraHonk protocol (UltraFlavor) does not per default have ZK
 impl<P: Pairing> Decider<P> {
-    pub(crate) fn partially_evaluate_poly(
+    fn partially_evaluate_poly(
         poly_src: &[P::ScalarField],
         poly_des: &mut [P::ScalarField],
         round_size: usize,
@@ -26,7 +26,7 @@ impl<P: Pairing> Decider<P> {
         }
     }
 
-    pub(crate) fn partially_evaluate_poly_inplace(
+    fn partially_evaluate_poly_inplace(
         poly: &mut [P::ScalarField],
         round_size: usize,
         round_challenge: &P::ScalarField,
@@ -61,7 +61,7 @@ impl<P: Pairing> Decider<P> {
     }
 
     // TODO order is probably wrong
-    pub(crate) fn add_evals_to_transcript(
+    fn add_evals_to_transcript(
         transcript: &mut Keccak256Transcript<P>,
         evaluations: &ClaimedEvaluations<P::ScalarField>,
     ) {
@@ -70,6 +70,21 @@ impl<P: Pairing> Decider<P> {
         for src in evaluations.iter() {
             transcript.add_scalar(*src);
         }
+    }
+
+    fn extract_claimed_evaluations(
+        partially_evaluated_polynomials: PartiallyEvaluatePolys<P::ScalarField>,
+    ) -> ClaimedEvaluations<P::ScalarField> {
+        let mut multivariate_evaluations = ClaimedEvaluations::default();
+
+        for (src, des) in partially_evaluated_polynomials
+            .iter()
+            .zip(multivariate_evaluations.iter_mut())
+        {
+            *des = src[0];
+        }
+
+        multivariate_evaluations
     }
 
     pub(crate) fn sumcheck_prove(
@@ -180,11 +195,10 @@ impl<P: Pairing> Decider<P> {
 
         // Claimed evaluations of Prover polynomials are extracted and added to the transcript. When Flavor has ZK, the
         // evaluations of all witnesses are masked.
-        let mut multivariate_evaluations = ClaimedEvaluations::default();
-        todo!();
+        let multivariate_evaluations = Self::extract_claimed_evaluations(partially_evaluated_polys);
 
         transcript_inout.add_scalar(round_challenge);
-        Self::add_evals_to_transcript(&mut transcript, &multivariate_evaluations);
+        Self::add_evals_to_transcript(transcript_inout, &multivariate_evaluations);
 
         SumcheckOutput {
             claimed_evaluations: multivariate_evaluations,
