@@ -67,7 +67,21 @@ impl<F: PrimeField, const SIZE: usize> Univariate<F, SIZE> {
                 self.evaluations[i] = self.evaluations[i - 1] + delta;
             }
         } else if poly.len() == 3 {
-            todo!("extend other cases")
+            // Based off https://hackmd.io/@aztec-network/SyR45cmOq?type=view
+            // The technique used here is the same as the length == 3 case below.
+            let inverse_two = F::from(2u64).inverse().unwrap();
+            let a = (poly[2] + poly[0]) * inverse_two - poly[1];
+            let b = poly[1] - a - poly[0];
+            let a2 = a.double();
+            let mut a_mul = a2.to_owned();
+            for i in 0..poly.len() - 2 {
+                a_mul += a2;
+            }
+            let mut extra = a_mul + a + b;
+            for i in 3..SIZE {
+                self.evaluations[i] = self.evaluations[i - 1] + extra;
+                extra += a2;
+            }
         } else if poly.len() == 4 {
             todo!("extend other cases")
         } else {
