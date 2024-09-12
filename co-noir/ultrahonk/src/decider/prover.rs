@@ -70,3 +70,7 @@ pub struct Decider<P: Pairing> {
 //         Ok(())
 //     }
 // }
+//         todo!("output the proof");
+//         Ok(())
+//     }
+// }
