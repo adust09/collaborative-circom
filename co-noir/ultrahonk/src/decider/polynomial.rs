@@ -1,10 +1,10 @@
-use std::ops::AddAssign;
+use std::ops::{AddAssign, Index};
 
 use ark_ff::PrimeField;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub struct Polynomial<F: PrimeField> {
-    coefficients: Vec<F>,
+    pub(crate) coefficients: Vec<F>,
 }
 
 impl<F: PrimeField> Polynomial<F> {
@@ -16,6 +16,26 @@ impl<F: PrimeField> Polynomial<F> {
         Self {
             coefficients: vec![F::zero(); size],
         }
+    }
+
+    pub fn iter(&self) -> impl Iterator<Item = &F> {
+        self.coefficients.iter()
+    }
+
+    pub fn len(&self) -> usize {
+        self.coefficients.len()
+    }
+
+    pub fn degree(&self) -> usize {
+        let mut len = self.coefficients.len() - 1;
+        for c in self.coefficients.iter().rev() {
+            if c.is_zero() {
+                len -= 1;
+            } else {
+                break;
+            }
+        }
+        len
     }
 
     pub(crate) fn add_scaled_slice(&mut self, src: &[F], scalar: &F) {
@@ -35,6 +55,14 @@ impl<F: PrimeField> Polynomial<F> {
         assert!(self.coefficients[0].is_zero());
         assert!(self.coefficients.last().unwrap().is_zero());
         &self.coefficients[1..]
+    }
+}
+
+impl<F: PrimeField> Index<usize> for Polynomial<F> {
+    type Output = F;
+
+    fn index(&self, index: usize) -> &Self::Output {
+        &self.coefficients[index]
     }
 }
 

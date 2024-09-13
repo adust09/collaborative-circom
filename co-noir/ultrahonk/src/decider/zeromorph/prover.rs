@@ -11,51 +11,50 @@ use crate::{
 };
 use ark_ec::pairing::Pairing;
 use ark_ff::{Field, PrimeField, Zero};
+use itertools::izip;
 
 impl<P: Pairing> Decider<P> {
     fn compute_multilinear_quotients(
-        polynomial: Vec<P::ScalarField>,
-        u_challenge: Vec<P::ScalarField>,
-    ) -> Vec<Vec<P::ScalarField>> //->  std::vector<Polynomial> quotients
-    {
+        polynomial: &Polynomial<P::ScalarField>,
+        u_challenge: &[P::ScalarField],
+    ) -> Vec<Polynomial<P::ScalarField>> {
         let log_n = get_msb(polynomial.len() as u32);
         // Define the vector of quotients q_k, k = 0, ..., log_N-1
-        let mut quotients: Vec<Vec<P::ScalarField>> = Vec::with_capacity(1 << log_n);
-        for k in 0..log_n {
-            let size = 1 << k;
-            quotients.push(Vec::with_capacity(size)); // degree 2^k - 1
+        let mut quotients = Vec::with_capacity(1 << log_n);
+        for _ in 0..log_n {
+            // let size = 1 << k;
+            quotients.push(Polynomial::default()); // degree 2^k - 1
         }
 
+        // Compute the coefficients of q_{n-1}
         let mut size_q = 1 << (log_n - 1);
-        let mut q: Vec<P::ScalarField> = Vec::with_capacity(size_q);
-        for l in 0..size_q {
-            q[l] = polynomial[size_q + l] - polynomial[l];
+        let mut q = Vec::with_capacity(size_q);
+        let (half_a, half_b) = polynomial.coefficients.split_at(size_q);
+        for (a, b) in half_a.iter().zip(half_b.iter()) {
+            q.push(*b - a);
         }
 
-        quotients[log_n as usize - 1] = q.clone();
+        quotients[log_n as usize - 1].coefficients = q;
 
-        let mut f_k = Vec::<P::ScalarField>::with_capacity(size_q);
+        let mut g = half_a.to_owned();
 
-        // TODO: std::vector<FF> g(polynomial.data().get(), polynomial.data().get() + size_q);
-        todo!();
-        let mut g = Vec::<P::ScalarField>::with_capacity(size_q);
-
-        // Compute q_k in reverse order from k = n - 2, i.e., q_{n-2}, ..., q_0
-        for k in (1..log_n).rev() {
+        // Compute q_k in reverse order from k= n-2, i.e. q_{n-2}, ..., q_0
+        for k in 1..log_n {
             // Compute f_k
-            for l in 0..size_q {
-                f_k[l] = g[l] + u_challenge[log_n as usize - k as usize] * q[l];
+            let mut f_k = Vec::with_capacity(size_q);
+            let index = log_n as usize - k as usize;
+            for (g, q) in izip!(g, quotients[index].iter()) {
+                f_k.push(g + u_challenge[index] * q);
+            }
+            size_q >>= 1;
+            let mut q = Vec::with_capacity(size_q);
+            let (half_a, half_b) = f_k.split_at(size_q);
+            for (a, b) in half_a.iter().zip(half_b.iter()) {
+                q.push(*b - a);
             }
 
-            size_q /= 2;
-            let mut q: Vec<P::ScalarField> = Vec::with_capacity(size_q);
-
-            for l in 0..size_q {
-                q[l] = f_k[size_q + l] - f_k[l];
-            }
-
-            quotients[log_n as usize - k as usize - 1] = q.clone(); // Assuming `clone` is implemented for Polynomial
-            g = f_k.clone(); // Assuming `clone` is implemented for Vec<i32>
+            quotients[index - 1].coefficients = q;
+            g = f_k;
         }
 
         quotients
@@ -340,7 +339,8 @@ impl<P: Pairing> Decider<P> {
         // f_polynomial += concatenated_batched; // No groups
 
         // Compute the multilinear quotients q_k = q_k(X_0, ..., X_{k-1})
-        // let quotients = Self::compute_multilinear_quotients(f_polynomial, u_challenge);
+        let quotients = Self::compute_multilinear_quotients(&f_polynomial, u_challenge);
+        todo!();
         // // Compute and send commitments C_{q_k} = [q_k], k = 0,...,d-1
         // for idx in 0..log_n {
         //     todo!();
