@@ -38,12 +38,12 @@ impl<P: Pairing> Decider<P> {
      * */
     fn execute_pcs_rounds(
         &mut self,
-        transcript: transcript::Keccak256Transcript<P>,
+        mut transcript: transcript::Keccak256Transcript<P>,
         proving_key: &ProvingKey<P>,
         sumcheck_output: SumcheckOutput<P::ScalarField>,
     ) -> HonkProofResult<()> {
         let prover_opening_claim =
-            self.zeromorph_prove(transcript, proving_key, sumcheck_output)?;
+            self.zeromorph_prove(&mut transcript, proving_key, sumcheck_output)?;
         todo!("construct the proof");
     }
 

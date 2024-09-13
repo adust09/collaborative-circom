@@ -349,10 +349,14 @@ impl<P: Pairing> Decider<P> {
      */
     pub(crate) fn zeromorph_prove(
         &mut self,
-        transcript: Keccak256Transcript<P>,
+        transcript_inout: &mut Keccak256Transcript<P>,
         proving_key: &ProvingKey<P>,
         sumcheck_output: SumcheckOutput<P::ScalarField>,
     ) -> HonkProofResult<ZeroMorphOpeningClaim<P::ScalarField>> {
+        // Refresh the transcript
+        let mut transcript = Keccak256Transcript::<P>::default();
+        std::mem::swap(&mut transcript, transcript_inout);
+
         let circuit_size = proving_key.circuit_size;
         let f_polynomials = self.get_f_polyomials(proving_key);
         let g_polynomials = self.get_g_polyomials(proving_key);
@@ -449,6 +453,7 @@ impl<P: Pairing> Decider<P> {
         let mut transcript = Keccak256Transcript::<P>::default();
         transcript.add_scalar(x_challenge);
         let z_challenge = transcript.get_challenge();
+        transcript_inout.add_scalar(z_challenge);
 
         // Compute degree check polynomial \zeta partially evaluated at x
         let zeta_x = Self::compute_partially_evaluated_degree_check_polynomial(

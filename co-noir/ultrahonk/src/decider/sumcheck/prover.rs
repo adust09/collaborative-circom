@@ -90,7 +90,7 @@ impl<P: Pairing> Decider<P> {
     ) -> SumcheckOutput<P::ScalarField> {
         tracing::trace!("Sumcheck prove");
 
-        // Get the challenges and refresh the transcript
+        // Refresh the transcript
         let mut transcript = Keccak256Transcript::<P>::default();
         std::mem::swap(&mut transcript, transcript_inout);
 
