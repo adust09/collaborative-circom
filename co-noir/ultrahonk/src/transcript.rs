@@ -111,13 +111,24 @@ where
         self.send_to_verifier(label, &elements);
     }
 
+    fn get_next_challenge_buffer() -> F {
+        todo!()
+    }
+
     pub(super) fn get_challenge<G>(&mut self, label: String) -> G {
         self.manifest.add_challenge(self.round_number, &[label]);
-        // let mut transcript = Keccak256::new();
-        // transcript.update(label.as_bytes());
-        // let bytes = transcript.finalize();
-        // F::from_be_bytes_mod_order(&bytes)
+        let challenge = Self::get_next_challenge_buffer();
+        let res = todo!();
+        self.round_number += 1;
+        res
+    }
 
+    pub(super) fn get_challenges<G>(&mut self, labels: &[String]) -> Vec<G> {
+        self.manifest.add_challenge(self.round_number, labels);
+        for _ in 0..labels.len() {
+            let challenge = Self::get_next_challenge_buffer();
+            let res = todo!();
+        }
         self.round_number += 1;
         todo!()
     }

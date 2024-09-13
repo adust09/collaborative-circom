@@ -435,8 +435,10 @@ where
         transcript.send_point_to_verifier("ZM:C_q".to_string(), q_commitment.into());
 
         // Get challenges x and z
-        let x_challenge = transcript.get_challenge("ZM:x".to_string());
-        let z_challenge = transcript.get_challenge("ZM:z".to_string());
+        let challs =
+            transcript.get_challenges::<P::ScalarField>(&["ZM:x".to_string(), "ZM:z".to_string()]);
+        let x_challenge = challs[0];
+        let z_challenge = challs[1];
 
         // Compute degree check polynomial \zeta partially evaluated at x
         let zeta_x = Self::compute_partially_evaluated_degree_check_polynomial(

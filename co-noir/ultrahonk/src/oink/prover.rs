@@ -394,9 +394,14 @@ where
     ) -> HonkProofResult<()> {
         tracing::trace!("executing sorted list accumulator round");
 
-        self.memory.challenges.eta_1 = transcript.get_challenge("eta".to_string());
-        self.memory.challenges.eta_2 = transcript.get_challenge("eta_two".to_string());
-        self.memory.challenges.eta_3 = transcript.get_challenge("eta_three".to_string());
+        let challs = transcript.get_challenges(&[
+            "eta".to_string(),
+            "eta_two".to_string(),
+            "eta_three".to_string(),
+        ]);
+        self.memory.challenges.eta_1 = challs[0];
+        self.memory.challenges.eta_2 = challs[1];
+        self.memory.challenges.eta_3 = challs[2];
         self.compute_w4(proving_key);
 
         // Commit to lookup argument polynomials and the finalized (i.e. with memory records) fourth wire polynomial
@@ -426,8 +431,9 @@ where
     ) -> HonkProofResult<()> {
         tracing::trace!("executing log derivative inverse round");
 
-        self.memory.challenges.beta = transcript.get_challenge("beta".to_string());
-        self.memory.challenges.gamma = transcript.get_challenge("gamma".to_string());
+        let challs = transcript.get_challenges(&["beta".to_string(), "gamma".to_string()]);
+        self.memory.challenges.beta = challs[0];
+        self.memory.challenges.gamma = challs[1];
 
         self.compute_logderivative_inverses(proving_key);
 
