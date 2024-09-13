@@ -1,4 +1,4 @@
-use ark_ec::{pairing::Pairing, AffineRepr};
+use ark_ec::AffineRepr;
 use ark_ff::{PrimeField, Zero};
 use sha3::{Digest, Keccak256};
 use std::{collections::HashMap, marker::PhantomData, ops::Index};
@@ -62,10 +62,7 @@ where
             (*x, *y)
         } else {
             // we are at infinity
-            (
-                <P::G1Affine as AffineRepr>::BaseField::zero(),
-                <P::G1Affine as AffineRepr>::BaseField::zero(),
-            )
+            (P::BaseField::zero(), P::BaseField::zero())
         };
 
         let mut res = x.convert_field();
