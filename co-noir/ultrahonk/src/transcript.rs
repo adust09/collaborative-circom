@@ -2,7 +2,7 @@ use ark_ec::{pairing::Pairing, AffineRepr};
 use ark_ff::PrimeField;
 use ark_serialize::CanonicalSerialize;
 use sha3::{Digest, Keccak256};
-use std::{collections::HashMap, marker::PhantomData, ops::Index};
+use std::{collections::HashMap, marker::PhantomData, num, ops::Index};
 
 // TODO this whole file is copied from our co-Plonk and should probably be adapted
 
@@ -14,7 +14,12 @@ where
     P: Pairing,
 {
     proof_data: Vec<P::ScalarField>,
-    // digest: D,
+    manifest: TranscriptManifest,
+    num_frs_written: usize, // the number of bb::frs written to proof_data by the prover or the verifier
+    round_number: usize,
+    is_first_challenge: bool,
+    current_round_data: Vec<P::ScalarField>,
+    previous_challenge: Vec<P::ScalarField>,
     phantom_data: PhantomData<D>,
 }
 
@@ -22,7 +27,12 @@ impl<P: Pairing> Default for Keccak256Transcript<P> {
     fn default() -> Self {
         Self {
             proof_data: Default::default(),
-            // digest: Default::default(),
+            manifest: Default::default(),
+            num_frs_written: 0,
+            round_number: 0,
+            is_first_challenge: true,
+            current_round_data: Default::default(),
+            previous_challenge: Default::default(),
             phantom_data: Default::default(),
         }
     }
@@ -33,8 +43,26 @@ where
     D: Digest,
     P: Pairing,
 {
-    fn send_to_verifier(&mut self, label: &str, elements: Vec<P::ScalarField>) {
+    fn consume_prover_elements(&mut self, label: String, elements: &[P::ScalarField]) {
+        // Add an entry to the current round of the manifest
+        let len = elements.len();
+        self.manifest.add_entry(self.round_number, label, len);
+        self.current_round_data.extend(elements);
+        self.num_frs_written += len;
+    }
+
+    pub(super) fn send_to_verifier(&mut self, label: String, elements: &[P::ScalarField]) {
         self.proof_data.extend(elements);
+        self.consume_prover_elements(label, elements);
+    }
+
+    pub(super) fn send_fr_to_verifier(&mut self, label: String, element: P::ScalarField) {
+        self.send_to_verifier(label, &[element]);
+    }
+
+    pub(super) fn send_u64_to_verifier(&mut self, label: String, element: u64) {
+        let el = P::ScalarField::from(element);
+        self.send_fr_to_verifier(label, el);
     }
 
     // pub(super) fn add_scalar(&mut self, scalar: P::ScalarField) {

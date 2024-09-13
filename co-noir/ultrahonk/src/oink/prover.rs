@@ -335,16 +335,24 @@ impl<P: Pairing> Oink<P> {
     ) -> HonkProofResult<()> {
         tracing::trace!("executing preamble round");
 
-        transcript.add(proving_key.circuit_size.to_le_bytes());
-        transcript.add(proving_key.num_public_inputs.to_le_bytes());
-        transcript.add(proving_key.pub_inputs_offset.to_le_bytes());
+        transcript
+            .send_u64_to_verifier("circuit_size".to_string(), proving_key.circuit_size as u64);
+        transcript.send_u64_to_verifier(
+            "public_input_size".to_string(),
+            proving_key.num_public_inputs as u64,
+        );
+        transcript.send_u64_to_verifier(
+            "pub_inputs_offset".to_string(),
+            proving_key.pub_inputs_offset as u64,
+        );
 
         if proving_key.num_public_inputs as usize != public_inputs.len() {
             return Err(HonkProofError::CorruptedWitness(public_inputs.len()));
         }
 
-        for public_input in public_inputs {
-            transcript.add_scalar(*public_input);
+        for (i, public_input) in public_inputs.iter().enumerate() {
+            // transcript.add_scalar(*public_input);
+            transcript.send_fr_to_verifier(format!("public_input_{}", i), *public_input);
         }
         Ok(())
     }
