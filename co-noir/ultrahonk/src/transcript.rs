@@ -115,22 +115,30 @@ where
         todo!()
     }
 
-    pub(super) fn get_challenge<G>(&mut self, label: String) -> G {
+    pub(super) fn get_challenge<G>(&mut self, label: String) -> G
+    where
+        G: ConvertField<F>,
+    {
         self.manifest.add_challenge(self.round_number, &[label]);
         let challenge = Self::get_next_challenge_buffer();
-        let res = todo!();
+        let res = ConvertField::convert_back(&challenge);
         self.round_number += 1;
         res
     }
 
-    pub(super) fn get_challenges<G>(&mut self, labels: &[String]) -> Vec<G> {
+    pub(super) fn get_challenges<G>(&mut self, labels: &[String]) -> Vec<G>
+    where
+        G: ConvertField<F>,
+    {
         self.manifest.add_challenge(self.round_number, labels);
+        let mut res = Vec::with_capacity(labels.len());
         for _ in 0..labels.len() {
             let challenge = Self::get_next_challenge_buffer();
-            let res = todo!();
+            let res_ = ConvertField::convert_back(&challenge);
+            res.push(res_);
         }
         self.round_number += 1;
-        todo!()
+        res
     }
 
     // pub(super) fn add_scalar(&mut self, scalar: P) {

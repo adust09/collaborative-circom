@@ -3,11 +3,16 @@ use num_bigint::BigUint;
 
 pub trait ConvertField<Des: PrimeField>: PrimeField {
     fn convert_field(&self) -> Vec<Des>;
+    fn convert_back(src: &Des) -> Self;
 }
 
 impl ConvertField<ark_bn254::Fr> for ark_bn254::Fr {
     fn convert_field(&self) -> Vec<ark_bn254::Fr> {
         vec![self.to_owned()]
+    }
+
+    fn convert_back(src: &ark_bn254::Fr) -> Self {
+        src.to_owned()
     }
 }
 
@@ -16,7 +21,14 @@ impl ConvertField<ark_bn254::Fr> for ark_bn254::Fq {
         let (a, b) = bn254_fq_to_fr(self);
         vec![a, b]
     }
+
+    fn convert_back(src: &ark_bn254::Fr) -> Self {
+        bn254_fr_to_fq(src)
+    }
 }
+
+const NUM_LIMB_BITS: u32 = 68;
+const TOTAL_BITS: u32 = 254;
 
 /**
 * @brief Converts grumpkin::fr to 2 bb::fr elements
@@ -34,15 +46,13 @@ impl ConvertField<ark_bn254::Fr> for ark_bn254::Fq {
 fn bn254_fq_to_fr(fq: &ark_bn254::Fq) -> (ark_bn254::Fr, ark_bn254::Fr) {
     // Goal is to slice up the 64 bit limbs of grumpkin::fr/uint256_t to mirror the 68 bit limbs of bigfield
     // We accomplish this by dividing the grumpkin::fr's value into two 68*2=136 bit pieces.
-    const NUM_LIMB_BITS: u32 = 68;
     const LOWER_BITS: u32 = 2 * NUM_LIMB_BITS;
-    const TOTAL_BITS: u32 = 254;
     let lower_mask = (BigUint::one() << LOWER_BITS) - BigUint::one();
     let value = BigUint::from(fq.0);
 
     debug_assert!(value < (BigUint::one() << TOTAL_BITS));
 
-    let res0 = value.to_owned() & lower_mask;
+    let res0 = &value & lower_mask;
     let res1 = value >> LOWER_BITS;
 
     debug_assert!(res1 < (BigUint::one() << (TOTAL_BITS - LOWER_BITS)));
@@ -51,4 +61,8 @@ fn bn254_fq_to_fr(fq: &ark_bn254::Fq) -> (ark_bn254::Fr, ark_bn254::Fr) {
     let res1 = ark_bn254::Fr::from(res1);
 
     (res0, res1)
+}
+
+fn bn254_fr_to_fq(fr: &ark_bn254::Fr) -> ark_bn254::Fq {
+    fr.0.into()
 }
