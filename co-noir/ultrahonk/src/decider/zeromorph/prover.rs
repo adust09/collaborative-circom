@@ -187,46 +187,41 @@ impl<P: Pairing> Decider<P> {
         u_challenge: &[P::ScalarField],
         x_challenge: P::ScalarField,
     ) -> Polynomial<P::ScalarField> {
-        todo!()
-        // let n = f_batched.len();
-        // let log_n = quotients.len();
+        let n = f_batched.len();
 
-        // // Initialize Z_x with x * \sum_{i=0}^{m-1} f_i + \sum_{i=0}^{l-1} g_i
-        // let mut result = g_batched.clone();
-        // // Self::add_scaled(&mut result, &f_batched, x_challenge);
+        // Initialize Z_x with x * \sum_{i=0}^{m-1} f_i + \sum_{i=0}^{l-1} g_i
+        let mut result = g_batched;
+        result.add_scaled(&f_batched, &x_challenge);
 
-        // // Compute Z_x -= v * x * \Phi_n(x)
-        // let phi_numerator = x_challenge.pow([n as u64]) - P::ScalarField::ONE; // x^N - 1
-        // let phi_n_x = phi_numerator / (x_challenge - P::ScalarField::ONE);
-        // result[0] -= v_evaluation * x_challenge * phi_n_x;
+        // Compute Z_x -= v * x * \Phi_n(x)
+        let phi_numerator = x_challenge.pow([n as u64]) - P::ScalarField::ONE; // x^N - 1
+        let phi_n_x = phi_numerator / (x_challenge - P::ScalarField::ONE);
+        result[0] -= v_evaluation * x_challenge * phi_n_x;
 
-        // // Add contribution from q_k polynomials
-        // let mut x_power = x_challenge; // x^{2^k}
-        // for k in 0..log_n {
-        //     let exp_1 = 1 << k;
-        //     x_power = x_challenge.pow([exp_1 as u64]); // x^{2^k}
+        // Add contribution from q_k polynomials
+        for (k, (q, u)) in izip!(quotients.iter(), u_challenge.iter()).enumerate() {
+            let exp_1 = 1 << k;
+            let x_power = x_challenge.pow([exp_1]); // x^{2^k}
 
-        //     // \Phi_{n-k-1}(x^{2^{k + 1}})
-        //     let exp_2 = 1 << (k + 1);
-        //     let phi_term_1 =
-        //         phi_numerator / (x_challenge.pow([exp_2 as u64]) - P::ScalarField::ONE);
+            // \Phi_{n-k-1}(x^{2^{k + 1}})
+            let exp_2 = 1 << (k + 1);
+            let phi_term_1 = phi_numerator / (x_challenge.pow([exp_2]) - P::ScalarField::ONE);
 
-        //     // \Phi_{n-k}(x^{2^k})
-        //     let phi_term_2 =
-        //         phi_numerator / (x_challenge.pow([exp_1 as u64]) - P::ScalarField::ONE);
+            // \Phi_{n-k}(x^{2^k})
+            let phi_term_2 = phi_numerator / (x_challenge.pow([exp_1]) - P::ScalarField::ONE);
 
-        //     // x^{2^k} * \Phi_{n-k-1}(x^{2^{k+1}}) - u_k *  \Phi_{n-k}(x^{2^k})
-        //     let mut scalar = x_power * phi_term_1 - u_challenge[k] * phi_term_2;
+            // x^{2^k} * \Phi_{n-k-1}(x^{2^{k+1}}) - u_k *  \Phi_{n-k}(x^{2^k})
+            let mut scalar = x_power * phi_term_1 - phi_term_2 * u;
 
-        //     scalar *= x_challenge;
-        //     scalar *= -P::ScalarField::ONE;
+            scalar *= x_challenge;
+            scalar *= -P::ScalarField::ONE;
 
-        //     // Self::add_scaled(&mut result, &quotients[k], scalar);
-        // }
+            result.add_scaled(q, &scalar);
+        }
 
-        // // We don't have groups, so we are done already
+        // We don't have groups, so we are done already
 
-        // result
+        result
     }
 
     /**

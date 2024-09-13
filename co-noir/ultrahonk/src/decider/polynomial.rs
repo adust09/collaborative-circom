@@ -1,4 +1,4 @@
-use std::ops::{AddAssign, Index};
+use std::ops::{AddAssign, Index, IndexMut};
 
 use ark_ff::PrimeField;
 
@@ -63,6 +63,12 @@ impl<F: PrimeField> Index<usize> for Polynomial<F> {
 
     fn index(&self, index: usize) -> &Self::Output {
         &self.coefficients[index]
+    }
+}
+
+impl<F: PrimeField> IndexMut<usize> for Polynomial<F> {
+    fn index_mut(&mut self, index: usize) -> &mut Self::Output {
+        &mut self.coefficients[index]
     }
 }
 
