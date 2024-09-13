@@ -95,6 +95,17 @@ where
         self.send_to_verifier(label, &elements);
     }
 
+    pub(super) fn get_challenge<G>(&mut self, label: String) -> G {
+        self.manifest.add_challenge(self.round_number, &[label]);
+        // let mut transcript = Keccak256::new();
+        // transcript.update(label.as_bytes());
+        // let bytes = transcript.finalize();
+        // F::from_be_bytes_mod_order(&bytes)
+
+        self.round_number += 1;
+        todo!()
+    }
+
     // pub(super) fn add_scalar(&mut self, scalar: P) {
     //     let mut buf = vec![];
     //     scalar
@@ -171,12 +182,12 @@ impl TranscriptManifest {
         }
     }
 
-    pub(crate) fn add_challenge(&mut self, round: usize, labels: Vec<String>) {
+    pub(crate) fn add_challenge(&mut self, round: usize, labels: &[String]) {
         self.manifest
             .entry(round)
             .or_insert_with(RoundData::default)
             .challenge_label
-            .extend(labels);
+            .extend_from_slice(labels);
     }
 
     pub(crate) fn add_entry(&mut self, round: usize, element_label: String, element_size: usize) {

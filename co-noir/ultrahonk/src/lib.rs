@@ -11,8 +11,6 @@ use ark_ff::PrimeField;
 use prover::{HonkProofError, HonkProofResult};
 use types::ProverCrs;
 
-pub(crate) type TranscriptFieldType = ark_bn254::Fr;
-
 // from http://supertech.csail.mit.edu/papers/debruijn.pdf
 pub(crate) fn get_msb(inp: u32) -> u8 {
     const MULTIPLY_DE_BRUIJNI_BIT_POSIITION: [u8; 32] = [

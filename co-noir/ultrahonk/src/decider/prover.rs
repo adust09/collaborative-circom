@@ -1,5 +1,5 @@
 use super::{sumcheck::SumcheckOutput, types::ProverMemory};
-use crate::{prover::HonkProofResult, transcript, types::ProvingKey};
+use crate::{prover::HonkProofResult, transcript::Keccak256Transcript, types::ProvingKey};
 use ark_ec::pairing::Pairing;
 use std::marker::PhantomData;
 
@@ -23,7 +23,7 @@ impl<P: Pairing> Decider<P> {
      */
     fn execute_relation_check_rounds(
         &self,
-        transcript: &mut transcript::Keccak256Transcript<P>,
+        transcript: &mut Keccak256Transcript,
         proving_key: &ProvingKey<P>,
     ) -> SumcheckOutput<P::ScalarField> {
         // This is just Sumcheck.prove
@@ -38,34 +38,28 @@ impl<P: Pairing> Decider<P> {
      * */
     fn execute_pcs_rounds(
         &mut self,
-        mut transcript: transcript::Keccak256Transcript<P>,
+        transcript: &mut Keccak256Transcript,
         proving_key: &ProvingKey<P>,
         sumcheck_output: SumcheckOutput<P::ScalarField>,
     ) -> HonkProofResult<()> {
         let prover_opening_claim =
-            self.zeromorph_prove(&mut transcript, proving_key, sumcheck_output)?;
+            self.zeromorph_prove(transcript, proving_key, sumcheck_output)?;
         todo!("construct the proof");
     }
 
-    pub fn prove(mut self, proving_key: &ProvingKey<P>) -> HonkProofResult<()> {
+    pub fn prove(
+        mut self,
+        proving_key: &ProvingKey<P>,
+        mut transcript: Keccak256Transcript,
+    ) -> HonkProofResult<()> {
         tracing::trace!("Decider prove");
-
-        let mut transcript = transcript::Keccak256Transcript::<P>::default();
-        transcript.add_scalar(
-            self.memory
-                .relation_parameters
-                .gate_challenges
-                .last()
-                .expect("Element is present")
-                .to_owned(),
-        );
 
         // Run sumcheck subprotocol.
         let sumcheck_output = self.execute_relation_check_rounds(&mut transcript, proving_key);
 
         // Fiat-Shamir: rho, y, x, z
         // Execute Zeromorph multilinear PCS
-        self.execute_pcs_rounds(transcript, proving_key, sumcheck_output)?;
+        self.execute_pcs_rounds(&mut transcript, proving_key, sumcheck_output)?;
 
         todo!("output the proof");
     }

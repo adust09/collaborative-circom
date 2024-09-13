@@ -1,12 +1,12 @@
 use crate::{
     decider::{prover::Decider, types::ProverMemory},
+    field_convert::ConvertField,
     get_msb,
     oink::prover::Oink,
-    transcript::{self, Keccak256Transcript},
+    transcript::{Keccak256Transcript, TranscriptFieldType},
     types::ProvingKey,
-    NUM_ALPHAS,
 };
-use ark_ec::pairing::Pairing;
+use ark_ec::{pairing::Pairing, AffineRepr};
 use std::{io, marker::PhantomData};
 
 pub type HonkProofResult<T> = std::result::Result<T, HonkProofError>;
@@ -24,37 +24,49 @@ pub enum HonkProofError {
     IOError(#[from] io::Error),
 }
 
-pub struct UltraHonk<P: Pairing> {
+pub struct UltraHonk<P: Pairing>
+where
+    <P::G1Affine as AffineRepr>::BaseField: ConvertField<TranscriptFieldType>,
+    P::ScalarField: ConvertField<TranscriptFieldType>,
+{
     phantom_data: PhantomData<P>,
 }
 
-impl<P: Pairing> Default for UltraHonk<P> {
+impl<P: Pairing> Default for UltraHonk<P>
+where
+    <P::G1Affine as AffineRepr>::BaseField: ConvertField<TranscriptFieldType>,
+    P::ScalarField: ConvertField<TranscriptFieldType>,
+{
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl<P: Pairing> UltraHonk<P> {
+impl<P: Pairing> UltraHonk<P>
+where
+    <P::G1Affine as AffineRepr>::BaseField: ConvertField<TranscriptFieldType>,
+    P::ScalarField: ConvertField<TranscriptFieldType>,
+{
     pub fn new() -> Self {
         Self {
             phantom_data: PhantomData,
         }
     }
 
-    fn generate_gate_challenges(&self, memory: &mut ProverMemory<P>, proving_key: &ProvingKey<P>) {
+    fn generate_gate_challenges(
+        &self,
+        memory: &mut ProverMemory<P>,
+        proving_key: &ProvingKey<P>,
+        transcript: &mut Keccak256Transcript,
+    ) {
         tracing::trace!("generate gate challenges");
 
         let challenge_size = get_msb(proving_key.circuit_size) as usize;
         let mut gate_challenges = Vec::with_capacity(challenge_size);
 
-        let mut transcript = Keccak256Transcript::<ark_bn254::Fr>::default();
-        transcript.add_scalar(memory.relation_parameters.alphas[NUM_ALPHAS - 1]);
-
-        gate_challenges.push(transcript.get_challenge());
-        for idx in 1..challenge_size {
-            let mut transcript = Keccak256Transcript::<P>::default();
-            transcript.add_scalar(gate_challenges[idx - 1]);
-            gate_challenges.push(transcript.get_challenge());
+        for idx in 0..challenge_size {
+            let chall = transcript.get_challenge(format!("Sumcheck:gate_challenge_{}", idx));
+            gate_challenges.push(chall);
         }
         memory.relation_parameters.gate_challenges = gate_challenges;
     }
@@ -71,10 +83,10 @@ impl<P: Pairing> UltraHonk<P> {
         let oink = Oink::<P>::default();
         let mut memory =
             ProverMemory::from(oink.prove(proving_key, public_inputs, &mut transcript)?);
-        self.generate_gate_challenges(&mut memory, proving_key);
+        self.generate_gate_challenges(&mut memory, proving_key, &mut transcript);
 
         let decider = Decider::new(memory);
-        decider.prove(proving_key)?;
+        decider.prove(proving_key, transcript)?;
         todo!("What is the proof")
     }
 }
