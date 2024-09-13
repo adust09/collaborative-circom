@@ -5,17 +5,22 @@ use super::{
 };
 use crate::{
     decider::{polynomial::Polynomial, types::ClaimedEvaluations, zeromorph::OpeningPair},
+    field_convert::ConvertField,
     get_msb,
     prover::HonkProofResult,
-    transcript::Keccak256Transcript,
+    transcript::{Keccak256Transcript, TranscriptFieldType},
     types::ProvingKey,
     CONST_PROOF_SIZE_LOG_N, N_MAX,
 };
-use ark_ec::{pairing::Pairing, Group};
+use ark_ec::{pairing::Pairing, AffineRepr, Group};
 use ark_ff::{Field, One, Zero};
 use itertools::izip;
 
-impl<P: Pairing> Decider<P> {
+impl<P: Pairing> Decider<P>
+where
+    <P::G1Affine as AffineRepr>::BaseField: ConvertField<TranscriptFieldType>,
+    P::ScalarField: ConvertField<TranscriptFieldType>,
+{
     /**
      * @brief Compute multivariate quotients q_k(X_0, ..., X_{k-1}) for f(X_0, ..., X_{n-1})
      * @details Starting from the coefficients of f, compute q_k inductively from k = n - 1, to k = 0.
@@ -349,14 +354,10 @@ impl<P: Pairing> Decider<P> {
      */
     pub(crate) fn zeromorph_prove(
         &mut self,
-        transcript_inout: &mut Keccak256Transcript<P>,
+        transcript: &mut Keccak256Transcript,
         proving_key: &ProvingKey<P>,
         sumcheck_output: SumcheckOutput<P::ScalarField>,
     ) -> HonkProofResult<ZeroMorphOpeningClaim<P::ScalarField>> {
-        // Refresh the transcript
-        let mut transcript = Keccak256Transcript::<P>::default();
-        std::mem::swap(&mut transcript, transcript_inout);
-
         let circuit_size = proving_key.circuit_size;
         let f_polynomials = self.get_f_polyomials(proving_key);
         let g_polynomials = self.get_g_polyomials(proving_key);
@@ -367,9 +368,7 @@ impl<P: Pairing> Decider<P> {
         let commitment_key = &proving_key.crs;
 
         // Generate batching challenge \rho and powers 1,...,\rho^{m-1}
-        let rho = transcript.get_challenge();
-        let mut transcript = Keccak256Transcript::<P>::default();
-        transcript.add_scalar(rho);
+        let rho = transcript.get_challenge::<P::ScalarField>("rho".to_string());
 
         // Extract multilinear challenge u and claimed multilinear evaluations from Sumcheck output
         let u_challenge = multilinear_challenge;
@@ -412,20 +411,20 @@ impl<P: Pairing> Decider<P> {
         let quotients = Self::compute_multilinear_quotients(&f_polynomial, u_challenge);
         debug_assert_eq!(quotients.len(), log_n as usize);
         // Compute and send commitments C_{q_k} = [q_k], k = 0,...,d-1
-        for val in quotients.iter() {
+        for (idx, val) in quotients.iter().enumerate() {
             let res = crate::commit(&val.coefficients, commitment_key)?;
-            transcript.add_point(res.into());
+            let label = format!("ZM:C_q_{}", idx);
+            transcript.send_point_to_verifier(label, res.into());
         }
         // Add buffer elements to remove log_N dependence in proof
-        for _ in log_n as usize..CONST_PROOF_SIZE_LOG_N {
+        for idx in log_n as usize..CONST_PROOF_SIZE_LOG_N {
             let res = P::G1::generator(); // TODO Is this one?
-            transcript.add_point(res.into());
+            let label = format!("ZM:C_q_{}", idx);
+            transcript.send_point_to_verifier(label, res.into());
         }
 
         // Get challenge y
-        let y_challenge = transcript.get_challenge();
-        let mut transcript = Keccak256Transcript::<P>::default();
-        transcript.add_scalar(y_challenge);
+        let y_challenge = transcript.get_challenge("ZM:y".to_string());
 
         // Compute the batched, lifted-degree quotient \hat{q}
         let batched_quotient =
@@ -433,14 +432,11 @@ impl<P: Pairing> Decider<P> {
 
         // Compute and send the commitment C_q = [\hat{q}]
         let q_commitment = crate::commit(&batched_quotient.coefficients, commitment_key)?;
-        transcript.add_point(q_commitment.into());
+        transcript.send_point_to_verifier("ZM:C_q".to_string(), q_commitment.into());
 
         // Get challenges x and z
-        let x_challenge = transcript.get_challenge();
-        let mut transcript = Keccak256Transcript::<P>::default();
-        transcript.add_scalar(x_challenge);
-        let z_challenge = transcript.get_challenge();
-        transcript_inout.add_scalar(z_challenge);
+        let x_challenge = transcript.get_challenge("ZM:x".to_string());
+        let z_challenge = transcript.get_challenge("ZM:z".to_string());
 
         // Compute degree check polynomial \zeta partially evaluated at x
         let zeta_x = Self::compute_partially_evaluated_degree_check_polynomial(

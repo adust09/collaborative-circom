@@ -95,6 +95,22 @@ where
         self.send_to_verifier(label, &elements);
     }
 
+    pub(super) fn send_fr_iter_to_verifier<
+        'a,
+        G: ConvertField<F>,
+        I: IntoIterator<Item = &'a G>,
+    >(
+        &mut self,
+        label: String,
+        element: I,
+    ) {
+        let elements = element
+            .into_iter()
+            .flat_map(ConvertField::convert_field)
+            .collect::<Vec<_>>();
+        self.send_to_verifier(label, &elements);
+    }
+
     pub(super) fn get_challenge<G>(&mut self, label: String) -> G {
         self.manifest.add_challenge(self.round_number, &[label]);
         // let mut transcript = Keccak256::new();
