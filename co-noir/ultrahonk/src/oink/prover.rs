@@ -360,16 +360,13 @@ impl<P: Pairing> Oink<P> {
         // Commit to the first three wire polynomials of the instance
         // We only commit to the fourth wire polynomial after adding memory records
 
-        self.memory.witness_commitments.w_l =
-            crate::commit(proving_key.polynomials.witness.w_l(), &proving_key.crs)?;
-        self.memory.witness_commitments.w_r =
-            crate::commit(proving_key.polynomials.witness.w_r(), &proving_key.crs)?;
-        self.memory.witness_commitments.w_o =
-            crate::commit(proving_key.polynomials.witness.w_o(), &proving_key.crs)?;
+        let w_l = crate::commit(proving_key.polynomials.witness.w_l(), &proving_key.crs)?;
+        let w_r = crate::commit(proving_key.polynomials.witness.w_r(), &proving_key.crs)?;
+        let w_o = crate::commit(proving_key.polynomials.witness.w_o(), &proving_key.crs)?;
 
-        transcript.add_point(self.memory.witness_commitments.w_l.into());
-        transcript.add_point(self.memory.witness_commitments.w_r.into());
-        transcript.add_point(self.memory.witness_commitments.w_o.into());
+        transcript.add_point(w_l.into());
+        transcript.add_point(w_r.into());
+        transcript.add_point(w_o.into());
 
         // Round is done since ultra_honk is no goblin flavor
         Ok(())
@@ -402,19 +399,19 @@ impl<P: Pairing> Oink<P> {
         self.compute_w4(proving_key);
 
         // Commit to lookup argument polynomials and the finalized (i.e. with memory records) fourth wire polynomial
-        self.memory.witness_commitments.lookup_read_counts = crate::commit(
+        let lookup_read_counts = crate::commit(
             proving_key.polynomials.witness.lookup_read_counts(),
             &proving_key.crs,
         )?;
-        self.memory.witness_commitments.lookup_read_tags = crate::commit(
+        let lookup_read_tags = crate::commit(
             proving_key.polynomials.witness.lookup_read_tags(),
             &proving_key.crs,
         )?;
-        self.memory.witness_commitments.w_4 = crate::commit(&self.memory.w_4, &proving_key.crs)?;
+        let w_4 = crate::commit(&self.memory.w_4, &proving_key.crs)?;
 
-        transcript_inout.add_point(self.memory.witness_commitments.lookup_read_counts.into());
-        transcript_inout.add_point(self.memory.witness_commitments.lookup_read_tags.into());
-        transcript_inout.add_point(self.memory.witness_commitments.w_4.into());
+        transcript_inout.add_point(lookup_read_counts.into());
+        transcript_inout.add_point(lookup_read_tags.into());
+        transcript_inout.add_point(w_4.into());
 
         Ok(())
     }
@@ -441,10 +438,9 @@ impl<P: Pairing> Oink<P> {
 
         self.compute_logderivative_inverses(proving_key);
 
-        self.memory.witness_commitments.lookup_inverses =
-            crate::commit(&self.memory.lookup_inverses, &proving_key.crs)?;
+        let lookup_inverses = crate::commit(&self.memory.lookup_inverses, &proving_key.crs)?;
 
-        transcript_inout.add_point(self.memory.witness_commitments.lookup_inverses.into());
+        transcript_inout.add_point(lookup_inverses.into());
 
         // Round is done since ultra_honk is no goblin flavor
         Ok(())
@@ -463,10 +459,9 @@ impl<P: Pairing> Oink<P> {
             self.compute_public_input_delta(proving_key, public_inputs);
         self.compute_grand_product(proving_key);
 
-        self.memory.witness_commitments.z_perm =
-            crate::commit(&self.memory.lookup_inverses, &proving_key.crs)?;
+        let z_perm = crate::commit(&self.memory.lookup_inverses, &proving_key.crs)?;
 
-        transcript.add_point(self.memory.witness_commitments.z_perm.into());
+        transcript.add_point(z_perm.into());
         Ok(())
     }
 

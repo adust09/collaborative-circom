@@ -1,11 +1,10 @@
 use super::univariate::Univariate;
-use crate::{types::AllEntities, CONST_PROOF_SIZE_LOG_N, NUM_ALPHAS};
+use crate::{types::AllEntities, NUM_ALPHAS};
 use ark_ec::pairing::Pairing;
 use ark_ff::PrimeField;
 
 pub struct ProverMemory<P: Pairing> {
     pub memory: MemoryElements<Vec<P::ScalarField>>,
-    pub witness_commitments: WitnessCommitments<P>,
     pub relation_parameters: RelationParameters<P::ScalarField>,
 }
 
@@ -31,19 +30,6 @@ pub struct ClaimedEvaluations<F: PrimeField> {
 #[derive(Default)]
 pub struct MemoryElements<T> {
     pub elements: [T; 4],
-}
-
-pub struct WitnessCommitments<P: Pairing> {
-    pub w_l: P::G1,
-    pub w_r: P::G1,
-    pub w_o: P::G1,
-    pub w_4: P::G1,
-    pub z_perm: P::G1,
-    pub lookup_inverses: P::G1,
-    pub lookup_read_counts: P::G1,
-    pub lookup_read_tags: P::G1,
-    pub q_k: [P::G1; CONST_PROOF_SIZE_LOG_N],
-    pub q_commitment: P::G1,
 }
 
 pub struct RelationParameters<F: PrimeField> {
@@ -111,23 +97,6 @@ impl<F: PrimeField> GateSeparatorPolynomial<F> {
     }
 }
 
-impl<P: Pairing> Default for WitnessCommitments<P> {
-    fn default() -> Self {
-        Self {
-            w_l: Default::default(),
-            w_r: Default::default(),
-            w_o: Default::default(),
-            w_4: Default::default(),
-            z_perm: Default::default(),
-            lookup_inverses: Default::default(),
-            lookup_read_counts: Default::default(),
-            lookup_read_tags: Default::default(),
-            q_k: Default::default(),
-            q_commitment: Default::default(),
-        }
-    }
-}
-
 impl<F: PrimeField> Default for RelationParameters<F> {
     fn default() -> Self {
         Self {
@@ -147,7 +116,6 @@ impl<P: Pairing> Default for ProverMemory<P> {
     fn default() -> Self {
         Self {
             memory: Default::default(),
-            witness_commitments: Default::default(),
             relation_parameters: Default::default(),
         }
     }
@@ -168,25 +136,7 @@ impl<P: Pairing> From<crate::oink::types::ProverMemory<P>> for ProverMemory<P> {
 
         Self {
             memory: Default::default(),
-            witness_commitments: WitnessCommitments::from(prover_memory.witness_commitments),
             relation_parameters,
-        }
-    }
-}
-
-impl<P: Pairing> From<crate::oink::types::WitnessCommitments<P>> for WitnessCommitments<P> {
-    fn from(witness_commitments: crate::oink::types::WitnessCommitments<P>) -> Self {
-        Self {
-            w_l: witness_commitments.w_l,
-            w_r: witness_commitments.w_r,
-            w_o: witness_commitments.w_o,
-            w_4: witness_commitments.w_4,
-            z_perm: witness_commitments.z_perm,
-            lookup_inverses: witness_commitments.lookup_inverses,
-            lookup_read_counts: witness_commitments.lookup_read_counts,
-            lookup_read_tags: witness_commitments.lookup_read_tags,
-            q_k: Default::default(),
-            q_commitment: Default::default(),
         }
     }
 }

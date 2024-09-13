@@ -9,7 +9,7 @@ use crate::{
     prover::HonkProofResult,
     transcript::Keccak256Transcript,
     types::ProvingKey,
-    N_MAX,
+    CONST_PROOF_SIZE_LOG_N, N_MAX,
 };
 use ark_ec::{pairing::Pairing, Group};
 use ark_ff::{Field, One, Zero};
@@ -412,26 +412,14 @@ impl<P: Pairing> Decider<P> {
         let quotients = Self::compute_multilinear_quotients(&f_polynomial, u_challenge);
         debug_assert_eq!(quotients.len(), log_n as usize);
         // Compute and send commitments C_{q_k} = [q_k], k = 0,...,d-1
-        for (res, val) in self
-            .memory
-            .witness_commitments
-            .q_k
-            .iter_mut()
-            .zip(quotients.iter())
-        {
-            *res = crate::commit(&val.coefficients, commitment_key)?;
-            transcript.add_point((*res).into());
+        for val in quotients.iter() {
+            let res = crate::commit(&val.coefficients, commitment_key)?;
+            transcript.add_point(res.into());
         }
         // Add buffer elements to remove log_N dependence in proof
-        for res in self
-            .memory
-            .witness_commitments
-            .q_k
-            .iter_mut()
-            .skip(log_n as usize)
-        {
-            *res = P::G1::generator(); // TODO Is this one?
-            transcript.add_point((*res).into());
+        for _ in log_n as usize..CONST_PROOF_SIZE_LOG_N {
+            let res = P::G1::generator(); // TODO Is this one?
+            transcript.add_point(res.into());
         }
 
         // Get challenge y
@@ -444,9 +432,8 @@ impl<P: Pairing> Decider<P> {
             Self::compute_batched_lifted_degree_quotient(&quotients, &y_challenge, n as usize);
 
         // Compute and send the commitment C_q = [\hat{q}]
-        self.memory.witness_commitments.q_commitment =
-            crate::commit(&batched_quotient.coefficients, commitment_key)?;
-        transcript.add_point(self.memory.witness_commitments.q_commitment.into());
+        let q_commitment = crate::commit(&batched_quotient.coefficients, commitment_key)?;
+        transcript.add_point(q_commitment.into());
 
         // Get challenges x and z
         let x_challenge = transcript.get_challenge();
