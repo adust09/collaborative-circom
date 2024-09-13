@@ -1,17 +1,13 @@
 use crate::decider::prover::Decider;
 use crate::decider::sumcheck::sumcheck_round::{SumcheckRound, SumcheckRoundOutput};
+use crate::decider::sumcheck::SumcheckOutput;
 use crate::decider::types::{ClaimedEvaluations, MemoryElements, PartiallyEvaluatePolys};
 use crate::transcript::Keccak256Transcript;
 use crate::types::{Polynomials, ProvingKey};
 use crate::CONST_PROOF_SIZE_LOG_N;
 use crate::{decider::types::GateSeparatorPolynomial, get_msb};
 use ark_ec::pairing::Pairing;
-use ark_ff::{PrimeField, Zero};
-
-pub struct SumcheckOutput<F: PrimeField> {
-    pub(crate) claimed_evaluations: ClaimedEvaluations<F>,
-    pub(crate) challenges: Vec<F>,
-}
+use ark_ff::Zero;
 
 // Keep in mind, the UltraHonk protocol (UltraFlavor) does not per default have ZK
 impl<P: Pairing> Decider<P> {

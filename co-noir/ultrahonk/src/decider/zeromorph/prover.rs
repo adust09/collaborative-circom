@@ -1,9 +1,10 @@
 use super::{
-    super::{prover::Decider, sumcheck::prover::SumcheckOutput},
+    super::{prover::Decider, sumcheck::SumcheckOutput},
     types::{PolyF, PolyG, PolyGShift},
+    ZeroMorphOpeningClaim,
 };
 use crate::{
-    decider::{polynomial::Polynomial, types::ClaimedEvaluations},
+    decider::{polynomial::Polynomial, types::ClaimedEvaluations, zeromorph::OpeningPair},
     get_msb,
     prover::HonkProofResult,
     transcript::Keccak256Transcript,
@@ -351,7 +352,7 @@ impl<P: Pairing> Decider<P> {
         transcript: Keccak256Transcript<P>,
         proving_key: &ProvingKey<P>,
         sumcheck_output: SumcheckOutput<P::ScalarField>,
-    ) -> HonkProofResult<()> {
+    ) -> HonkProofResult<ZeroMorphOpeningClaim<P::ScalarField>> {
         let circuit_size = proving_key.circuit_size;
         let f_polynomials = self.get_f_polyomials(proving_key);
         let g_polynomials = self.get_g_polyomials(proving_key);
@@ -471,6 +472,13 @@ impl<P: Pairing> Decider<P> {
         let pi_polynomial =
             Self::compute_batched_evaluation_and_degree_check_polynomial(zeta_x, z_x, z_challenge);
 
-        todo!("return pi_polynomial,  .challenge = x_challenge, .evaluation = FF(0) ")
+        let res = ZeroMorphOpeningClaim {
+            polynomial: pi_polynomial,
+            opening_pair: OpeningPair {
+                challenge: x_challenge,
+                evaluation: P::ScalarField::zero(),
+            },
+        };
+        Ok(res)
     }
 }

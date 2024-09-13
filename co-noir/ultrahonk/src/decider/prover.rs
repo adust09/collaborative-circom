@@ -1,4 +1,4 @@
-use super::{sumcheck::prover::SumcheckOutput, types::ProverMemory};
+use super::{sumcheck::SumcheckOutput, types::ProverMemory};
 use crate::{prover::HonkProofResult, transcript, types::ProvingKey};
 use ark_ec::pairing::Pairing;
 use std::marker::PhantomData;
@@ -41,9 +41,10 @@ impl<P: Pairing> Decider<P> {
         transcript: transcript::Keccak256Transcript<P>,
         proving_key: &ProvingKey<P>,
         sumcheck_output: SumcheckOutput<P::ScalarField>,
-    ) {
-        let prover_opening_claim = self.zeromorph_prove(transcript, proving_key, sumcheck_output);
-        todo!();
+    ) -> HonkProofResult<()> {
+        let prover_opening_claim =
+            self.zeromorph_prove(transcript, proving_key, sumcheck_output)?;
+        todo!("construct the proof");
     }
 
     pub fn prove(mut self, proving_key: &ProvingKey<P>) -> HonkProofResult<()> {
@@ -64,9 +65,8 @@ impl<P: Pairing> Decider<P> {
 
         // Fiat-Shamir: rho, y, x, z
         // Execute Zeromorph multilinear PCS
-        self.execute_pcs_rounds(transcript, proving_key, sumcheck_output);
+        self.execute_pcs_rounds(transcript, proving_key, sumcheck_output)?;
 
         todo!("output the proof");
-        Ok(())
     }
 }
