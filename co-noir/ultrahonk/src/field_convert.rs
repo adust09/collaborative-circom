@@ -11,6 +11,13 @@ impl ConvertField<ark_bn254::Fr> for ark_bn254::Fr {
     }
 }
 
+impl ConvertField<ark_bn254::Fr> for ark_bn254::Fq {
+    fn convert_field(&self) -> Vec<ark_bn254::Fr> {
+        let (a, b) = bn254_fq_to_fr(self);
+        vec![a, b]
+    }
+}
+
 /**
 * @brief Converts grumpkin::fr to 2 bb::fr elements
 * @details First, this function must return 2 bb::fr elements because the grumpkin::fr field has a larger modulus than
@@ -24,26 +31,24 @@ impl ConvertField<ark_bn254::Fr> for ark_bn254::Fr {
 * @param input
 * @return std::array<bb::fr, 2>
 */
-impl ConvertField<ark_bn254::Fr> for ark_bn254::Fq {
-    fn convert_field(&self) -> Vec<ark_bn254::Fr> {
-        // Goal is to slice up the 64 bit limbs of grumpkin::fr/uint256_t to mirror the 68 bit limbs of bigfield
-        // We accomplish this by dividing the grumpkin::fr's value into two 68*2=136 bit pieces.
-        const NUM_LIMB_BITS: u32 = 68;
-        const LOWER_BITS: u32 = 2 * NUM_LIMB_BITS;
-        const TOTAL_BITS: u32 = 254;
-        let lower_mask = (BigUint::one() << LOWER_BITS) - BigUint::one();
-        let value = BigUint::from(self.0);
+fn bn254_fq_to_fr(fq: &ark_bn254::Fq) -> (ark_bn254::Fr, ark_bn254::Fr) {
+    // Goal is to slice up the 64 bit limbs of grumpkin::fr/uint256_t to mirror the 68 bit limbs of bigfield
+    // We accomplish this by dividing the grumpkin::fr's value into two 68*2=136 bit pieces.
+    const NUM_LIMB_BITS: u32 = 68;
+    const LOWER_BITS: u32 = 2 * NUM_LIMB_BITS;
+    const TOTAL_BITS: u32 = 254;
+    let lower_mask = (BigUint::one() << LOWER_BITS) - BigUint::one();
+    let value = BigUint::from(fq.0);
 
-        debug_assert!(value < (BigUint::one() << TOTAL_BITS));
+    debug_assert!(value < (BigUint::one() << TOTAL_BITS));
 
-        let res0 = value.to_owned() & lower_mask;
-        let res1 = value >> LOWER_BITS;
+    let res0 = value.to_owned() & lower_mask;
+    let res1 = value >> LOWER_BITS;
 
-        debug_assert!(res1 < (BigUint::one() << (TOTAL_BITS - LOWER_BITS)));
+    debug_assert!(res1 < (BigUint::one() << (TOTAL_BITS - LOWER_BITS)));
 
-        let res0 = ark_bn254::Fr::from(res0);
-        let res1 = ark_bn254::Fr::from(res1);
+    let res0 = ark_bn254::Fr::from(res0);
+    let res1 = ark_bn254::Fr::from(res1);
 
-        vec![res0, res1]
-    }
+    (res0, res1)
 }
