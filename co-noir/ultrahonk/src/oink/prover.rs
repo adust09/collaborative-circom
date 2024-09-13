@@ -22,9 +22,9 @@ use crate::{
     batch_invert,
     prover::{HonkProofError, HonkProofResult},
     transcript::Keccak256Transcript,
-    types::{ProverCrs, ProvingKey},
+    types::ProvingKey,
 };
-use ark_ec::{pairing::Pairing, VariableBaseMSM};
+use ark_ec::pairing::Pairing;
 use ark_ff::{One, Zero};
 use itertools::izip;
 use std::marker::PhantomData;

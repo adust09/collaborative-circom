@@ -20,6 +20,7 @@ pub(crate) struct PolyGShift<'a, T: Default> {
     pub(crate) z_perm: &'a T,
 }
 
+#[allow(unused)]
 impl<'a, T: Default> PolyF<'a, T> {
     const W_4: usize = 0;
     const Z_PERM: usize = 1;
@@ -45,6 +46,7 @@ impl<'a, T: Default> PolyF<'a, T> {
     }
 }
 
+#[allow(unused)]
 impl<'a, T: Default> PolyG<'a, T> {
     // Table Polys
     const TABLE_1: usize = 0;
@@ -102,6 +104,7 @@ impl<'a, T: Default> PolyG<'a, T> {
     }
 }
 
+#[allow(unused)]
 impl<'a, T: Default> PolyGShift<'a, T> {
     pub fn iter(&self) -> impl Iterator<Item = &T> {
         self.tables
