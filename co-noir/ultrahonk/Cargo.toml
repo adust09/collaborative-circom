@@ -18,7 +18,6 @@ eyre.workspace = true
 itertools.workspace = true
 lazy_static = "1.5"
 num-bigint.workspace = true
-sha3.workspace = true
 tracing.workspace = true
 thiserror.workspace = true
 rand.workspace = true

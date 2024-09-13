@@ -22,7 +22,7 @@ use crate::{
     batch_invert,
     field_convert::ConvertField,
     prover::{HonkProofError, HonkProofResult},
-    transcript::{Keccak256Transcript, TranscriptFieldType},
+    transcript::{TranscriptFieldType, TranscriptType},
     types::ProvingKey,
 };
 use ark_ec::{pairing::Pairing, AffineRepr};
@@ -325,7 +325,7 @@ where
     }
 
     // Generate relation separators alphas for sumcheck/combiner computation
-    fn generate_alphas_round(&mut self, transcript: &mut Keccak256Transcript) {
+    fn generate_alphas_round(&mut self, transcript: &mut TranscriptType) {
         tracing::trace!("generate alpha round");
 
         for idx in 0..self.memory.challenges.alphas.len() {
@@ -335,7 +335,7 @@ where
 
     // Add circuit size public input size and public inputs to transcript
     fn execute_preamble_round(
-        transcript: &mut Keccak256Transcript,
+        transcript: &mut TranscriptType,
         proving_key: &ProvingKey<P>,
         public_inputs: &[P::ScalarField],
     ) -> HonkProofResult<()> {
@@ -366,7 +366,7 @@ where
     // Compute first three wire commitments
     fn execute_wire_commitments_round(
         &mut self,
-        transcript: &mut Keccak256Transcript,
+        transcript: &mut TranscriptType,
         proving_key: &ProvingKey<P>,
     ) -> HonkProofResult<()> {
         tracing::trace!("executing wire commitments round");
@@ -389,7 +389,7 @@ where
     // Compute sorted list accumulator and commitment
     fn execute_sorted_list_accumulator_round(
         &mut self,
-        transcript: &mut Keccak256Transcript,
+        transcript: &mut TranscriptType,
         proving_key: &ProvingKey<P>,
     ) -> HonkProofResult<()> {
         tracing::trace!("executing sorted list accumulator round");
@@ -426,7 +426,7 @@ where
     // Fiat-Shamir: beta & gamma
     fn execute_log_derivative_inverse_round(
         &mut self,
-        transcript: &mut Keccak256Transcript,
+        transcript: &mut TranscriptType,
         proving_key: &ProvingKey<P>,
     ) -> HonkProofResult<()> {
         tracing::trace!("executing log derivative inverse round");
@@ -448,7 +448,7 @@ where
     // Compute grand product(s) and commitments.
     fn execute_grand_product_computation_round(
         &mut self,
-        transcript: &mut Keccak256Transcript,
+        transcript: &mut TranscriptType,
         proving_key: &ProvingKey<P>,
         public_inputs: &[P::ScalarField],
     ) -> HonkProofResult<()> {
@@ -468,7 +468,7 @@ where
         mut self,
         proving_key: &ProvingKey<P>,
         public_inputs: &[P::ScalarField],
-        transcript: &mut Keccak256Transcript,
+        transcript: &mut TranscriptType,
     ) -> HonkProofResult<ProverMemory<P>> {
         tracing::trace!("Oink prove");
 

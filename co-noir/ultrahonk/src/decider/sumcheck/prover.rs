@@ -3,7 +3,7 @@ use crate::decider::sumcheck::sumcheck_round::{SumcheckRound, SumcheckRoundOutpu
 use crate::decider::sumcheck::SumcheckOutput;
 use crate::decider::types::{ClaimedEvaluations, MemoryElements, PartiallyEvaluatePolys};
 use crate::field_convert::ConvertField;
-use crate::transcript::{Keccak256Transcript, TranscriptFieldType};
+use crate::transcript::{TranscriptType, TranscriptFieldType};
 use crate::types::{Polynomials, ProvingKey};
 use crate::CONST_PROOF_SIZE_LOG_N;
 use crate::{decider::types::GateSeparatorPolynomial, get_msb};
@@ -62,7 +62,7 @@ where
 
     // TODO order is probably wrong
     fn add_evals_to_transcript(
-        transcript: &mut Keccak256Transcript,
+        transcript: &mut TranscriptType,
         evaluations: &ClaimedEvaluations<P::ScalarField>,
     ) {
         tracing::trace!("Add Evals to Transcript");
@@ -87,7 +87,7 @@ where
 
     pub(crate) fn sumcheck_prove(
         &self,
-        transcript: &mut Keccak256Transcript,
+        transcript: &mut TranscriptType,
         proving_key: &ProvingKey<P>,
     ) -> SumcheckOutput<P::ScalarField> {
         tracing::trace!("Sumcheck prove");

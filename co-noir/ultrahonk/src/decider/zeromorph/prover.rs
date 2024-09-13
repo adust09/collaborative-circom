@@ -8,7 +8,7 @@ use crate::{
     field_convert::ConvertField,
     get_msb,
     prover::HonkProofResult,
-    transcript::{Keccak256Transcript, TranscriptFieldType},
+    transcript::{TranscriptType, TranscriptFieldType},
     types::ProvingKey,
     CONST_PROOF_SIZE_LOG_N, N_MAX,
 };
@@ -354,7 +354,7 @@ where
      */
     pub(crate) fn zeromorph_prove(
         &mut self,
-        transcript: &mut Keccak256Transcript,
+        transcript: &mut TranscriptType,
         proving_key: &ProvingKey<P>,
         sumcheck_output: SumcheckOutput<P::ScalarField>,
     ) -> HonkProofResult<ZeroMorphOpeningClaim<P::ScalarField>> {

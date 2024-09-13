@@ -3,7 +3,7 @@ use crate::CONST_PROOF_SIZE_LOG_N;
 use crate::{
     get_msb,
     oink::{self, types::WitnessCommitments, verifier::RelationParameters},
-    transcript::{self, Keccak256Transcript},
+    transcript::{self, Poseidon2Transcript},
     types::VerifyingKey,
     NUM_ALPHAS,
 };
@@ -43,7 +43,7 @@ impl<P: Pairing> UltraHonkVerifier<P> {
         witness_comms: WitnessCommitments<P>,       //weg damit
     ) -> bool {
         tracing::trace!("UltraHonk verification");
-        let mut transcript = Keccak256Transcript::<P>::default();
+        let mut transcript = Poseidon2Transcript::<P>::default();
         let log_circuit_size = get_msb(vk.circuit_size.clone());
         let oink_output = oink::verifier::OinkVerifier::<P>::new(
             transcript,
@@ -59,11 +59,11 @@ impl<P: Pairing> UltraHonkVerifier<P> {
         //     wit_comm_1 = wit_comm_2;
         // }
 
-        let mut transcript = Keccak256Transcript::<P>::default();
+        let mut transcript = Poseidon2Transcript::<P>::default();
         let mut gate_challenges = Vec::with_capacity(log_circuit_size as usize);
         gate_challenges[0] = transcript.get_challenge();
         for idx in 1..log_circuit_size as usize {
-            let mut transcript = Keccak256Transcript::<P>::default();
+            let mut transcript = Poseidon2Transcript::<P>::default();
             transcript.add_scalar(gate_challenges[idx - 1]);
             gate_challenges[idx] = transcript.get_challenge();
         }
@@ -124,16 +124,16 @@ fn zeromorph_verify<P: Pairing>(
     unshifted_evaluations: Vec<P::ScalarField>,
     shifted_evaluations: Vec<P::ScalarField>,
     multivariate_challenge: Vec<P::ScalarField>,
-    transcript_inout: &mut Keccak256Transcript<P>,
+    transcript_inout: &mut Poseidon2Transcript<P>,
     concatenated_evaluations: Vec<P::ScalarField>, // RefSpan<FF> concatenated_evaluations = {}
 ) -> OpeningClaim<P> {
     let log_n = get_msb(circuit_size.clone()); //TODO: check this
-    let mut transcript = Keccak256Transcript::<P>::default();
+    let mut transcript = Poseidon2Transcript::<P>::default();
     std::mem::swap(&mut transcript, transcript_inout);
 
     let rho = transcript.get_challenge();
 
-    let mut transcript = Keccak256Transcript::<P>::default();
+    let mut transcript = Poseidon2Transcript::<P>::default();
     transcript.add_scalar(rho);
 
     let mut batched_evaluation = P::ScalarField::ZERO;
@@ -151,7 +151,7 @@ fn zeromorph_verify<P: Pairing>(
     let mut c_q_k: Vec<P::G1> = Vec::with_capacity(CONST_PROOF_SIZE_LOG_N);
     // todo: where do we get the commitments [q_k] from? rsp. which commitments are these? fill above vector with these
     todo!("get commitments");
-    let mut transcript = Keccak256Transcript::<P>::default();
+    let mut transcript = Poseidon2Transcript::<P>::default();
     transcript.add_scalar(rho);
 
     let y_challenge = transcript.get_challenge();
@@ -160,11 +160,11 @@ fn zeromorph_verify<P: Pairing>(
     //  auto c_q = transcript->template receive_from_prover<Commitment>("ZM:C_q");
     let c_q: P::G1;
 
-    let mut transcript = Keccak256Transcript::<P>::default();
+    let mut transcript = Poseidon2Transcript::<P>::default();
     transcript.add_scalar(y_challenge);
 
     let x_challenge = transcript.get_challenge();
-    let mut transcript = Keccak256Transcript::<P>::default();
+    let mut transcript = Poseidon2Transcript::<P>::default();
     transcript.add_scalar(x_challenge);
     let z_challenge = transcript.get_challenge();
 
@@ -324,7 +324,7 @@ fn compute_c_z_x<P: Pairing>(
 
 fn sumcheck_verify<P: Pairing>(
     relation_parameters: RelationParameters<P>,
-    transcript: &mut transcript::Keccak256Transcript<P>,
+    transcript: &mut transcript::Poseidon2Transcript<P>,
     alphas: [P::ScalarField; NUM_ALPHAS],
     gate_challenges: Vec<P::ScalarField>,
     vk: VerifyingKey<P>,
@@ -344,7 +344,7 @@ fn sumcheck_verify<P: Pairing>(
         // TODO make this correct: (receive_from_prover<bb::Univariate<FF, BATCHED_RELATION_PARTIAL_LENGTH>>(round_univariate_label);)
         let round_univariate = Vec::<P::ScalarField>::with_capacity(multivariate_n as usize);
 
-        let mut transcript = Keccak256Transcript::<P>::default();
+        let mut transcript = Poseidon2Transcript::<P>::default();
         // transcript.add_scalar(round_univariate);
 
         let round_challenge = transcript.get_challenge();
@@ -381,10 +381,7 @@ fn compute_next_target_sum<P: Pairing>(
     todo!("return evalution of univariate on round_challenge");
 }
 
-fn check_sum<P: Pairing>(
-    univariate: &[P::ScalarField],
-    target_total_sum: &P::ScalarField,
-) -> bool {
+fn check_sum<P: Pairing>(univariate: &[P::ScalarField], target_total_sum: &P::ScalarField) -> bool {
     let total_sum = univariate[0] + univariate[1];
     let mut sumcheck_round_failed = false;
     sumcheck_round_failed = target_total_sum != &total_sum;
@@ -442,7 +439,7 @@ fn scale_by_challenge_and_batch<P: Pairing>(
 }
 
 fn reduce_verify<P: Pairing>(
-    transcript: &mut transcript::Keccak256Transcript<P>,
+    transcript: &mut transcript::Poseidon2Transcript<P>,
     opening_pair: OpeningClaim<P>,
 ) -> [P::G1Affine; 2] {
     todo!()

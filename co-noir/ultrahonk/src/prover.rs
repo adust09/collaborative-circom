@@ -3,7 +3,7 @@ use crate::{
     field_convert::ConvertField,
     get_msb,
     oink::prover::Oink,
-    transcript::{Keccak256Transcript, TranscriptFieldType},
+    transcript::{TranscriptFieldType, TranscriptType},
     types::ProvingKey,
 };
 use ark_ec::{pairing::Pairing, AffineRepr};
@@ -57,7 +57,7 @@ where
         &self,
         memory: &mut ProverMemory<P>,
         proving_key: &ProvingKey<P>,
-        transcript: &mut Keccak256Transcript,
+        transcript: &mut TranscriptType,
     ) {
         tracing::trace!("generate gate challenges");
 
@@ -78,7 +78,7 @@ where
     ) -> HonkProofResult<()> {
         tracing::trace!("UltraHonk prove");
 
-        let mut transcript = Keccak256Transcript::default();
+        let mut transcript = TranscriptType::default();
 
         let oink = Oink::<P>::default();
         let mut memory =

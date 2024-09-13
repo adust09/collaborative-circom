@@ -1,5 +1,5 @@
 use crate::oink::types::WitnessCommitments;
-use crate::transcript::Keccak256Transcript;
+use crate::transcript::Poseidon2Transcript;
 use crate::types::VerifyingKey;
 use crate::{prover, NUM_ALPHAS};
 use ark_ec::pairing::Pairing;
@@ -12,12 +12,12 @@ pub(crate) struct OinkOutput<P: Pairing> {
     commitments: WitnessCommitments<P>,
     public_inputs: Vec<P::ScalarField>,
     alphas: [P::ScalarField; NUM_ALPHAS],
-    // transcript: Keccak256Transcript<P>, todo: I think that should also be output?
+    // transcript: Poseidon2Transcript<P>, todo: I think that should also be output?
 }
 
 // todo: where does the Verifier get the witness_comms from?
 pub(crate) struct OinkVerifier<P: Pairing> {
-    transcript: Keccak256Transcript<P>,
+    transcript: Poseidon2Transcript<P>,
     key: VerifyingKey<P>,
     relation_parameters: RelationParameters<P>,
     witness_comms: WitnessCommitments<P>,
@@ -36,7 +36,7 @@ pub(crate) struct RelationParameters<P: Pairing> {
 
 impl<P: Pairing> OinkVerifier<P> {
     pub fn new(
-        transcript: Keccak256Transcript<P>,
+        transcript: Poseidon2Transcript<P>,
         key: VerifyingKey<P>,
         relation_parameters: RelationParameters<P>,
         witness_comms: WitnessCommitments<P>,
@@ -100,16 +100,16 @@ impl<P: Pairing> OinkVerifier<P> {
     fn execute_sorted_list_accumulator_round(&mut self) {
         tracing::trace!("executing (verifying) sorted list accumulator round");
 
-        let mut transcript = Keccak256Transcript::<P>::default();
+        let mut transcript = Poseidon2Transcript::<P>::default();
         std::mem::swap(&mut transcript, &mut self.transcript);
 
         self.relation_parameters.eta = transcript.get_challenge();
 
-        let mut transcript = Keccak256Transcript::<P>::default();
+        let mut transcript = Poseidon2Transcript::<P>::default();
         transcript.add_scalar(self.relation_parameters.eta);
         self.relation_parameters.eta_two = transcript.get_challenge();
 
-        let mut transcript = Keccak256Transcript::<P>::default();
+        let mut transcript = Poseidon2Transcript::<P>::default();
         transcript.add_scalar(self.relation_parameters.eta_two);
         self.relation_parameters.eta_three = transcript.get_challenge();
 
@@ -129,12 +129,12 @@ impl<P: Pairing> OinkVerifier<P> {
     fn execute_log_derivative_inverse_round(&mut self) {
         tracing::trace!("executing (verifying) log derivative inverse round");
 
-        let mut transcript = Keccak256Transcript::<P>::default();
+        let mut transcript = Poseidon2Transcript::<P>::default();
         std::mem::swap(&mut transcript, &mut self.transcript);
 
         self.relation_parameters.beta = transcript.get_challenge();
 
-        let mut transcript = Keccak256Transcript::<P>::default();
+        let mut transcript = Poseidon2Transcript::<P>::default();
         transcript.add_scalar(self.relation_parameters.beta);
         self.relation_parameters.gamma = transcript.get_challenge();
 
@@ -161,11 +161,11 @@ impl<P: Pairing> OinkVerifier<P> {
     fn generate_alphas_round(&mut self) -> [P::ScalarField; NUM_ALPHAS] {
         tracing::trace!("generating (verifying) alphas round");
         let mut alphas: [P::ScalarField; NUM_ALPHAS] = [P::ScalarField::default(); NUM_ALPHAS];
-        let mut transcript = Keccak256Transcript::<P>::default();
+        let mut transcript = Poseidon2Transcript::<P>::default();
         std::mem::swap(&mut transcript, &mut self.transcript);
         alphas[0] = transcript.get_challenge();
         for idx in 1..NUM_ALPHAS {
-            let mut transcript = Keccak256Transcript::<P>::default();
+            let mut transcript = Poseidon2Transcript::<P>::default();
             transcript.add_scalar(alphas[idx - 1]);
             alphas[idx] = transcript.get_challenge();
         }

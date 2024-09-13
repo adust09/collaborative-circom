@@ -2,7 +2,7 @@ use super::{sumcheck::SumcheckOutput, types::ProverMemory};
 use crate::{
     field_convert::ConvertField,
     prover::HonkProofResult,
-    transcript::{Keccak256Transcript, TranscriptFieldType},
+    transcript::{TranscriptType, TranscriptFieldType},
     types::ProvingKey,
 };
 use ark_ec::{pairing::Pairing, AffineRepr};
@@ -36,7 +36,7 @@ where
      */
     fn execute_relation_check_rounds(
         &self,
-        transcript: &mut Keccak256Transcript,
+        transcript: &mut TranscriptType,
         proving_key: &ProvingKey<P>,
     ) -> SumcheckOutput<P::ScalarField> {
         // This is just Sumcheck.prove
@@ -51,7 +51,7 @@ where
      * */
     fn execute_pcs_rounds(
         &mut self,
-        transcript: &mut Keccak256Transcript,
+        transcript: &mut TranscriptType,
         proving_key: &ProvingKey<P>,
         sumcheck_output: SumcheckOutput<P::ScalarField>,
     ) -> HonkProofResult<()> {
@@ -63,7 +63,7 @@ where
     pub fn prove(
         mut self,
         proving_key: &ProvingKey<P>,
-        mut transcript: Keccak256Transcript,
+        mut transcript: TranscriptType,
     ) -> HonkProofResult<()> {
         tracing::trace!("Decider prove");
 

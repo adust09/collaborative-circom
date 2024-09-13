@@ -1,18 +1,16 @@
 use ark_ec::AffineRepr;
 use ark_ff::{PrimeField, Zero};
-use sha3::{Digest, Keccak256};
-use std::{collections::HashMap, marker::PhantomData, ops::Index};
+use std::{collections::HashMap, ops::Index};
 
 use crate::field_convert::ConvertField;
 
 // TODO this whole file is copied from our co-Plonk and should probably be adapted
 
 pub(crate) type TranscriptFieldType = ark_bn254::Fr;
-pub(super) type Keccak256Transcript = Transcript<Keccak256, TranscriptFieldType>;
+pub(crate) type TranscriptType = Poseidon2Transcript<TranscriptFieldType>;
 
-pub(super) struct Transcript<D, F>
+pub(super) struct Poseidon2Transcript<F>
 where
-    D: Digest,
     F: PrimeField,
 {
     proof_data: Vec<F>,
@@ -21,11 +19,10 @@ where
     round_number: usize,
     is_first_challenge: bool,
     current_round_data: Vec<F>,
-    previous_challenge: Vec<F>,
-    phantom_data: PhantomData<D>,
+    previous_challenge: F,
 }
 
-impl Default for Keccak256Transcript {
+impl<F: PrimeField> Default for Poseidon2Transcript<F> {
     fn default() -> Self {
         Self {
             proof_data: Default::default(),
@@ -35,14 +32,12 @@ impl Default for Keccak256Transcript {
             is_first_challenge: true,
             current_round_data: Default::default(),
             previous_challenge: Default::default(),
-            phantom_data: Default::default(),
         }
     }
 }
 
-impl<D, F> Transcript<D, F>
+impl<F> Poseidon2Transcript<F>
 where
-    D: Digest,
     F: PrimeField,
 {
     fn consume_prover_elements(&mut self, label: String, elements: &[F]) {
@@ -111,8 +106,36 @@ where
         self.send_to_verifier(label, &elements);
     }
 
-    fn get_next_challenge_buffer() -> F {
-        todo!()
+    fn get_next_challenge_buffer(&mut self) -> F {
+        // Prevent challenge generation if this is the first challenge we're generating,
+        // AND nothing was sent by the prover.
+        if self.is_first_challenge {
+            assert!(!self.current_round_data.is_empty());
+        }
+        // concatenate the previous challenge (if this is not the first challenge) with the current round data.
+        // TODO(Adrian): Do we want to use a domain separator as the initial challenge buffer?
+        // We could be cheeky and use the hash of the manifest as domain separator, which would prevent us from having
+        // to domain separate all the data. (See https://safe-hash.dev)
+
+        let mut full_buffer = Vec::new();
+        std::mem::swap(&mut full_buffer, &mut self.current_round_data);
+
+        if self.is_first_challenge {
+            // Update is_first_challenge for the future
+            self.is_first_challenge = false;
+        } else {
+            // if not the first challenge, we can use the previous_challenge
+            full_buffer.insert(0, self.previous_challenge);
+        }
+
+        // Hash the full buffer with poseidon2, which is believed to be a collision resistant hash function and a random
+        // oracle, removing the need to pre-hash to compress and then hash with a random oracle, as we previously did
+        // with Pedersen and Blake3s.
+        let new_challenge = Self::hash(full_buffer);
+
+        // update previous challenge buffer for next time we call this function
+        self.previous_challenge = new_challenge;
+        new_challenge
     }
 
     pub(super) fn get_challenge<G>(&mut self, label: String) -> G
@@ -120,7 +143,7 @@ where
         G: ConvertField<F>,
     {
         self.manifest.add_challenge(self.round_number, &[label]);
-        let challenge = Self::get_next_challenge_buffer();
+        let challenge = self.get_next_challenge_buffer();
         let res = ConvertField::convert_back(&challenge);
         self.round_number += 1;
         res
@@ -133,7 +156,7 @@ where
         self.manifest.add_challenge(self.round_number, labels);
         let mut res = Vec::with_capacity(labels.len());
         for _ in 0..labels.len() {
-            let challenge = Self::get_next_challenge_buffer();
+            let challenge = self.get_next_challenge_buffer();
             let res_ = ConvertField::convert_back(&challenge);
             res.push(res_);
         }
@@ -141,50 +164,9 @@ where
         res
     }
 
-    // pub(super) fn add_scalar(&mut self, scalar: P) {
-    //     let mut buf = vec![];
-    //     scalar
-    //         .serialize_uncompressed(&mut buf)
-    //         .expect("Can Pr write into Vec<u8>");
-    //     buf.reverse();
-    //     self.digest.update(&buf);
-    // }
-
-    // pub(super) fn add_point(&mut self, point: P::G1Affine) {
-    //     let byte_len: usize = P::BasePield::MODULUS_BIT_SIZE
-    //         .div_ceil(8)
-    //         .try_into()
-    //         .expect("u32 fits into usize");
-    //     let mut buf = Vec::with_capacity(byte_len);
-    //     if let Some((x, y)) = point.xy() {
-    //         x.serialize_uncompressed(&mut buf)
-    //             .expect("Can write Pq into Vec<u8>");
-    //         buf.reverse();
-    //         self.digest.update(&buf);
-    //         buf.clear();
-    //         y.serialize_uncompressed(&mut buf)
-    //             .expect("Can write Pq into Vec<u8>");
-    //         buf.reverse();
-    //         self.digest.update(&buf);
-    //     } else {
-    //         // we are at infinity - in this case, snarkjs writes (MODULUS_BIT_SIZE / 8) Zero-bytes
-    //         // to the input buffer. If we serialize with arkworks, we would
-    //         // get (MODULUS_BIT_SIZE / 8 - 1) Zero-bytes with a trailing byte indicating the length of
-    //         // the serialized group element, resulting in an incompatible hash. Therefore we simple resize
-    //         // the buffer with Zeros and write it to the hash instance.
-    //         buf.resize(byte_len * 2, 0);
-    //         self.digest.update(&buf);
-    //     }
-    // }
-
-    // pub(super) fn add(&mut self, data: impl AsRef<[u8]>) {
-    //     self.digest.update(data);
-    // }
-
-    // pub(super) fn get_challenge(self) -> P {
-    //     let bytes = self.digest.finalize();
-    //     P::from_be_bytes_mod_order(&bytes)
-    // }
+    fn hash(buffer: Vec<F>) -> F {
+        todo!()
+    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Default)]
@@ -220,7 +202,7 @@ impl TranscriptManifest {
     pub(crate) fn add_challenge(&mut self, round: usize, labels: &[String]) {
         self.manifest
             .entry(round)
-            .or_insert_with(RoundData::default)
+            .or_default()
             .challenge_label
             .extend_from_slice(labels);
     }
@@ -228,7 +210,7 @@ impl TranscriptManifest {
     pub(crate) fn add_entry(&mut self, round: usize, element_label: String, element_size: usize) {
         self.manifest
             .entry(round)
-            .or_insert_with(RoundData::default)
+            .or_default()
             .entries
             .push((element_label, element_size));
     }
