@@ -11,7 +11,7 @@ use crate::{
     CONST_PROOF_SIZE_LOG_N, N_MAX,
 };
 use ark_ec::{pairing::Pairing, Group};
-use ark_ff::{Field, PrimeField, Zero};
+use ark_ff::{Field, One, PrimeField, Zero};
 use itertools::izip;
 
 impl<P: Pairing> Decider<P> {
@@ -58,29 +58,47 @@ impl<P: Pairing> Decider<P> {
         quotients
     }
 
+    /**
+     * @brief Construct batched, lifted-degree univariate quotient \hat{q} = \sum_k y^k * X^{N - d_k - 1} * q_k
+     * @details The purpose of the batched lifted-degree quotient is to reduce the individual degree checks
+     * deg(q_k) <= 2^k - 1 to a single degree check on \hat{q}. This is done by first shifting each of the q_k to the
+     * right (i.e. multiplying by an appropriate power of X) so that each is degree N-1, then batching them all together
+     * using powers of the provided challenge. Note: In practice, we do not actually compute the shifted q_k, we simply
+     * accumulate them into \hat{q} at the appropriate offset.
+     *
+     * @param quotients Polynomials q_k, interpreted as univariates; deg(q_k) = 2^k - 1
+     * @param N circuit size
+     * @return Polynomial
+     */
     fn compute_batched_lifted_degree_quotient(
-        quotients: Vec<Vec<P::ScalarField>>,
-        y_challenge: P::ScalarField,
+        quotients: &[Polynomial<P::ScalarField>],
+        y_challenge: &P::ScalarField,
         n: usize,
-    ) -> Vec<<P as Pairing>::ScalarField> {
-        let mut result = Vec::<P::ScalarField>::with_capacity(n);
-        let mut k = 0;
-        let mut scalar = P::ScalarField::ONE;
+    ) -> Polynomial<P::ScalarField> {
+        // Batched lifted degree quotient polynomial
+        let mut result = vec![P::ScalarField::zero(); n];
 
         // Compute \hat{q} = \sum_k y^k * X^{N - d_k - 1} * q_k
-        for quotient in quotients {
+        let mut scalar = P::ScalarField::one();
+        for (k, quotient) in quotients.iter().enumerate() {
             // Rather than explicitly computing the shifts of q_k by N - d_k - 1 (i.e. multiplying q_k by X^{N - d_k -
             // 1}) then accumulating them, we simply accumulate y^k*q_k into \hat{q} at the index offset N - d_k - 1
             let deg_k = (1 << k) - 1;
             let offset = n - deg_k - 1;
-            for idx in 0..=deg_k {
-                result[offset + idx] += scalar * quotient[idx];
+
+            for (r, q) in result
+                .iter_mut()
+                .skip(offset)
+                .take(deg_k + 1)
+                .zip(quotient.iter())
+            {
+                *r += scalar * q;
             }
+
             scalar *= y_challenge; // update batching scalar y^k
-            k += 1;
         }
 
-        result
+        Polynomial::new(result)
     }
 
     fn compute_partially_evaluated_degree_check_polynomial(
@@ -368,22 +386,21 @@ impl<P: Pairing> Decider<P> {
         transcript.add_scalar(y_challenge);
 
         // Compute the batched, lifted-degree quotient \hat{q}
+        let batched_quotient =
+            Self::compute_batched_lifted_degree_quotient(&quotients, &y_challenge, n as usize);
+
+        // Compute and send the commitment C_q = [\hat{q}]
+        self.memory.witness_commitments.q_commitment =
+            crate::commit(&batched_quotient.coefficients, commitment_key)?;
+        transcript.add_point(self.memory.witness_commitments.q_commitment.into());
+
+        // Get challenges x and z
+        let x_challenge = transcript.get_challenge();
+        let mut transcript = Keccak256Transcript::<P>::default();
+        transcript.add_scalar(x_challenge);
+        let z_challenge = transcript.get_challenge();
 
         todo!();
-
-        // let batched_quotient =
-        //     Self::compute_batched_lifted_degree_quotient(quotients, y_challenge, n as usize);
-
-        // // auto q_commitment = commitment_key->commit(batched_quotient);
-        // let mut transcript = transcript::Keccak256Transcript::<P>::default();
-        // transcript.add_scalar(y_challenge);
-        // todo!();
-        // let q_commitment = Default::default();
-        // transcript.add_scalar(q_commitment);
-        // let x_challenge = transcript.get_challenge();
-        // let mut transcript = transcript::Keccak256Transcript::<P>::default();
-        // transcript.add_scalar(x_challenge);
-        // let z_challenge = transcript.get_challenge();
 
         // // Compute degree check polynomial \zeta partially evaluated at x
         // let zeta_x = Self::compute_partially_evaluated_degree_check_polynomial(

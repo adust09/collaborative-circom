@@ -43,6 +43,7 @@ pub struct WitnessCommitments<P: Pairing> {
     pub lookup_read_counts: P::G1,
     pub lookup_read_tags: P::G1,
     pub q_k: [P::G1; CONST_PROOF_SIZE_LOG_N],
+    pub q_commitment: P::G1,
 }
 
 pub struct RelationParameters<F: PrimeField> {
@@ -122,6 +123,7 @@ impl<P: Pairing> Default for WitnessCommitments<P> {
             lookup_read_counts: Default::default(),
             lookup_read_tags: Default::default(),
             q_k: Default::default(),
+            q_commitment: Default::default(),
         }
     }
 }
@@ -184,6 +186,7 @@ impl<P: Pairing> From<crate::oink::types::WitnessCommitments<P>> for WitnessComm
             lookup_read_counts: witness_commitments.lookup_read_counts,
             lookup_read_tags: witness_commitments.lookup_read_tags,
             q_k: Default::default(),
+            q_commitment: Default::default(),
         }
     }
 }
