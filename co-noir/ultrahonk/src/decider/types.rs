@@ -1,5 +1,5 @@
 use super::univariate::Univariate;
-use crate::{types::AllEntities, NUM_ALPHAS};
+use crate::{types::AllEntities, CONST_PROOF_SIZE_LOG_N, NUM_ALPHAS};
 use ark_ec::pairing::Pairing;
 use ark_ff::PrimeField;
 
@@ -42,6 +42,7 @@ pub struct WitnessCommitments<P: Pairing> {
     pub lookup_inverses: P::G1,
     pub lookup_read_counts: P::G1,
     pub lookup_read_tags: P::G1,
+    pub q_k: [P::G1; CONST_PROOF_SIZE_LOG_N],
 }
 
 pub struct RelationParameters<F: PrimeField> {
@@ -120,6 +121,7 @@ impl<P: Pairing> Default for WitnessCommitments<P> {
             lookup_inverses: Default::default(),
             lookup_read_counts: Default::default(),
             lookup_read_tags: Default::default(),
+            q_k: Default::default(),
         }
     }
 }
@@ -181,6 +183,7 @@ impl<P: Pairing> From<crate::oink::types::WitnessCommitments<P>> for WitnessComm
             lookup_inverses: witness_commitments.lookup_inverses,
             lookup_read_counts: witness_commitments.lookup_read_counts,
             lookup_read_tags: witness_commitments.lookup_read_tags,
+            q_k: Default::default(),
         }
     }
 }

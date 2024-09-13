@@ -48,13 +48,6 @@ impl<P: Pairing> Oink<P> {
         }
     }
 
-    fn commit(poly: &[P::ScalarField], crs: &ProverCrs<P>) -> HonkProofResult<P::G1> {
-        if poly.len() > crs.monomials.len() {
-            return Err(HonkProofError::CrsTooSmall);
-        }
-        Ok(P::G1::msm_unchecked(&crs.monomials, poly))
-    }
-
     fn compute_w4(&mut self, proving_key: &ProvingKey<P>) {
         tracing::trace!("compute w4");
         // The memory record values are computed at the indicated indices as
@@ -368,11 +361,11 @@ impl<P: Pairing> Oink<P> {
         // We only commit to the fourth wire polynomial after adding memory records
 
         self.memory.witness_commitments.w_l =
-            Self::commit(proving_key.polynomials.witness.w_l(), &proving_key.crs)?;
+            crate::commit(proving_key.polynomials.witness.w_l(), &proving_key.crs)?;
         self.memory.witness_commitments.w_r =
-            Self::commit(proving_key.polynomials.witness.w_r(), &proving_key.crs)?;
+            crate::commit(proving_key.polynomials.witness.w_r(), &proving_key.crs)?;
         self.memory.witness_commitments.w_o =
-            Self::commit(proving_key.polynomials.witness.w_o(), &proving_key.crs)?;
+            crate::commit(proving_key.polynomials.witness.w_o(), &proving_key.crs)?;
 
         transcript.add_point(self.memory.witness_commitments.w_l.into());
         transcript.add_point(self.memory.witness_commitments.w_r.into());
@@ -409,15 +402,15 @@ impl<P: Pairing> Oink<P> {
         self.compute_w4(proving_key);
 
         // Commit to lookup argument polynomials and the finalized (i.e. with memory records) fourth wire polynomial
-        self.memory.witness_commitments.lookup_read_counts = Self::commit(
+        self.memory.witness_commitments.lookup_read_counts = crate::commit(
             proving_key.polynomials.witness.lookup_read_counts(),
             &proving_key.crs,
         )?;
-        self.memory.witness_commitments.lookup_read_tags = Self::commit(
+        self.memory.witness_commitments.lookup_read_tags = crate::commit(
             proving_key.polynomials.witness.lookup_read_tags(),
             &proving_key.crs,
         )?;
-        self.memory.witness_commitments.w_4 = Self::commit(&self.memory.w_4, &proving_key.crs)?;
+        self.memory.witness_commitments.w_4 = crate::commit(&self.memory.w_4, &proving_key.crs)?;
 
         transcript_inout.add_point(self.memory.witness_commitments.lookup_read_counts.into());
         transcript_inout.add_point(self.memory.witness_commitments.lookup_read_tags.into());
@@ -449,7 +442,7 @@ impl<P: Pairing> Oink<P> {
         self.compute_logderivative_inverses(proving_key);
 
         self.memory.witness_commitments.lookup_inverses =
-            Self::commit(&self.memory.lookup_inverses, &proving_key.crs)?;
+            crate::commit(&self.memory.lookup_inverses, &proving_key.crs)?;
 
         transcript_inout.add_point(self.memory.witness_commitments.lookup_inverses.into());
 
@@ -471,7 +464,7 @@ impl<P: Pairing> Oink<P> {
         self.compute_grand_product(proving_key);
 
         self.memory.witness_commitments.z_perm =
-            Self::commit(&self.memory.lookup_inverses, &proving_key.crs)?;
+            crate::commit(&self.memory.lookup_inverses, &proving_key.crs)?;
 
         transcript.add_point(self.memory.witness_commitments.z_perm.into());
         Ok(())

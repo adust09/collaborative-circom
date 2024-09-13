@@ -1,11 +1,14 @@
-use ark_ff::PrimeField;
-
 pub(crate) mod decider;
 pub(crate) mod oink;
 pub mod prover;
 mod transcript;
 mod types;
 // pub mod verifier;
+
+use ark_ec::{pairing::Pairing, VariableBaseMSM};
+use ark_ff::PrimeField;
+use prover::{HonkProofError, HonkProofResult};
+use types::ProverCrs;
 
 // from http://supertech.csail.mit.edu/papers/debruijn.pdf
 pub(crate) fn get_msb(inp: u32) -> u8 {
@@ -52,4 +55,11 @@ fn batch_invert<F: PrimeField>(coeffs: &mut [F]) {
         acc *= &*c;
         *c = tmp;
     }
+}
+
+fn commit<P: Pairing>(poly: &[P::ScalarField], crs: &ProverCrs<P>) -> HonkProofResult<P::G1> {
+    if poly.len() > crs.monomials.len() {
+        return Err(HonkProofError::CrsTooSmall);
+    }
+    Ok(P::G1::msm_unchecked(&crs.monomials, poly))
 }

@@ -5,11 +5,12 @@ use super::{
 use crate::{
     decider::{polynomial::Polynomial, types::ClaimedEvaluations},
     get_msb,
+    prover::HonkProofResult,
     transcript::Keccak256Transcript,
     types::ProvingKey,
     CONST_PROOF_SIZE_LOG_N, N_MAX,
 };
-use ark_ec::pairing::Pairing;
+use ark_ec::{pairing::Pairing, Group};
 use ark_ff::{Field, PrimeField, Zero};
 use itertools::izip;
 
@@ -20,11 +21,8 @@ impl<P: Pairing> Decider<P> {
     ) -> Vec<Polynomial<P::ScalarField>> {
         let log_n = get_msb(polynomial.len() as u32);
         // Define the vector of quotients q_k, k = 0, ..., log_N-1
-        let mut quotients = Vec::with_capacity(1 << log_n);
-        for _ in 0..log_n {
-            // let size = 1 << k;
-            quotients.push(Polynomial::default()); // degree 2^k - 1
-        }
+        // let mut quotients = Vec::with_capacity(log_n as usize);
+        let mut quotients = vec![Polynomial::default(); log_n as usize];
 
         // Compute the coefficients of q_{n-1}
         let mut size_q = 1 << (log_n - 1);
@@ -282,11 +280,11 @@ impl<P: Pairing> Decider<P> {
      * @todo https://github.com/AztecProtocol/barretenberg/issues/1030: document concatenation trick
      */
     pub(crate) fn zeromorph_prove(
-        &self,
+        &mut self,
         mut transcript: Keccak256Transcript<P>,
         proving_key: &ProvingKey<P>,
         sumcheck_output: SumcheckOutput<P::ScalarField>,
-    ) {
+    ) -> HonkProofResult<()> {
         let circuit_size = proving_key.circuit_size;
         let f_polynomials = self.get_f_polyomials(proving_key);
         let g_polynomials = self.get_g_polyomials(proving_key);
@@ -340,25 +338,38 @@ impl<P: Pairing> Decider<P> {
 
         // Compute the multilinear quotients q_k = q_k(X_0, ..., X_{k-1})
         let quotients = Self::compute_multilinear_quotients(&f_polynomial, u_challenge);
-        todo!();
-        // // Compute and send commitments C_{q_k} = [q_k], k = 0,...,d-1
-        // for idx in 0..log_n {
-        //     todo!();
-        //     // TODO let q_k_commitment = commitment_key.commit(&quotients[idx]);
-        //     let q_k_commitment = 0u8;
-        //     let label = format!("ZM:C_q_{}", idx);
-        //     transcript.add(&[q_k_commitment]);
-        // }
+        debug_assert_eq!(quotients.len(), log_n as usize);
+        // Compute and send commitments C_{q_k} = [q_k], k = 0,...,d-1
+        for (res, val) in self
+            .memory
+            .witness_commitments
+            .q_k
+            .iter_mut()
+            .zip(quotients.iter())
+        {
+            *res = crate::commit(&val.coefficients, commitment_key)?;
+            transcript.add_point((*res).into());
+        }
+        // Add buffer elements to remove log_N dependence in proof
+        for res in self
+            .memory
+            .witness_commitments
+            .q_k
+            .iter_mut()
+            .skip(log_n as usize)
+        {
+            *res = P::G1::generator(); // TODO Is this one?
+            transcript.add_point((*res).into());
+        }
 
-        // // Add buffer elements to remove log_N dependence in proof
-        // for idx in log_n..CONST_PROOF_SIZE_LOG_N as u8 {
-        //     // let buffer_element = Commitment::one();
-        //     let label = format!("ZM:C_q_{}", idx);
-        //     todo!();
-        //     let buffer_element = 0u8;
-        //     transcript.add(&[buffer_element]);
-        // }
-        // let y_challenge = transcript.get_challenge();
+        // Get challenge y
+        let y_challenge = transcript.get_challenge();
+        let mut transcript = Keccak256Transcript::<P>::default();
+        transcript.add_scalar(y_challenge);
+
+        // Compute the batched, lifted-degree quotient \hat{q}
+
+        todo!();
 
         // let batched_quotient =
         //     Self::compute_batched_lifted_degree_quotient(quotients, y_challenge, n as usize);

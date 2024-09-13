@@ -37,7 +37,7 @@ impl<P: Pairing> Decider<P> {
      *
      * */
     fn execute_pcs_rounds(
-        &self,
+        &mut self,
         transcript: transcript::Keccak256Transcript<P>,
         proving_key: &ProvingKey<P>,
         sumcheck_output: SumcheckOutput<P::ScalarField>,
@@ -46,7 +46,7 @@ impl<P: Pairing> Decider<P> {
         todo!();
     }
 
-    pub fn prove(self, proving_key: &ProvingKey<P>) -> HonkProofResult<()> {
+    pub fn prove(mut self, proving_key: &ProvingKey<P>) -> HonkProofResult<()> {
         tracing::trace!("Decider prove");
 
         let mut transcript = transcript::Keccak256Transcript::<P>::default();
