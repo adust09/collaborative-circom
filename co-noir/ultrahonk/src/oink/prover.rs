@@ -20,11 +20,12 @@
 use super::types::ProverMemory;
 use crate::{
     batch_invert,
+    field_convert::ConvertField,
     prover::{HonkProofError, HonkProofResult},
-    transcript::Keccak256Transcript,
+    transcript::{Keccak256Transcript, TranscriptFieldType},
     types::ProvingKey,
 };
-use ark_ec::pairing::Pairing;
+use ark_ec::{pairing::Pairing, AffineRepr};
 use ark_ff::{One, Zero};
 use itertools::izip;
 use std::marker::PhantomData;
@@ -34,13 +35,21 @@ pub struct Oink<P: Pairing> {
     phantom_data: PhantomData<P>,
 }
 
-impl<P: Pairing> Default for Oink<P> {
+impl<P: Pairing> Default for Oink<P>
+where
+    <P::G1Affine as AffineRepr>::BaseField: ConvertField<TranscriptFieldType>,
+    P::ScalarField: ConvertField<TranscriptFieldType>,
+{
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl<P: Pairing> Oink<P> {
+impl<P: Pairing> Oink<P>
+where
+    <P::G1Affine as AffineRepr>::BaseField: ConvertField<TranscriptFieldType>,
+    P::ScalarField: ConvertField<TranscriptFieldType>,
+{
     pub fn new() -> Self {
         Self {
             memory: ProverMemory::default(),
@@ -316,7 +325,7 @@ impl<P: Pairing> Oink<P> {
     }
 
     // Generate relation separators alphas for sumcheck/combiner computation
-    fn generate_alphas_round(&mut self, transcript: Keccak256Transcript<P>) {
+    fn generate_alphas_round(&mut self, transcript: Keccak256Transcript) {
         tracing::trace!("generate alpha round");
 
         self.memory.challenges.alphas[0] = transcript.get_challenge();
@@ -329,7 +338,7 @@ impl<P: Pairing> Oink<P> {
 
     // Add circuit size public input size and public inputs to transcript
     fn execute_preamble_round(
-        transcript: &mut Keccak256Transcript<P>,
+        transcript: &mut Keccak256Transcript,
         proving_key: &ProvingKey<P>,
         public_inputs: &[P::ScalarField],
     ) -> HonkProofResult<()> {
@@ -360,7 +369,7 @@ impl<P: Pairing> Oink<P> {
     // Compute first three wire commitments
     fn execute_wire_commitments_round(
         &mut self,
-        transcript: &mut Keccak256Transcript<P>,
+        transcript: &mut Keccak256Transcript,
         proving_key: &ProvingKey<P>,
     ) -> HonkProofResult<()> {
         tracing::trace!("executing wire commitments round");
@@ -372,9 +381,9 @@ impl<P: Pairing> Oink<P> {
         let w_r = crate::commit(proving_key.polynomials.witness.w_r(), &proving_key.crs)?;
         let w_o = crate::commit(proving_key.polynomials.witness.w_o(), &proving_key.crs)?;
 
-        transcript.add_point(w_l.into());
-        transcript.add_point(w_r.into());
-        transcript.add_point(w_o.into());
+        transcript.send_point_to_verifier("W_L".to_string(), w_l.into());
+        transcript.send_point_to_verifier("W_R".to_string(), w_r.into());
+        transcript.send_point_to_verifier("W_O".to_string(), w_o.into());
 
         // Round is done since ultra_honk is no goblin flavor
         Ok(())
@@ -383,27 +392,14 @@ impl<P: Pairing> Oink<P> {
     // Compute sorted list accumulator and commitment
     fn execute_sorted_list_accumulator_round(
         &mut self,
-        transcript_inout: &mut Keccak256Transcript<P>,
+        transcript: &mut Keccak256Transcript,
         proving_key: &ProvingKey<P>,
     ) -> HonkProofResult<()> {
         tracing::trace!("executing sorted list accumulator round");
 
-        // Get the challenges and refresh the transcript
-        let mut transcript = Keccak256Transcript::<P>::default();
-        std::mem::swap(&mut transcript, transcript_inout);
-
         self.memory.challenges.eta_1 = transcript.get_challenge();
-
-        let mut transcript = Keccak256Transcript::<P>::default();
-        transcript.add_scalar(self.memory.challenges.eta_1);
         self.memory.challenges.eta_2 = transcript.get_challenge();
-
-        let mut transcript = Keccak256Transcript::<P>::default();
-        transcript.add_scalar(self.memory.challenges.eta_2);
         self.memory.challenges.eta_3 = transcript.get_challenge();
-
-        transcript_inout.add_scalar(self.memory.challenges.eta_3);
-
         self.compute_w4(proving_key);
 
         // Commit to lookup argument polynomials and the finalized (i.e. with memory records) fourth wire polynomial
@@ -417,9 +413,9 @@ impl<P: Pairing> Oink<P> {
         )?;
         let w_4 = crate::commit(&self.memory.w_4, &proving_key.crs)?;
 
-        transcript_inout.add_point(lookup_read_counts.into());
-        transcript_inout.add_point(lookup_read_tags.into());
-        transcript_inout.add_point(w_4.into());
+        transcript.add_point(lookup_read_counts.into());
+        transcript.add_point(lookup_read_tags.into());
+        transcript.add_point(w_4.into());
 
         Ok(())
     }
@@ -427,7 +423,7 @@ impl<P: Pairing> Oink<P> {
     // Fiat-Shamir: beta & gamma
     fn execute_log_derivative_inverse_round(
         &mut self,
-        transcript_inout: &mut Keccak256Transcript<P>,
+        transcript_inout: &mut Keccak256Transcript,
         proving_key: &ProvingKey<P>,
     ) -> HonkProofResult<()> {
         tracing::trace!("executing log derivative inverse round");
@@ -457,7 +453,7 @@ impl<P: Pairing> Oink<P> {
     // Compute grand product(s) and commitments.
     fn execute_grand_product_computation_round(
         &mut self,
-        transcript: &mut Keccak256Transcript<P>,
+        transcript: &mut Keccak256Transcript,
         proving_key: &ProvingKey<P>,
         public_inputs: &[P::ScalarField],
     ) -> HonkProofResult<()> {
@@ -477,13 +473,12 @@ impl<P: Pairing> Oink<P> {
         mut self,
         proving_key: &ProvingKey<P>,
         public_inputs: &[P::ScalarField],
+        transcript: &mut Keccak256Transcript,
     ) -> HonkProofResult<ProverMemory<P>> {
         tracing::trace!("Oink prove");
 
-        let mut transcript = Keccak256Transcript::default();
-
         // Add circuit size public input size and public inputs to transcript
-        Self::execute_preamble_round(&mut transcript, proving_key, public_inputs)?;
+        Self::execute_preamble_round(transcript, proving_key, public_inputs)?;
         // Compute first three wire commitments
         self.execute_wire_commitments_round(&mut transcript, proving_key)?;
         // Compute sorted list accumulator and commitment

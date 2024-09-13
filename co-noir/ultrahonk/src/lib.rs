@@ -1,4 +1,5 @@
 pub(crate) mod decider;
+pub mod field_convert;
 pub(crate) mod oink;
 pub mod prover;
 mod transcript;
@@ -9,6 +10,8 @@ use ark_ec::{pairing::Pairing, VariableBaseMSM};
 use ark_ff::PrimeField;
 use prover::{HonkProofError, HonkProofResult};
 use types::ProverCrs;
+
+pub(crate) type TranscriptFieldType = ark_bn254::Fr;
 
 // from http://supertech.csail.mit.edu/papers/debruijn.pdf
 pub(crate) fn get_msb(inp: u32) -> u8 {

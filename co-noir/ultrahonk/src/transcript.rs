@@ -1,29 +1,31 @@
 use ark_ec::{pairing::Pairing, AffineRepr};
-use ark_ff::PrimeField;
-use ark_serialize::CanonicalSerialize;
+use ark_ff::{PrimeField, Zero};
 use sha3::{Digest, Keccak256};
-use std::{collections::HashMap, marker::PhantomData, num, ops::Index};
+use std::{collections::HashMap, marker::PhantomData, ops::Index};
+
+use crate::field_convert::ConvertField;
 
 // TODO this whole file is copied from our co-Plonk and should probably be adapted
 
-pub(super) type Keccak256Transcript<P> = Transcript<Keccak256, P>;
+pub(crate) type TranscriptFieldType = ark_bn254::Fr;
+pub(super) type Keccak256Transcript = Transcript<Keccak256, TranscriptFieldType>;
 
-pub(super) struct Transcript<D, P>
+pub(super) struct Transcript<D, F>
 where
     D: Digest,
-    P: Pairing,
+    F: PrimeField,
 {
-    proof_data: Vec<P::ScalarField>,
+    proof_data: Vec<F>,
     manifest: TranscriptManifest,
     num_frs_written: usize, // the number of bb::frs written to proof_data by the prover or the verifier
     round_number: usize,
     is_first_challenge: bool,
-    current_round_data: Vec<P::ScalarField>,
-    previous_challenge: Vec<P::ScalarField>,
+    current_round_data: Vec<F>,
+    previous_challenge: Vec<F>,
     phantom_data: PhantomData<D>,
 }
 
-impl<P: Pairing> Default for Keccak256Transcript<P> {
+impl Default for Keccak256Transcript {
     fn default() -> Self {
         Self {
             proof_data: Default::default(),
@@ -38,12 +40,12 @@ impl<P: Pairing> Default for Keccak256Transcript<P> {
     }
 }
 
-impl<D, P> Transcript<D, P>
+impl<D, F> Transcript<D, F>
 where
     D: Digest,
-    P: Pairing,
+    F: PrimeField,
 {
-    fn consume_prover_elements(&mut self, label: String, elements: &[P::ScalarField]) {
+    fn consume_prover_elements(&mut self, label: String, elements: &[F]) {
         // Add an entry to the current round of the manifest
         let len = elements.len();
         self.manifest.add_entry(self.round_number, label, len);
@@ -51,43 +53,74 @@ where
         self.num_frs_written += len;
     }
 
-    pub(super) fn send_to_verifier(&mut self, label: String, elements: &[P::ScalarField]) {
+    fn convert_point<P>(element: P) -> Vec<F>
+    where
+        P: AffineRepr,
+        P::BaseField: ConvertField<F>,
+    {
+        let (x, y) = if let Some((x, y)) = element.xy() {
+            (*x, *y)
+        } else {
+            // we are at infinity
+            (
+                <P::G1Affine as AffineRepr>::BaseField::zero(),
+                <P::G1Affine as AffineRepr>::BaseField::zero(),
+            )
+        };
+
+        let mut res = x.convert_field();
+        res.extend(y.convert_field());
+
+        res
+    }
+
+    pub(super) fn send_to_verifier(&mut self, label: String, elements: &[F]) {
         self.proof_data.extend(elements);
         self.consume_prover_elements(label, elements);
     }
 
-    pub(super) fn send_fr_to_verifier(&mut self, label: String, element: P::ScalarField) {
-        self.send_to_verifier(label, &[element]);
+    pub(super) fn send_fr_to_verifier<G: ConvertField<F>>(&mut self, label: String, element: G) {
+        let elements = element.convert_field();
+        self.send_to_verifier(label, &elements);
     }
 
     pub(super) fn send_u64_to_verifier(&mut self, label: String, element: u64) {
-        let el = P::ScalarField::from(element);
-        self.send_fr_to_verifier(label, el);
+        let el = F::from(element);
+        self.send_to_verifier(label, &[el]);
     }
 
-    // pub(super) fn add_scalar(&mut self, scalar: P::ScalarField) {
+    pub(super) fn send_point_to_verifier<P>(&mut self, label: String, element: P)
+    where
+        P: AffineRepr,
+        P::BaseField: ConvertField<F>,
+    {
+        let elements = Self::convert_point::<P>(element);
+        self.send_to_verifier(label, &elements);
+    }
+
+    // pub(super) fn add_scalar(&mut self, scalar: P) {
     //     let mut buf = vec![];
     //     scalar
     //         .serialize_uncompressed(&mut buf)
-    //         .expect("Can Fr write into Vec<u8>");
+    //         .expect("Can Pr write into Vec<u8>");
     //     buf.reverse();
     //     self.digest.update(&buf);
     // }
 
     // pub(super) fn add_point(&mut self, point: P::G1Affine) {
-    //     let byte_len: usize = P::BaseField::MODULUS_BIT_SIZE
+    //     let byte_len: usize = P::BasePield::MODULUS_BIT_SIZE
     //         .div_ceil(8)
     //         .try_into()
     //         .expect("u32 fits into usize");
     //     let mut buf = Vec::with_capacity(byte_len);
     //     if let Some((x, y)) = point.xy() {
     //         x.serialize_uncompressed(&mut buf)
-    //             .expect("Can write Fq into Vec<u8>");
+    //             .expect("Can write Pq into Vec<u8>");
     //         buf.reverse();
     //         self.digest.update(&buf);
     //         buf.clear();
     //         y.serialize_uncompressed(&mut buf)
-    //             .expect("Can write Fq into Vec<u8>");
+    //             .expect("Can write Pq into Vec<u8>");
     //         buf.reverse();
     //         self.digest.update(&buf);
     //     } else {
@@ -105,9 +138,9 @@ where
     //     self.digest.update(data);
     // }
 
-    // pub(super) fn get_challenge(self) -> P::ScalarField {
+    // pub(super) fn get_challenge(self) -> P {
     //     let bytes = self.digest.finalize();
-    //     P::ScalarField::from_be_bytes_mod_order(&bytes)
+    //     P::from_be_bytes_mod_order(&bytes)
     // }
 }
 

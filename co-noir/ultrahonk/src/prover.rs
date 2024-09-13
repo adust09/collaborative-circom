@@ -2,7 +2,7 @@ use crate::{
     decider::{prover::Decider, types::ProverMemory},
     get_msb,
     oink::prover::Oink,
-    transcript::Keccak256Transcript,
+    transcript::{self, Keccak256Transcript},
     types::ProvingKey,
     NUM_ALPHAS,
 };
@@ -47,7 +47,7 @@ impl<P: Pairing> UltraHonk<P> {
         let challenge_size = get_msb(proving_key.circuit_size) as usize;
         let mut gate_challenges = Vec::with_capacity(challenge_size);
 
-        let mut transcript = Keccak256Transcript::<P>::default();
+        let mut transcript = Keccak256Transcript::<ark_bn254::Fr>::default();
         transcript.add_scalar(memory.relation_parameters.alphas[NUM_ALPHAS - 1]);
 
         gate_challenges.push(transcript.get_challenge());
@@ -66,8 +66,11 @@ impl<P: Pairing> UltraHonk<P> {
     ) -> HonkProofResult<()> {
         tracing::trace!("UltraHonk prove");
 
+        let mut transcript = Keccak256Transcript::default();
+
         let oink = Oink::<P>::default();
-        let mut memory = ProverMemory::from(oink.prove(proving_key, public_inputs)?);
+        let mut memory =
+            ProverMemory::from(oink.prove(proving_key, public_inputs, &mut transcript)?);
         self.generate_gate_challenges(&mut memory, proving_key);
 
         let decider = Decider::new(memory);
