@@ -101,12 +101,24 @@ impl<P: Pairing> Decider<P> {
         Polynomial::new(result)
     }
 
+    /**
+     * @brief Compute partially evaluated degree check polynomial \zeta_x = q - \sum_k y^k * x^{N - d_k - 1} * q_k
+     * @details Compute \zeta_x, where
+     *
+     *                          \zeta_x = q - \sum_k y^k * x^{N - d_k - 1} * q_k
+     *
+     * @param batched_quotient
+     * @param quotients
+     * @param y_challenge
+     * @param x_challenge
+     * @return Polynomial Degree check polynomial \zeta_x such that \zeta_x(x) = 0
+     */
     fn compute_partially_evaluated_degree_check_polynomial(
-        batched_quotient: Vec<P::ScalarField>,
-        quotients: Vec<Vec<P::ScalarField>>,
-        y_challenge: P::ScalarField,
-        x_challenge: P::ScalarField,
-    ) -> Vec<P::ScalarField> {
+        batched_quotient: &Polynomial<P::ScalarField>,
+        quotients: &[Polynomial<P::ScalarField>],
+        y_challenge: &P::ScalarField,
+        x_challenge: &P::ScalarField,
+    ) -> Polynomial<P::ScalarField> {
         let n = batched_quotient.len();
         let log_n = quotients.len();
 
@@ -114,18 +126,13 @@ impl<P: Pairing> Decider<P> {
         let mut result = batched_quotient.clone();
 
         let mut y_power = P::ScalarField::ONE; // y^k
-        for k in 0..log_n {
+        for (k, q) in quotients.iter().enumerate() {
             // Accumulate y^k * x^{N - d_k - 1} * q_k into \hat{q}
             let deg_k = (1 << k) - 1;
             let exponent = (n - deg_k - 1) as u64;
             let x_power = x_challenge.pow([exponent]); // x^{N - d_k - 1}
 
-            // // result.add_scaled(&quotients[k], -y_power * x_power);
-            // for (i, &other_value) in quotients[k].iter().enumerate() {
-            //     //this is Self::add_scaled, see cpp/src/barretenberg/polynomials/polynomial.cpp
-            //     result[i] += -y_power * x_power * other_value;
-            // }
-            // Self::add_scaled(&mut result, &quotients[k], -y_power * x_power);
+            result.add_scaled(q, &(-y_power * x_power));
 
             y_power *= y_challenge; // update batching scalar y^k
         }
@@ -400,15 +407,15 @@ impl<P: Pairing> Decider<P> {
         transcript.add_scalar(x_challenge);
         let z_challenge = transcript.get_challenge();
 
-        todo!();
+        // Compute degree check polynomial \zeta partially evaluated at x
+        let zeta_x = Self::compute_partially_evaluated_degree_check_polynomial(
+            &batched_quotient,
+            &quotients,
+            &y_challenge,
+            &x_challenge,
+        );
 
-        // // Compute degree check polynomial \zeta partially evaluated at x
-        // let zeta_x = Self::compute_partially_evaluated_degree_check_polynomial(
-        //     batched_quotient,
-        //     quotients,
-        //     y_challenge,
-        //     x_challenge,
-        // );
+        todo!();
         // // Compute ZeroMorph identity polynomial Z partially evaluated at x
         // let z_x = Self::compute_partially_evaluated_zeromorph_identity_polynomial(
         //     f_batched,
