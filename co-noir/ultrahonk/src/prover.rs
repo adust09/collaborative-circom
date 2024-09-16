@@ -1,7 +1,7 @@
 use crate::{
     decider::{prover::Decider, types::ProverMemory},
-    field_convert::HonkCurve,
     get_msb,
+    honk_curve::HonkCurve,
     oink::prover::Oink,
     transcript::{TranscriptFieldType, TranscriptType},
     types::ProvingKey,

@@ -1,4 +1,4 @@
-use ark_ec::pairing::Pairing;
+use ark_ec::{pairing::Pairing, short_weierstrass::SWCurveConfig};
 use ark_ff::{One, PrimeField};
 use num_bigint::BigUint;
 
@@ -18,6 +18,10 @@ pub trait HonkCurve<Des: PrimeField>: Pairing {
 
     // For the challenge
     fn convert_destinationfield_to_scalarfield(des: &Des) -> Self::ScalarField;
+
+    // For the elliptic curve relation
+    fn get_curve_b() -> Self::BaseField;
+    fn get_curve_b_as_scalarfield() -> Self::ScalarField;
 }
 
 impl HonkCurve<ark_bn254::Fr> for ark_bn254::Bn254 {
@@ -53,6 +57,17 @@ impl HonkCurve<ark_bn254::Fr> for ark_bn254::Bn254 {
 
     fn convert_destinationfield_to_scalarfield(des: &ark_bn254::Fr) -> ark_bn254::Fr {
         des.to_owned()
+    }
+
+    fn get_curve_b() -> Self::BaseField {
+        ark_bn254::g1::Config::COEFF_B
+    }
+
+    fn get_curve_b_as_scalarfield() -> ark_bn254::Fr {
+        let b = Self::get_curve_b();
+        let res = ark_bn254::Fr::from(b.0);
+        assert!(!res.is_geq_modulus());
+        res
     }
 }
 

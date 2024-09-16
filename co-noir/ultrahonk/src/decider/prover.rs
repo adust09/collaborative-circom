@@ -1,6 +1,6 @@
 use super::{sumcheck::SumcheckOutput, types::ProverMemory};
 use crate::{
-    field_convert::HonkCurve,
+    honk_curve::HonkCurve,
     prover::HonkProofResult,
     transcript::{TranscriptFieldType, TranscriptType},
     types::ProvingKey,

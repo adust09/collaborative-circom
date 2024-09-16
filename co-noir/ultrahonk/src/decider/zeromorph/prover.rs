@@ -5,8 +5,8 @@ use super::{
 };
 use crate::{
     decider::{polynomial::Polynomial, types::ClaimedEvaluations, zeromorph::OpeningPair},
-    field_convert::HonkCurve,
     get_msb,
+    honk_curve::HonkCurve,
     prover::HonkProofResult,
     transcript::{TranscriptFieldType, TranscriptType},
     types::ProvingKey,

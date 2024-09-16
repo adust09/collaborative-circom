@@ -20,7 +20,7 @@
 use super::types::ProverMemory;
 use crate::{
     batch_invert,
-    field_convert::HonkCurve,
+    honk_curve::HonkCurve,
     prover::{HonkProofError, HonkProofResult},
     transcript::{TranscriptFieldType, TranscriptType},
     types::ProvingKey,

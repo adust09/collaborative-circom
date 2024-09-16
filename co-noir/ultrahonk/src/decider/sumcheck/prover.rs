@@ -2,7 +2,7 @@ use crate::decider::prover::Decider;
 use crate::decider::sumcheck::sumcheck_round::{SumcheckRound, SumcheckRoundOutput};
 use crate::decider::sumcheck::SumcheckOutput;
 use crate::decider::types::{ClaimedEvaluations, MemoryElements, PartiallyEvaluatePolys};
-use crate::field_convert::HonkCurve;
+use crate::honk_curve::HonkCurve;
 use crate::transcript::{TranscriptFieldType, TranscriptType};
 use crate::types::{Polynomials, ProvingKey};
 use crate::CONST_PROOF_SIZE_LOG_N;

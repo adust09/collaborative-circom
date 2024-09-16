@@ -1,5 +1,5 @@
 use crate::{
-    field_convert::HonkCurve,
+    honk_curve::HonkCurve,
     prover::{HonkProofError, HonkProofResult},
 };
 use ark_ec::AffineRepr;

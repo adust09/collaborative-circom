@@ -1,5 +1,5 @@
 pub(crate) mod decider;
-pub mod field_convert;
+pub mod honk_curve;
 pub(crate) mod oink;
 pub mod prover;
 mod transcript;
