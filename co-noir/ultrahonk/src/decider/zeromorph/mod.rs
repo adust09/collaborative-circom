@@ -5,8 +5,8 @@ use super::polynomial::Polynomial;
 use ark_ff::PrimeField;
 
 pub struct ZeroMorphOpeningClaim<F: PrimeField> {
-    polynomial: Polynomial<F>,
-    opening_pair: OpeningPair<F>,
+    pub(crate) polynomial: Polynomial<F>,
+    pub(crate) opening_pair: OpeningPair<F>,
 }
 
 pub struct OpeningPair<F: PrimeField> {

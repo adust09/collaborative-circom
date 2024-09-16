@@ -1,4 +1,4 @@
-use super::{sumcheck::SumcheckOutput, types::ProverMemory};
+use super::{sumcheck::SumcheckOutput, types::ProverMemory, zeromorph::ZeroMorphOpeningClaim};
 use crate::{
     honk_curve::HonkCurve,
     prover::HonkProofResult,
@@ -18,6 +18,24 @@ impl<P: HonkCurve<TranscriptFieldType>> Decider<P> {
             memory,
             phantom_data: PhantomData,
         }
+    }
+
+    fn compute_opening_proof(
+        opening_claim: ZeroMorphOpeningClaim<P::ScalarField>,
+        transcript: &mut TranscriptType,
+        proving_key: &ProvingKey<P>,
+    ) -> HonkProofResult<()> {
+        let mut quotient = opening_claim.polynomial;
+        let pair = opening_claim.opening_pair;
+        quotient[0] -= pair.evaluation;
+        // Computes the coefficients for the quotient polynomial q(X) = (p(X) - v) / (X - r) through an FFT
+        quotient.factor_roots(&pair.challenge);
+        let quotient_commitment = crate::commit(&quotient.coefficients, &proving_key.crs)?;
+        // TODO(#479): for now we compute the KZG commitment directly to unify the KZG and IPA interfaces but in the
+        // future we might need to adjust this to use the incoming alternative to work queue (i.e. variation of
+        // pthreads) or even the work queue itself
+        transcript.send_point_to_verifier::<P>("KZG:W".to_string(), quotient_commitment.into());
+        Ok(())
     }
 
     /**
@@ -48,7 +66,7 @@ impl<P: HonkCurve<TranscriptFieldType>> Decider<P> {
     ) -> HonkProofResult<()> {
         let prover_opening_claim =
             self.zeromorph_prove(transcript, proving_key, sumcheck_output)?;
-        todo!("construct the proof");
+        Self::compute_opening_proof(prover_opening_claim, transcript, proving_key)
     }
 
     pub fn prove(
