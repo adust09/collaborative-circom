@@ -1,6 +1,7 @@
 pub(crate) mod decider;
 pub mod honk_curve;
 pub(crate) mod oink;
+pub mod poseidon2;
 pub mod prover;
 mod transcript;
 mod types;

@@ -17,26 +17,26 @@ use ark_ff::{Field, One, Zero};
 use itertools::izip;
 
 impl<P: HonkCurve<TranscriptFieldType>> Decider<P> {
-    /**
-     * @brief Compute multivariate quotients q_k(X_0, ..., X_{k-1}) for f(X_0, ..., X_{n-1})
-     * @details Starting from the coefficients of f, compute q_k inductively from k = n - 1, to k = 0.
-     *          f needs to be updated at each step.
-     *
-     *          First, compute q_{n-1} of size N/2 by
-     *          q_{n-1}[l] = f[N/2 + l ] - f[l].
-     *
-     *          Update f by f[l] <- f[l] + u_{n-1} * q_{n-1}[l]; f now has size N/2.
-     *          Compute q_{n-2} of size N/(2^2) by
-     *          q_{n-2}[l] = f[N/2^2 + l] - f[l].
-     *
-     *          Update f by f[l] <- f[l] + u_{n-2} * q_{n-2}[l]; f now has size N/(2^2).
-     *          Compute q_{n-3} of size N/(2^3) by
-     *          q_{n-3}[l] = f[N/2^3 + l] - f[l]. Repeat similarly until you reach q_0.
-     *
-     * @param polynomial Multilinear polynomial f(X_0, ..., X_{d-1})
-     * @param u_challenge Multivariate challenge u = (u_0, ..., u_{d-1})
-     * @return std::vector<Polynomial> The quotients q_k
-     */
+    // /**
+    //  * @brief Compute multivariate quotients q_k(X_0, ..., X_{k-1}) for f(X_0, ..., X_{n-1})
+    //  * @details Starting from the coefficients of f, compute q_k inductively from k = n - 1, to k = 0.
+    //  *          f needs to be updated at each step.
+    //  *
+    //  *          First, compute q_{n-1} of size N/2 by
+    //  *          q_{n-1}[l] = f[N/2 + l ] - f[l].
+    //  *
+    //  *          Update f by f[l] <- f[l] + u_{n-1} * q_{n-1}[l]; f now has size N/2.
+    //  *          Compute q_{n-2} of size N/(2^2) by
+    //  *          q_{n-2}[l] = f[N/2^2 + l] - f[l].
+    //  *
+    //  *          Update f by f[l] <- f[l] + u_{n-2} * q_{n-2}[l]; f now has size N/(2^2).
+    //  *          Compute q_{n-3} of size N/(2^3) by
+    //  *          q_{n-3}[l] = f[N/2^3 + l] - f[l]. Repeat similarly until you reach q_0.
+    //  *
+    //  * @param polynomial Multilinear polynomial f(X_0, ..., X_{d-1})
+    //  * @param u_challenge Multivariate challenge u = (u_0, ..., u_{d-1})
+    //  * @return std::vector<Polynomial> The quotients q_k
+    //  */
     fn compute_multilinear_quotients(
         polynomial: &Polynomial<P::ScalarField>,
         u_challenge: &[P::ScalarField],
@@ -123,18 +123,18 @@ impl<P: HonkCurve<TranscriptFieldType>> Decider<P> {
         Polynomial::new(result)
     }
 
-    /**
-     * @brief Compute partially evaluated degree check polynomial \zeta_x = q - \sum_k y^k * x^{N - d_k - 1} * q_k
-     * @details Compute \zeta_x, where
-     *
-     *                          \zeta_x = q - \sum_k y^k * x^{N - d_k - 1} * q_k
-     *
-     * @param batched_quotient
-     * @param quotients
-     * @param y_challenge
-     * @param x_challenge
-     * @return Polynomial Degree check polynomial \zeta_x such that \zeta_x(x) = 0
-     */
+    // /**
+    //  * @brief Compute partially evaluated degree check polynomial \zeta_x = q - \sum_k y^k * x^{N - d_k - 1} * q_k
+    //  * @details Compute \zeta_x, where
+    //  *
+    //  *                          \zeta_x = q - \sum_k y^k * x^{N - d_k - 1} * q_k
+    //  *
+    //  * @param batched_quotient
+    //  * @param quotients
+    //  * @param y_challenge
+    //  * @param x_challenge
+    //  * @return Polynomial Degree check polynomial \zeta_x such that \zeta_x(x) = 0
+    //  */
     fn compute_partially_evaluated_degree_check_polynomial(
         batched_quotient: &Polynomial<P::ScalarField>,
         quotients: &[Polynomial<P::ScalarField>],
