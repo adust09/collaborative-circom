@@ -3,6 +3,7 @@ use crate::{
     poseidon2::{poseidon2_params::Poseidon2Params, poseidon2_permutation::Poseidon2},
     prover::{HonkProofError, HonkProofResult},
     sponge_hasher::FieldSponge,
+    types::HonkProof,
 };
 use ark_ec::AffineRepr;
 use ark_ff::{PrimeField, Zero};
@@ -41,6 +42,12 @@ where
             current_round_data: Default::default(),
             previous_challenge: Default::default(),
             hasher: Poseidon2::new(params),
+        }
+    }
+
+    pub fn get_proof(self) -> HonkProof<F> {
+        HonkProof {
+            proof: self.proof_data,
         }
     }
 

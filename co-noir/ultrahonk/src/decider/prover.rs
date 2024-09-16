@@ -3,7 +3,7 @@ use crate::{
     honk_curve::HonkCurve,
     prover::HonkProofResult,
     transcript::{TranscriptFieldType, TranscriptType},
-    types::ProvingKey,
+    types::{HonkProof, ProvingKey},
 };
 use std::marker::PhantomData;
 
@@ -73,7 +73,7 @@ impl<P: HonkCurve<TranscriptFieldType>> Decider<P> {
         mut self,
         proving_key: &ProvingKey<P>,
         mut transcript: TranscriptType,
-    ) -> HonkProofResult<()> {
+    ) -> HonkProofResult<HonkProof<TranscriptFieldType>> {
         tracing::trace!("Decider prove");
 
         // Run sumcheck subprotocol.
@@ -83,6 +83,6 @@ impl<P: HonkCurve<TranscriptFieldType>> Decider<P> {
         // Execute Zeromorph multilinear PCS
         self.execute_pcs_rounds(&mut transcript, proving_key, sumcheck_output)?;
 
-        todo!("output the proof");
+        Ok(transcript.get_proof())
     }
 }

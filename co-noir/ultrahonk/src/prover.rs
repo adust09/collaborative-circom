@@ -5,7 +5,7 @@ use crate::{
     oink::prover::Oink,
     poseidon2::poseidon2_bn254::POSEIDON2_BN254_T4_PARAMS,
     transcript::{TranscriptFieldType, TranscriptType},
-    types::ProvingKey,
+    types::{HonkProof, ProvingKey},
 };
 use std::{io, marker::PhantomData};
 
@@ -66,7 +66,7 @@ impl<P: HonkCurve<TranscriptFieldType>> UltraHonk<P> {
         self,
         proving_key: &ProvingKey<P>,
         public_inputs: &[P::ScalarField],
-    ) -> HonkProofResult<()> {
+    ) -> HonkProofResult<HonkProof<TranscriptFieldType>> {
         tracing::trace!("UltraHonk prove");
 
         let mut transcript = TranscriptType::new(&POSEIDON2_BN254_T4_PARAMS);
@@ -77,7 +77,6 @@ impl<P: HonkCurve<TranscriptFieldType>> UltraHonk<P> {
         self.generate_gate_challenges(&mut memory, proving_key, &mut transcript);
 
         let decider = Decider::new(memory);
-        decider.prove(proving_key, transcript)?;
-        todo!("What is the proof")
+        decider.prove(proving_key, transcript)
     }
 }

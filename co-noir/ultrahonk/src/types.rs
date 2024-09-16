@@ -1,4 +1,5 @@
 use ark_ec::pairing::Pairing;
+use ark_ff::PrimeField;
 
 pub type Polynomials<F> = AllEntities<Vec<F>>;
 
@@ -14,6 +15,10 @@ pub struct ProvingKey<P: Pairing> {
 
 pub struct ProverCrs<P: Pairing> {
     pub monomials: Vec<P::G1Affine>,
+}
+
+pub struct HonkProof<F: PrimeField> {
+    pub proof: Vec<F>,
 }
 
 #[derive(Default)]
