@@ -40,7 +40,7 @@ where
             is_first_challenge: true,
             current_round_data: Default::default(),
             previous_challenge: Default::default(),
-            hasher: Poseidon2::new(&params),
+            hasher: Poseidon2::new(params),
         }
     }
 

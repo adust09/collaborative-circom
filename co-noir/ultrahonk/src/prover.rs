@@ -3,7 +3,7 @@ use crate::{
     get_msb,
     honk_curve::HonkCurve,
     oink::prover::Oink,
-    poseidon2::{poseidon2_bn254::POSEIDON2_BN254_T4_PARAMS, poseidon2_permutation::Poseidon2},
+    poseidon2::poseidon2_bn254::POSEIDON2_BN254_T4_PARAMS,
     transcript::{TranscriptFieldType, TranscriptType},
     types::ProvingKey,
 };

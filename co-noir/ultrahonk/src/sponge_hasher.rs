@@ -25,9 +25,8 @@ pub struct FieldSponge<F: PrimeField, const T: usize, const R: usize, H: FieldHa
 }
 
 impl<F: PrimeField, const T: usize, const R: usize, H: FieldHash<F, T>> FieldSponge<F, T, R, H> {
-    const C: usize = T - R;
-
     pub fn new(iv: F, hasher: H) -> Self {
+        assert!(R < T);
         let mut state = [F::zero(); T];
         state[R] = iv;
 
