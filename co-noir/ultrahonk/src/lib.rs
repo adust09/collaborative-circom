@@ -1,14 +1,14 @@
 mod crs;
-use ark_ff::PrimeField;
 pub(crate) mod decider;
-pub mod field_convert;
+pub mod honk_curve;
 pub(crate) mod oink;
 pub mod prover;
 mod transcript;
 mod types;
-mod verifier;
+// pub mod verifier;
 
 use ark_ec::{pairing::Pairing, VariableBaseMSM};
+use ark_ff::PrimeField;
 use prover::{HonkProofError, HonkProofResult};
 use types::ProverCrs;
 

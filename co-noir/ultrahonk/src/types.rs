@@ -4,6 +4,7 @@ use crate::CONST_PROOF_SIZE_LOG_N;
 
 pub type Polynomials<F> = AllEntities<Vec<F>>;
 
+#[derive(Clone)]
 pub struct WitnessCommitments<P: Pairing> {
     pub w_l: P::G1,
     pub w_r: P::G1,
@@ -14,7 +15,21 @@ pub struct WitnessCommitments<P: Pairing> {
     pub lookup_inverses: P::G1,
     pub z_perm: P::G1,
 }
-
+// temporary:
+impl<P: Pairing> WitnessCommitments<P> {
+    pub fn to_vec(&self) -> Vec<P::G1> {
+        vec![
+            self.w_l.clone(),
+            self.w_r.clone(),
+            self.w_o.clone(),
+            self.w_4.clone(),
+            self.lookup_read_counts.clone(),
+            self.lookup_read_tags.clone(),
+            self.lookup_inverses.clone(),
+            self.z_perm.clone(),
+        ]
+    }
+}
 pub struct ProvingKey<P: Pairing> {
     pub crs: ProverCrs<P>,
     pub circuit_size: u32,

@@ -1,12 +1,11 @@
 use crate::{
     decider::{prover::Decider, types::ProverMemory},
-    field_convert::ConvertField,
     get_msb,
+    honk_curve::HonkCurve,
     oink::prover::Oink,
     transcript::{TranscriptFieldType, TranscriptType},
     types::ProvingKey,
 };
-use ark_ec::{pairing::Pairing, AffineRepr};
 use std::{io, marker::PhantomData};
 
 pub type HonkProofResult<T> = std::result::Result<T, HonkProofError>;
@@ -20,33 +19,24 @@ pub enum HonkProofError {
     /// Indicates that the crs is too small
     #[error("CRS too small")]
     CrsTooSmall,
+    /// The proof has too little elements
+    #[error("Proof too small")]
+    ProofTooSmall,
     #[error(transparent)]
     IOError(#[from] io::Error),
 }
 
-pub struct UltraHonk<P: Pairing>
-where
-    <P::G1Affine as AffineRepr>::BaseField: ConvertField<TranscriptFieldType>,
-    P::ScalarField: ConvertField<TranscriptFieldType>,
-{
+pub struct UltraHonk<P: HonkCurve<TranscriptFieldType>> {
     phantom_data: PhantomData<P>,
 }
 
-impl<P: Pairing> Default for UltraHonk<P>
-where
-    <P::G1Affine as AffineRepr>::BaseField: ConvertField<TranscriptFieldType>,
-    P::ScalarField: ConvertField<TranscriptFieldType>,
-{
+impl<P: HonkCurve<TranscriptFieldType>> Default for UltraHonk<P> {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl<P: Pairing> UltraHonk<P>
-where
-    <P::G1Affine as AffineRepr>::BaseField: ConvertField<TranscriptFieldType>,
-    P::ScalarField: ConvertField<TranscriptFieldType>,
-{
+impl<P: HonkCurve<TranscriptFieldType>> UltraHonk<P> {
     pub fn new() -> Self {
         Self {
             phantom_data: PhantomData,
@@ -65,7 +55,7 @@ where
         let mut gate_challenges = Vec::with_capacity(challenge_size);
 
         for idx in 0..challenge_size {
-            let chall = transcript.get_challenge(format!("Sumcheck:gate_challenge_{}", idx));
+            let chall = transcript.get_challenge::<P>(format!("Sumcheck:gate_challenge_{}", idx));
             gate_challenges.push(chall);
         }
         memory.relation_parameters.gate_challenges = gate_challenges;
@@ -76,7 +66,7 @@ where
         proving_key: &ProvingKey<P>,
         public_inputs: &[P::ScalarField],
     ) -> HonkProofResult<()> {
-        // tracing::trace!("UltraHonk prove");
+        tracing::trace!("UltraHonk prove");
 
         let mut transcript = TranscriptType::default();
 

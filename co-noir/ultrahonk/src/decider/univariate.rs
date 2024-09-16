@@ -271,6 +271,16 @@ impl<F: PrimeField, const SIZE: usize> Sub<u64> for Univariate<F, SIZE> {
     }
 }
 
+impl<F: PrimeField, const SIZE: usize> Sub<&F> for Univariate<F, SIZE> {
+    type Output = Self;
+
+    fn sub(self, rhs: &F) -> Self::Output {
+        let mut result = self;
+        result -= rhs;
+        result
+    }
+}
+
 impl<F: PrimeField, const SIZE: usize> Sub for Univariate<F, SIZE> {
     type Output = Self;
 
@@ -288,6 +298,14 @@ impl<F: PrimeField, const SIZE: usize> Sub<&Self> for Univariate<F, SIZE> {
         let mut result = self;
         result -= rhs;
         result
+    }
+}
+
+impl<F: PrimeField, const SIZE: usize> SubAssign<&F> for Univariate<F, SIZE> {
+    fn sub_assign(&mut self, rhs: &F) {
+        for i in 0..SIZE {
+            self.evaluations[i] -= rhs;
+        }
     }
 }
 

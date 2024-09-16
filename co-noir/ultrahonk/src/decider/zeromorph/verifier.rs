@@ -1,37 +1,24 @@
-use crate::decider::types::GateSeparatorPolynomial;
-use crate::types::WitnessEntities;
+use crate::get_msb;
+use crate::honk_curve::HonkCurve;
+use crate::transcript::{TranscriptFieldType, TranscriptType};
 use crate::CONST_PROOF_SIZE_LOG_N;
-use crate::{
-    get_msb,
-    oink::{self, verifier::RelationParameters},
-    transcript::{self, Poseidon2Transcript},
-    types::VerifyingKey,
-    NUM_ALPHAS,
-};
-use ark_ec::pairing::{self, Pairing};
-use ark_ec::Group;
+use ark_ec::pairing::Pairing;
 use ark_ec::VariableBaseMSM;
 use ark_ff::Field;
-use std::{io, marker::PhantomData};
 
-pub fn zeromorph_verify<P: Pairing>(
+pub fn zeromorph_verify<P: HonkCurve<TranscriptFieldType>>(
     circuit_size: u32,
     unshifted_commitments: Vec<P::G1>,
     to_be_shifted_commitments: Vec<P::G1>,
     unshifted_evaluations: Vec<P::ScalarField>,
     shifted_evaluations: Vec<P::ScalarField>,
     multivariate_challenge: Vec<P::ScalarField>,
-    transcript_inout: &mut Poseidon2Transcript<P::ScalarField>,
+    transcript_inout: &mut TranscriptType,
     // concatenated_evaluations: Vec<P::ScalarField>, // RefSpan<FF> concatenated_evaluations = {}
-) -> crate::verifier::OpeningClaim<P> {
+) -> crate::decider::verifier::OpeningClaim<P> {
     let log_n = get_msb(circuit_size.clone()); //TODO: check this
-    let mut transcript = Poseidon2Transcript::<P::ScalarField>::default();
-    std::mem::swap(&mut transcript, transcript_inout);
 
-    let rho = transcript.get_challenge();
-
-    let mut transcript = Poseidon2Transcript::<P::ScalarField>::default();
-    transcript.add_scalar(rho);
+    let rho = transcript_inout.get_challenge::<P>("rho".to_string());
 
     let mut batched_evaluation = P::ScalarField::ZERO;
     let mut batching_scalar = P::ScalarField::ONE;
@@ -48,25 +35,26 @@ pub fn zeromorph_verify<P: Pairing>(
     let mut c_q_k: Vec<P::G1> = Vec::with_capacity(CONST_PROOF_SIZE_LOG_N);
     // todo: where do we get the commitments [q_k] from? rsp. which commitments are these? fill above vector with these
     for i in 0..CONST_PROOF_SIZE_LOG_N {
-        c_q_k.push(transcript_inout.receive_from_prover(format!("ZM:C_q_{}", i)));
+        c_q_k.push(
+            transcript_inout
+                .receive_point_from_prover::<P>(format!("ZM:C_q_{}", i))
+                .expect(&format!("Failed to receive ZM:C_q_{}", i))
+                .into(),
+        );
     }
-    todo!("get commitments");
-    let mut transcript = Poseidon2Transcript::<P::ScalarField>::default();
-    transcript.add_scalar(rho);
 
-    let y_challenge = transcript.get_challenge();
+    let y_challenge = transcript_inout.get_challenge::<P>("y_challenge".to_string());
 
     // Receive commitment C_{q}
     //  auto c_q = transcript->template receive_from_prover<Commitment>("ZM:C_q");
-    let c_q = transcript.receive_from_prover("ZM:C_q".to_string());
+    let c_q = transcript_inout
+        .receive_point_from_prover::<P>("ZM:C_q".to_string())
+        .expect(&format!("Failed to receive ZM:C_q"))
+        .into();
 
-    let mut transcript = Poseidon2Transcript::<P::ScalarField>::default();
-    transcript.add_scalar(y_challenge);
+    let x_challenge = transcript_inout.get_challenge::<P>("x_challenge".to_string());
 
-    let x_challenge = transcript.get_challenge();
-    let mut transcript = Poseidon2Transcript::<P::ScalarField>::default();
-    transcript.add_scalar(x_challenge);
-    let z_challenge = transcript.get_challenge();
+    let z_challenge = transcript_inout.get_challenge::<P>("z_challenge".to_string());
 
     let c_zeta_x = compute_c_zeta_x::<P>(
         c_q,
@@ -90,7 +78,7 @@ pub fn zeromorph_verify<P: Pairing>(
     );
     let c_zeta_z = c_zeta_x + c_z_x * z_challenge;
 
-    return crate::verifier::OpeningClaim {
+    return crate::decider::verifier::OpeningClaim {
         challenge: x_challenge,
         evaluation: P::ScalarField::ZERO,
         commitment: c_zeta_z,
