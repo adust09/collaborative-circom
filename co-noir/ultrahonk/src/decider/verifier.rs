@@ -1,11 +1,12 @@
 use crate::CONST_PROOF_SIZE_LOG_N;
 use crate::{
     get_msb,
-    oink::{self, types::WitnessCommitments, verifier::RelationParameters},
-    transcript::{self, Keccak256Transcript},
+    oink::{self, types::WitnessEntities, verifier::RelationParameters},
+    transcript::{self, Poseidon2Transcript},
     types::VerifyingKey,
     NUM_ALPHAS,
 };
+use ark_bn254::G2Affine;
 use ark_ec::pairing::{self, Pairing};
 use ark_ec::VariableBaseMSM;
 use ark_ff::Field;
@@ -33,10 +34,10 @@ impl<P: Pairing> DeciderVerifier<P> {
         vk: VerifyingKey<P>,
         public_inputs: Vec<P::ScalarField>,
         relation_parameters: RelationParameters<P>, //weg damit
-        witness_comms: WitnessCommitments<P>,       //weg damit
+        witness_comms: WitnessEntities<P>,          //weg damit
     ) -> bool {
-        // tracing::trace!("Decider verification");
-        let mut transcript = Keccak256Transcript::<P>::default();
+        tracing::trace!("Decider verification");
+        let mut transcript = Poseidon2Transcript::<P::ScalarField>::default();
         let log_circuit_size = get_msb(vk.circuit_size.clone());
         let oink_output = oink::verifier::OinkVerifier::<P>::new(
             transcript,
@@ -46,11 +47,11 @@ impl<P: Pairing> DeciderVerifier<P> {
         )
         .verify(public_inputs);
 
-        let mut transcript = Keccak256Transcript::<P>::default();
+        let mut transcript = Poseidon2Transcript::<P::ScalarField>::default();
         let mut gate_challenges = Vec::with_capacity(log_circuit_size as usize);
         gate_challenges[0] = transcript.get_challenge();
         for idx in 1..log_circuit_size as usize {
-            let mut transcript = Keccak256Transcript::<P>::default();
+            let mut transcript = Poseidon2Transcript::<P::ScalarField>::default();
             transcript.add_scalar(gate_challenges[idx - 1]);
             gate_challenges[idx] = transcript.get_challenge();
         }
@@ -90,7 +91,7 @@ impl<P: Pairing> DeciderVerifier<P> {
 // I don't know about this one...
 // this is the kzg one:
 pub fn reduce_verify<P: Pairing>(
-    transcript: &mut crate::transcript::Keccak256Transcript<P>,
+    transcript: &mut crate::transcript::Poseidon2Transcript<P::ScalarField>,
     opening_pair: crate::verifier::OpeningClaim<P>,
 ) -> [P::G1Affine; 2] {
     // TODO: quotient_commitment = verifier_transcript->template receive_from_prover<Commitment>("KZG:W");

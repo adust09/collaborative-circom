@@ -1,9 +1,10 @@
 use crate::decider::types::GateSeparatorPolynomial;
+use crate::types::WitnessEntities;
 use crate::CONST_PROOF_SIZE_LOG_N;
 use crate::{
     get_msb,
-    oink::{self, types::WitnessCommitments, verifier::RelationParameters},
-    transcript::{self, Keccak256Transcript},
+    oink::{self, verifier::RelationParameters},
+    transcript::{self, Poseidon2Transcript},
     types::VerifyingKey,
     NUM_ALPHAS,
 };
@@ -20,16 +21,16 @@ pub fn zeromorph_verify<P: Pairing>(
     unshifted_evaluations: Vec<P::ScalarField>,
     shifted_evaluations: Vec<P::ScalarField>,
     multivariate_challenge: Vec<P::ScalarField>,
-    transcript_inout: &mut Keccak256Transcript<P>,
+    transcript_inout: &mut Poseidon2Transcript<P::ScalarField>,
     // concatenated_evaluations: Vec<P::ScalarField>, // RefSpan<FF> concatenated_evaluations = {}
 ) -> crate::verifier::OpeningClaim<P> {
     let log_n = get_msb(circuit_size.clone()); //TODO: check this
-    let mut transcript = Keccak256Transcript::<P>::default();
+    let mut transcript = Poseidon2Transcript::<P::ScalarField>::default();
     std::mem::swap(&mut transcript, transcript_inout);
 
     let rho = transcript.get_challenge();
 
-    let mut transcript = Keccak256Transcript::<P>::default();
+    let mut transcript = Poseidon2Transcript::<P::ScalarField>::default();
     transcript.add_scalar(rho);
 
     let mut batched_evaluation = P::ScalarField::ZERO;
@@ -46,21 +47,24 @@ pub fn zeromorph_verify<P: Pairing>(
 
     let mut c_q_k: Vec<P::G1> = Vec::with_capacity(CONST_PROOF_SIZE_LOG_N);
     // todo: where do we get the commitments [q_k] from? rsp. which commitments are these? fill above vector with these
+    for i in 0..CONST_PROOF_SIZE_LOG_N {
+        c_q_k.push(transcript_inout.receive_from_prover(format!("ZM:C_q_{}", i)));
+    }
     todo!("get commitments");
-    let mut transcript = Keccak256Transcript::<P>::default();
+    let mut transcript = Poseidon2Transcript::<P::ScalarField>::default();
     transcript.add_scalar(rho);
 
     let y_challenge = transcript.get_challenge();
 
     // Receive commitment C_{q}
     //  auto c_q = transcript->template receive_from_prover<Commitment>("ZM:C_q");
-    let c_q: P::G1;
+    let c_q = transcript.receive_from_prover("ZM:C_q".to_string());
 
-    let mut transcript = Keccak256Transcript::<P>::default();
+    let mut transcript = Poseidon2Transcript::<P::ScalarField>::default();
     transcript.add_scalar(y_challenge);
 
     let x_challenge = transcript.get_challenge();
-    let mut transcript = Keccak256Transcript::<P>::default();
+    let mut transcript = Poseidon2Transcript::<P::ScalarField>::default();
     transcript.add_scalar(x_challenge);
     let z_challenge = transcript.get_challenge();
 

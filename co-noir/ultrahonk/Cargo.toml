@@ -23,4 +23,3 @@ tracing.workspace = true
 thiserror.workspace = true
 rand.workspace = true
 byteorder.workspace = true
-ark-bn254.workspace = true
