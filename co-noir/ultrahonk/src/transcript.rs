@@ -1,10 +1,12 @@
 use crate::{
     honk_curve::HonkCurve,
+    poseidon2::{poseidon2_params::Poseidon2Params, poseidon2_permutation::Poseidon2},
     prover::{HonkProofError, HonkProofResult},
+    sponge_hasher::FieldSponge,
 };
 use ark_ec::AffineRepr;
 use ark_ff::{PrimeField, Zero};
-use std::{collections::HashMap, ops::Index};
+use std::{collections::HashMap, ops::Index, sync::Arc};
 
 pub(crate) type TranscriptFieldType = ark_bn254::Fr;
 pub(crate) type TranscriptType = Poseidon2Transcript<TranscriptFieldType>;
@@ -21,10 +23,14 @@ where
     is_first_challenge: bool,
     current_round_data: Vec<F>,
     previous_challenge: F,
+    hasher: Poseidon2<F, 4, 5>,
 }
 
-impl<F: PrimeField> Default for Poseidon2Transcript<F> {
-    fn default() -> Self {
+impl<F> Poseidon2Transcript<F>
+where
+    F: PrimeField,
+{
+    pub fn new(params: &Arc<Poseidon2Params<F, 4, 5>>) -> Self {
         Self {
             proof_data: Default::default(),
             manifest: Default::default(),
@@ -34,14 +40,10 @@ impl<F: PrimeField> Default for Poseidon2Transcript<F> {
             is_first_challenge: true,
             current_round_data: Default::default(),
             previous_challenge: Default::default(),
+            hasher: Poseidon2::new(&params),
         }
     }
-}
 
-impl<F> Poseidon2Transcript<F>
-where
-    F: PrimeField,
-{
     fn consume_prover_elements(&mut self, label: String, elements: &[F]) {
         // Add an entry to the current round of the manifest
         let len = elements.len();
@@ -214,7 +216,7 @@ where
         // Hash the full buffer with poseidon2, which is believed to be a collision resistant hash function and a random
         // oracle, removing the need to pre-hash to compress and then hash with a random oracle, as we previously did
         // with Pedersen and Blake3s.
-        let new_challenge = Self::hash(full_buffer);
+        let new_challenge = self.hash(full_buffer);
 
         // update previous challenge buffer for next time we call this function
         self.previous_challenge = new_challenge;
@@ -244,8 +246,8 @@ where
         res
     }
 
-    fn hash(buffer: Vec<F>) -> F {
-        todo!()
+    fn hash(&self, buffer: Vec<F>) -> F {
+        FieldSponge::<_, 4, 3, _>::hash_fixed_lenth::<1>(&buffer, self.hasher.to_owned())[0]
     }
 }
 

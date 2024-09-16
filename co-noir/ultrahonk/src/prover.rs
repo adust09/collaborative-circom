@@ -3,6 +3,7 @@ use crate::{
     get_msb,
     honk_curve::HonkCurve,
     oink::prover::Oink,
+    poseidon2::{poseidon2_bn254::POSEIDON2_BN254_T4_PARAMS, poseidon2_permutation::Poseidon2},
     transcript::{TranscriptFieldType, TranscriptType},
     types::ProvingKey,
 };
@@ -68,7 +69,7 @@ impl<P: HonkCurve<TranscriptFieldType>> UltraHonk<P> {
     ) -> HonkProofResult<()> {
         tracing::trace!("UltraHonk prove");
 
-        let mut transcript = TranscriptType::default();
+        let mut transcript = TranscriptType::new(&POSEIDON2_BN254_T4_PARAMS);
 
         let oink = Oink::<P>::default();
         let mut memory =
