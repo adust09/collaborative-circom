@@ -107,7 +107,7 @@ impl<P: HonkCurve<TranscriptFieldType>> Decider<P> {
         // In the first round, we compute the first univariate polynomial and populate the book-keeping table of
         // #partially_evaluated_polynomials, which has \f$ n/2 \f$ rows and \f$ N \f$ columns. When the Flavor has ZK,
         // compute_univariate also takes into account the zk_sumcheck_data.
-        let round_univariate = sum_check_round.compute_univariate(
+        let round_univariate = sum_check_round.compute_univariate::<P>(
             round_idx,
             &self.memory.relation_parameters,
             &gate_separators,
@@ -140,7 +140,7 @@ impl<P: HonkCurve<TranscriptFieldType>> Decider<P> {
             tracing::trace!("Sumcheck prove round {}", round_idx);
             // Write the round univariate to the transcript
 
-            let round_univariate = sum_check_round.compute_univariate(
+            let round_univariate = sum_check_round.compute_univariate::<P>(
                 round_idx,
                 &self.memory.relation_parameters,
                 &gate_separators,

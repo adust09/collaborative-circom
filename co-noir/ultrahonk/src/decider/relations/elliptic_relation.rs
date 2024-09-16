@@ -3,7 +3,6 @@ use crate::decider::types::RelationParameters;
 use crate::decider::{types::ProverUnivariates, univariate::Univariate};
 use crate::honk_curve::HonkCurve;
 use crate::transcript::TranscriptFieldType;
-use ark_ec::CurveGroup;
 use ark_ff::{PrimeField, Zero};
 
 #[derive(Clone, Debug, Default)]
@@ -45,9 +44,9 @@ pub(crate) struct EllipticRelation {}
 
 impl EllipticRelation {
     pub(crate) const NUM_RELATIONS: usize = 2;
-    const SKIPPABLE: bool = true;
+    pub(crate) const SKIPPABLE: bool = true;
 
-    fn skip<F: PrimeField>(input: &ProverUnivariates<F>) -> bool {
+    pub(crate) fn skip<F: PrimeField>(input: &ProverUnivariates<F>) -> bool {
         // This is the relation implemented manally
         if !Self::SKIPPABLE {
             panic!("Cannot skip this relation");
@@ -65,7 +64,7 @@ impl EllipticRelation {
      * @param parameters contains beta, gamma, and public_input_delta, ....
      * @param scaling_factor optional term to scale the evaluation before adding to evals.
      */
-    fn accumulate<P: HonkCurve<TranscriptFieldType>>(
+    pub(crate) fn accumulate<P: HonkCurve<TranscriptFieldType>>(
         univariate_accumulator: &mut EllipticRelationAcc<P::ScalarField>,
         input: &ProverUnivariates<P::ScalarField>,
         _relation_parameters: &RelationParameters<P::ScalarField>,
@@ -120,13 +119,13 @@ impl EllipticRelation {
 
         let curve_b = P::get_curve_b_as_scalarfield(); // here we need the extra constraint on the Curve
         let x1_mul_3 = x_1.to_owned() + x_1 + x_1;
-        let x_pow_4_mul_3 = (y1_sqr - curve_b) * x1_mul_3; // TODO reinterpreted here!?
-        let y1_sqr_mul_4 = y1_sqr + y1_sqr;
-        y1_sqr_mul_4 += y1_sqr_mul_4;
-        let x1_pow_4_mul_9 = x_pow_4_mul_3 + x_pow_4_mul_3 + x_pow_4_mul_3;
+        let x_pow_4_mul_3 = (y1_sqr.to_owned() - &curve_b) * &x1_mul_3;
+        let mut y1_sqr_mul_4 = y1_sqr.double();
+        y1_sqr_mul_4.double_in_place();
+        let x1_pow_4_mul_9 = x_pow_4_mul_3.to_owned().double() + &x_pow_4_mul_3;
         let x_double_identity = (x_3.to_owned() + x_1 + x_1) * y1_sqr_mul_4 - x1_pow_4_mul_9;
 
-        tmp_1 += x_double_identity * q_elliptic_q_double_scaling;
+        tmp_1 += x_double_identity * &q_elliptic_q_double_scaling;
 
         ///////////////////////////////////////////////////////////////////////
         // Contribution (4) point doubling, y-coordinate check

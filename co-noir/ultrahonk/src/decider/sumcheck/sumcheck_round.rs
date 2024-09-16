@@ -9,14 +9,18 @@ use crate::{
         relations::{
             auxiliary_relation::AuxiliaryRelation,
             delta_range_constraint_relation::DeltaRangeConstraintRelation,
-            elliptic_relation::EllipticRelation, logderiv_lookup_relation::LogDerivLookupRelation,
+            elliptic_relation::{EllipticRelation, EllipticRelationAcc},
+            logderiv_lookup_relation::LogDerivLookupRelation,
             permutation_relation::UltraPermutationRelation,
             poseidon2_external_relation::Poseidon2ExternalRelation,
             poseidon2_internal_relation::Poseidon2InternalRelation,
-            ultra_arithmetic_relation::UltraArithmeticRelation, AllRelationAcc, Relation,
+            ultra_arithmetic_relation::UltraArithmeticRelation,
+            AllRelationAcc, Relation,
         },
         types::ProverUnivariates,
     },
+    honk_curve::HonkCurve,
+    transcript::TranscriptFieldType,
     types::Polynomials,
 };
 use ark_ff::PrimeField;
@@ -130,56 +134,75 @@ impl SumcheckRound {
         );
     }
 
-    fn accumulate_relation_univariates<F: PrimeField>(
-        univariate_accumulators: &mut AllRelationAcc<F>,
-        extended_edges: &ProverUnivariates<F>,
-        relation_parameters: &RelationParameters<F>,
-        scaling_factor: &F,
+    fn accumulate_elliptic_curve_relation_univariates<P: HonkCurve<TranscriptFieldType>>(
+        univariate_accumulator: &mut EllipticRelationAcc<P::ScalarField>,
+        extended_edges: &ProverUnivariates<P::ScalarField>,
+        relation_parameters: &RelationParameters<P::ScalarField>,
+        scaling_factor: &P::ScalarField,
+    ) {
+        if EllipticRelation::SKIPPABLE && EllipticRelation::skip(extended_edges) {
+            return;
+        }
+
+        EllipticRelation::accumulate::<P>(
+            univariate_accumulator,
+            extended_edges,
+            relation_parameters,
+            scaling_factor,
+        );
+    }
+
+    fn accumulate_relation_univariates<P: HonkCurve<TranscriptFieldType>>(
+        univariate_accumulators: &mut AllRelationAcc<P::ScalarField>,
+        extended_edges: &ProverUnivariates<P::ScalarField>,
+        relation_parameters: &RelationParameters<P::ScalarField>,
+        scaling_factor: &P::ScalarField,
     ) {
         tracing::trace!("Accumulate relations");
 
-        Self::accumulate_one_relation_univariates::<F, UltraArithmeticRelation>(
+        Self::accumulate_one_relation_univariates::<P::ScalarField, UltraArithmeticRelation>(
             &mut univariate_accumulators.r_arith,
             extended_edges,
             relation_parameters,
             scaling_factor,
         );
-        Self::accumulate_one_relation_univariates::<F, UltraPermutationRelation>(
+        Self::accumulate_one_relation_univariates::<P::ScalarField, UltraPermutationRelation>(
             &mut univariate_accumulators.r_perm,
             extended_edges,
             relation_parameters,
             scaling_factor,
         );
-        Self::accumulate_one_relation_univariates::<F, DeltaRangeConstraintRelation>(
+        Self::accumulate_one_relation_univariates::<P::ScalarField, DeltaRangeConstraintRelation>(
             &mut univariate_accumulators.r_delta,
             extended_edges,
             relation_parameters,
             scaling_factor,
         );
-        // TODO we skip the EllipticRelation relation so far due to implementation issues (see the implementation file)
-        assert!(
-            <EllipticRelation as Relation<F>>::SKIPPABLE
-                && <EllipticRelation as Relation<F>>::skip(extended_edges)
+        Self::accumulate_elliptic_curve_relation_univariates::<P>(
+            &mut univariate_accumulators.r_elliptic,
+            extended_edges,
+            relation_parameters,
+            scaling_factor,
         );
-        Self::accumulate_one_relation_univariates::<F, AuxiliaryRelation>(
+        Self::accumulate_one_relation_univariates::<P::ScalarField, AuxiliaryRelation>(
             &mut univariate_accumulators.r_aux,
             extended_edges,
             relation_parameters,
             scaling_factor,
         );
-        Self::accumulate_one_relation_univariates::<F, LogDerivLookupRelation>(
+        Self::accumulate_one_relation_univariates::<P::ScalarField, LogDerivLookupRelation>(
             &mut univariate_accumulators.r_lookup,
             extended_edges,
             relation_parameters,
             scaling_factor,
         );
-        Self::accumulate_one_relation_univariates::<F, Poseidon2ExternalRelation>(
+        Self::accumulate_one_relation_univariates::<P::ScalarField, Poseidon2ExternalRelation>(
             &mut univariate_accumulators.r_pos_ext,
             extended_edges,
             relation_parameters,
             scaling_factor,
         );
-        Self::accumulate_one_relation_univariates::<F, Poseidon2InternalRelation>(
+        Self::accumulate_one_relation_univariates::<P::ScalarField, Poseidon2InternalRelation>(
             &mut univariate_accumulators.r_pos_int,
             extended_edges,
             relation_parameters,
@@ -187,22 +210,22 @@ impl SumcheckRound {
         );
     }
 
-    pub(crate) fn compute_univariate<F: PrimeField>(
+    pub(crate) fn compute_univariate<P: HonkCurve<TranscriptFieldType>>(
         &self,
         round_index: usize,
-        relation_parameters: &RelationParameters<F>,
-        gate_sparators: &GateSeparatorPolynomial<F>,
-        memory: &MemoryElements<Vec<F>>,
-        polynomials: &Polynomials<F>,
-    ) -> SumcheckRoundOutput<F> {
+        relation_parameters: &RelationParameters<P::ScalarField>,
+        gate_sparators: &GateSeparatorPolynomial<P::ScalarField>,
+        memory: &MemoryElements<Vec<P::ScalarField>>,
+        polynomials: &Polynomials<P::ScalarField>,
+    ) -> SumcheckRoundOutput<P::ScalarField> {
         tracing::trace!("Sumcheck round {}", round_index);
 
         // Barretenberg uses multithreading here
 
         // Construct extended edge containers
-        let mut extended_edge = ProverUnivariates::<F>::default();
+        let mut extended_edge = ProverUnivariates::<P::ScalarField>::default();
 
-        let mut univariate_accumulators = AllRelationAcc::<F>::default();
+        let mut univariate_accumulators = AllRelationAcc::<P::ScalarField>::default();
 
         // Accumulate the contribution from each sub-relation accross each edge of the hyper-cube
         for edge_idx in (0..self.round_size).step_by(2) {
@@ -212,7 +235,7 @@ impl SumcheckRound {
             // \tilde{S}^i(X_i) \f$. If \f$ \ell \f$'s binary representation is given by \f$ (\ell_{i+1},\ldots,
             // \ell_{d-1})\f$, the \f$ pow_{\beta}\f$-contribution is \f$\beta_{i+1}^{\ell_{i+1}} \cdot \ldots \cdot
             // \beta_{d-1}^{\ell_{d-1}}\f$.
-            Self::accumulate_relation_univariates(
+            Self::accumulate_relation_univariates::<P>(
                 &mut univariate_accumulators,
                 &extended_edge,
                 relation_parameters,
