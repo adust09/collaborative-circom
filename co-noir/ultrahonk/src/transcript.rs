@@ -1,10 +1,10 @@
+use crate::{
+    field_convert::HonkCurve,
+    prover::{HonkProofError, HonkProofResult},
+};
 use ark_ec::AffineRepr;
 use ark_ff::{PrimeField, Zero};
 use std::{collections::HashMap, ops::Index};
-
-use crate::field_convert::ConvertField;
-
-// TODO this whole file is copied from our co-Plonk and should probably be adapted
 
 pub(crate) type TranscriptFieldType = ark_bn254::Fr;
 pub(crate) type TranscriptType = Poseidon2Transcript<TranscriptFieldType>;
@@ -16,6 +16,7 @@ where
     proof_data: Vec<F>,
     manifest: TranscriptManifest,
     num_frs_written: usize, // the number of bb::frs written to proof_data by the prover or the verifier
+    num_frs_read: usize,    // the number of bb::frs read from proof_data by the verifier
     round_number: usize,
     is_first_challenge: bool,
     current_round_data: Vec<F>,
@@ -28,6 +29,7 @@ impl<F: PrimeField> Default for Poseidon2Transcript<F> {
             proof_data: Default::default(),
             manifest: Default::default(),
             num_frs_written: 0,
+            num_frs_read: 0,
             round_number: 0,
             is_first_challenge: true,
             current_round_data: Default::default(),
@@ -48,31 +50,31 @@ where
         self.num_frs_written += len;
     }
 
-    fn convert_point<P>(element: P) -> Vec<F>
-    where
-        P: AffineRepr,
-        P::BaseField: ConvertField<F>,
-    {
-        let (x, y) = if let Some((x, y)) = element.xy() {
-            (*x, *y)
-        } else {
+    fn convert_point<P: HonkCurve<F>>(element: P::G1Affine) -> Vec<F> {
+        let (x, y) = if element.is_zero() {
             // we are at infinity
             (P::BaseField::zero(), P::BaseField::zero())
+        } else {
+            P::g1_affine_to_xy(&element)
         };
 
-        let mut res = x.convert_field();
-        res.extend(y.convert_field());
+        let mut res = P::convert_basefield_into(&x);
+        res.extend(P::convert_basefield_into(&y));
 
         res
     }
 
-    pub(super) fn send_to_verifier(&mut self, label: String, elements: &[F]) {
+    fn send_to_verifier(&mut self, label: String, elements: &[F]) {
         self.proof_data.extend(elements);
         self.consume_prover_elements(label, elements);
     }
 
-    pub(super) fn send_fr_to_verifier<G: ConvertField<F>>(&mut self, label: String, element: G) {
-        let elements = element.convert_field();
+    pub(super) fn send_fr_to_verifier<P: HonkCurve<F>>(
+        &mut self,
+        label: String,
+        element: P::ScalarField,
+    ) {
+        let elements = P::convert_scalarfield_into(&element);
         self.send_to_verifier(label, &elements);
     }
 
@@ -81,19 +83,19 @@ where
         self.send_to_verifier(label, &[el]);
     }
 
-    pub(super) fn send_point_to_verifier<P>(&mut self, label: String, element: P)
-    where
-        P: AffineRepr,
-        P::BaseField: ConvertField<F>,
-    {
+    pub(super) fn send_point_to_verifier<P: HonkCurve<F>>(
+        &mut self,
+        label: String,
+        element: P::G1Affine,
+    ) {
         let elements = Self::convert_point::<P>(element);
         self.send_to_verifier(label, &elements);
     }
 
     pub(super) fn send_fr_iter_to_verifier<
         'a,
-        G: ConvertField<F>,
-        I: IntoIterator<Item = &'a G>,
+        P: HonkCurve<F>,
+        I: IntoIterator<Item = &'a P::ScalarField>,
     >(
         &mut self,
         label: String,
@@ -101,12 +103,93 @@ where
     ) {
         let elements = element
             .into_iter()
-            .flat_map(ConvertField::convert_field)
+            .flat_map(P::convert_scalarfield_into)
             .collect::<Vec<_>>();
         self.send_to_verifier(label, &elements);
     }
 
-    fn get_next_challenge_buffer(&mut self) -> F {
+    fn receive_n_from_prover(&mut self, label: String, n: usize) -> HonkProofResult<Vec<F>> {
+        if self.num_frs_read + n > self.proof_data.len() {
+            return Err(HonkProofError::ProofTooSmall);
+        }
+        let elements = self.proof_data[self.num_frs_read..self.num_frs_read + n].to_owned();
+        self.num_frs_read += n;
+
+        self.consume_prover_elements(label, &elements);
+        Ok(elements)
+    }
+
+    pub(super) fn receive_u64_from_prover(&mut self, label: String) -> HonkProofResult<u64> {
+        let element = self.receive_n_from_prover(label, 1)?[0];
+        let r = element.into_bigint();
+        Ok(r.as_ref().first().unwrap().to_owned())
+    }
+
+    pub(super) fn receive_fr_from_prover<P: HonkCurve<F>>(
+        &mut self,
+        label: String,
+    ) -> HonkProofResult<P::ScalarField> {
+        let elements = self.receive_n_from_prover(label, P::NUM_SCALARFIELD_ELEMENTS)?;
+
+        Ok(P::convert_scalarfield_back(&elements))
+    }
+
+    pub(super) fn receive_point_from_prover<P: HonkCurve<F>>(
+        &mut self,
+        label: String,
+    ) -> HonkProofResult<P::G1Affine> {
+        let elements = self.receive_n_from_prover(label, P::NUM_BASEFIELD_ELEMENTS * 2)?;
+
+        let coords = elements
+            .chunks_exact(P::NUM_BASEFIELD_ELEMENTS)
+            .map(P::convert_basefield_back)
+            .collect::<Vec<_>>();
+
+        let x = coords[0];
+        let y = coords[1];
+
+        let res = if x.is_zero() && y.is_zero() {
+            P::G1Affine::zero()
+        } else {
+            P::g1_affine_from_xy(x, y)
+        };
+
+        Ok(res)
+    }
+
+    pub(super) fn receive_fr_vec_from_verifier<P: HonkCurve<F>>(
+        &mut self,
+        label: String,
+        n: usize,
+    ) -> HonkProofResult<Vec<P::ScalarField>> {
+        let elements = self.receive_n_from_prover(label, P::NUM_SCALARFIELD_ELEMENTS * n)?;
+
+        let elements = elements
+            .chunks_exact(P::NUM_SCALARFIELD_ELEMENTS)
+            .map(P::convert_scalarfield_back)
+            .collect();
+
+        Ok(elements)
+    }
+
+    pub(super) fn receive_fr_array_from_verifier<P: HonkCurve<F>, const SIZE: usize>(
+        &mut self,
+        label: String,
+    ) -> HonkProofResult<[P::ScalarField; SIZE]> {
+        let mut res: [P::ScalarField; SIZE] = [P::ScalarField::zero(); SIZE];
+        let elements = self.receive_n_from_prover(label, P::NUM_SCALARFIELD_ELEMENTS * SIZE)?;
+
+        for (src, des) in elements
+            .chunks_exact(P::NUM_SCALARFIELD_ELEMENTS)
+            .zip(res.iter_mut())
+        {
+            let el = P::convert_scalarfield_back(src);
+            *des = el;
+        }
+        Ok(res)
+    }
+
+    pub(super) fn get_next_challenge_buffer(&mut self) -> F {
         // Prevent challenge generation if this is the first challenge we're generating,
         // AND nothing was sent by the prover.
         if self.is_first_challenge {
@@ -138,26 +221,23 @@ where
         new_challenge
     }
 
-    pub(super) fn get_challenge<G>(&mut self, label: String) -> G
-    where
-        G: ConvertField<F>,
-    {
+    pub(super) fn get_challenge<P: HonkCurve<F>>(&mut self, label: String) -> P::ScalarField {
         self.manifest.add_challenge(self.round_number, &[label]);
         let challenge = self.get_next_challenge_buffer();
-        let res = ConvertField::convert_back(&challenge);
+        let res = P::convert_destinationfield_to_scalarfield(&challenge);
         self.round_number += 1;
         res
     }
 
-    pub(super) fn get_challenges<G>(&mut self, labels: &[String]) -> Vec<G>
-    where
-        G: ConvertField<F>,
-    {
+    pub(super) fn get_challenges<P: HonkCurve<F>>(
+        &mut self,
+        labels: &[String],
+    ) -> Vec<P::ScalarField> {
         self.manifest.add_challenge(self.round_number, labels);
         let mut res = Vec::with_capacity(labels.len());
         for _ in 0..labels.len() {
             let challenge = self.get_next_challenge_buffer();
-            let res_ = ConvertField::convert_back(&challenge);
+            let res_ = P::convert_destinationfield_to_scalarfield(&challenge);
             res.push(res_);
         }
         self.round_number += 1;

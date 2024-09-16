@@ -20,36 +20,27 @@
 use super::types::ProverMemory;
 use crate::{
     batch_invert,
-    field_convert::ConvertField,
+    field_convert::HonkCurve,
     prover::{HonkProofError, HonkProofResult},
     transcript::{TranscriptFieldType, TranscriptType},
     types::ProvingKey,
 };
-use ark_ec::{pairing::Pairing, AffineRepr};
 use ark_ff::{One, Zero};
 use itertools::izip;
 use std::marker::PhantomData;
 
-pub struct Oink<P: Pairing> {
+pub struct Oink<P: HonkCurve<TranscriptFieldType>> {
     memory: ProverMemory<P>,
     phantom_data: PhantomData<P>,
 }
 
-impl<P: Pairing> Default for Oink<P>
-where
-    <P::G1Affine as AffineRepr>::BaseField: ConvertField<TranscriptFieldType>,
-    P::ScalarField: ConvertField<TranscriptFieldType>,
-{
+impl<P: HonkCurve<TranscriptFieldType>> Default for Oink<P> {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl<P: Pairing> Oink<P>
-where
-    <P::G1Affine as AffineRepr>::BaseField: ConvertField<TranscriptFieldType>,
-    P::ScalarField: ConvertField<TranscriptFieldType>,
-{
+impl<P: HonkCurve<TranscriptFieldType>> Oink<P> {
     pub fn new() -> Self {
         Self {
             memory: ProverMemory::default(),
@@ -329,7 +320,8 @@ where
         tracing::trace!("generate alpha round");
 
         for idx in 0..self.memory.challenges.alphas.len() {
-            self.memory.challenges.alphas[idx] = transcript.get_challenge(format!("alpha_{}", idx));
+            self.memory.challenges.alphas[idx] =
+                transcript.get_challenge::<P>(format!("alpha_{}", idx));
         }
     }
 
@@ -358,7 +350,7 @@ where
 
         for (i, public_input) in public_inputs.iter().enumerate() {
             // transcript.add_scalar(*public_input);
-            transcript.send_fr_to_verifier(format!("public_input_{}", i), *public_input);
+            transcript.send_fr_to_verifier::<P>(format!("public_input_{}", i), *public_input);
         }
         Ok(())
     }
@@ -378,9 +370,9 @@ where
         let w_r = crate::commit(proving_key.polynomials.witness.w_r(), &proving_key.crs)?;
         let w_o = crate::commit(proving_key.polynomials.witness.w_o(), &proving_key.crs)?;
 
-        transcript.send_point_to_verifier("W_L".to_string(), w_l.into());
-        transcript.send_point_to_verifier("W_R".to_string(), w_r.into());
-        transcript.send_point_to_verifier("W_O".to_string(), w_o.into());
+        transcript.send_point_to_verifier::<P>("W_L".to_string(), w_l.into());
+        transcript.send_point_to_verifier::<P>("W_R".to_string(), w_r.into());
+        transcript.send_point_to_verifier::<P>("W_O".to_string(), w_o.into());
 
         // Round is done since ultra_honk is no goblin flavor
         Ok(())
@@ -394,7 +386,7 @@ where
     ) -> HonkProofResult<()> {
         tracing::trace!("executing sorted list accumulator round");
 
-        let challs = transcript.get_challenges(&[
+        let challs = transcript.get_challenges::<P>(&[
             "eta".to_string(),
             "eta_two".to_string(),
             "eta_three".to_string(),
@@ -415,10 +407,13 @@ where
         )?;
         let w_4 = crate::commit(&self.memory.w_4, &proving_key.crs)?;
 
+        transcript.send_point_to_verifier::<P>(
+            "LOOKUP_READ_COUNTS".to_string(),
+            lookup_read_counts.into(),
+        );
         transcript
-            .send_point_to_verifier("LOOKUP_READ_COUNTS".to_string(), lookup_read_counts.into());
-        transcript.send_point_to_verifier("LOOKUP_READ_TAGS".to_string(), lookup_read_tags.into());
-        transcript.send_point_to_verifier("W_4".to_string(), w_4.into());
+            .send_point_to_verifier::<P>("LOOKUP_READ_TAGS".to_string(), lookup_read_tags.into());
+        transcript.send_point_to_verifier::<P>("W_4".to_string(), w_4.into());
 
         Ok(())
     }
@@ -431,7 +426,7 @@ where
     ) -> HonkProofResult<()> {
         tracing::trace!("executing log derivative inverse round");
 
-        let challs = transcript.get_challenges(&["beta".to_string(), "gamma".to_string()]);
+        let challs = transcript.get_challenges::<P>(&["beta".to_string(), "gamma".to_string()]);
         self.memory.challenges.beta = challs[0];
         self.memory.challenges.gamma = challs[1];
 
@@ -439,7 +434,8 @@ where
 
         let lookup_inverses = crate::commit(&self.memory.lookup_inverses, &proving_key.crs)?;
 
-        transcript.send_point_to_verifier("LOOKUP_INVERSES".to_string(), lookup_inverses.into());
+        transcript
+            .send_point_to_verifier::<P>("LOOKUP_INVERSES".to_string(), lookup_inverses.into());
 
         // Round is done since ultra_honk is no goblin flavor
         Ok(())
@@ -460,7 +456,7 @@ where
 
         let z_perm = crate::commit(&self.memory.lookup_inverses, &proving_key.crs)?;
 
-        transcript.send_point_to_verifier("Z_PERM".to_string(), z_perm.into());
+        transcript.send_point_to_verifier::<P>("Z_PERM".to_string(), z_perm.into());
         Ok(())
     }
 

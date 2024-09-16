@@ -5,22 +5,18 @@ use super::{
 };
 use crate::{
     decider::{polynomial::Polynomial, types::ClaimedEvaluations, zeromorph::OpeningPair},
-    field_convert::ConvertField,
+    field_convert::HonkCurve,
     get_msb,
     prover::HonkProofResult,
-    transcript::{TranscriptType, TranscriptFieldType},
+    transcript::{TranscriptFieldType, TranscriptType},
     types::ProvingKey,
     CONST_PROOF_SIZE_LOG_N, N_MAX,
 };
-use ark_ec::{pairing::Pairing, AffineRepr, Group};
+use ark_ec::Group;
 use ark_ff::{Field, One, Zero};
 use itertools::izip;
 
-impl<P: Pairing> Decider<P>
-where
-    <P::G1Affine as AffineRepr>::BaseField: ConvertField<TranscriptFieldType>,
-    P::ScalarField: ConvertField<TranscriptFieldType>,
-{
+impl<P: HonkCurve<TranscriptFieldType>> Decider<P> {
     /**
      * @brief Compute multivariate quotients q_k(X_0, ..., X_{k-1}) for f(X_0, ..., X_{n-1})
      * @details Starting from the coefficients of f, compute q_k inductively from k = n - 1, to k = 0.
@@ -368,7 +364,7 @@ where
         let commitment_key = &proving_key.crs;
 
         // Generate batching challenge \rho and powers 1,...,\rho^{m-1}
-        let rho = transcript.get_challenge::<P::ScalarField>("rho".to_string());
+        let rho = transcript.get_challenge::<P>("rho".to_string());
 
         // Extract multilinear challenge u and claimed multilinear evaluations from Sumcheck output
         let u_challenge = multilinear_challenge;
@@ -414,17 +410,17 @@ where
         for (idx, val) in quotients.iter().enumerate() {
             let res = crate::commit(&val.coefficients, commitment_key)?;
             let label = format!("ZM:C_q_{}", idx);
-            transcript.send_point_to_verifier(label, res.into());
+            transcript.send_point_to_verifier::<P>(label, res.into());
         }
         // Add buffer elements to remove log_N dependence in proof
         for idx in log_n as usize..CONST_PROOF_SIZE_LOG_N {
             let res = P::G1::generator(); // TODO Is this one?
             let label = format!("ZM:C_q_{}", idx);
-            transcript.send_point_to_verifier(label, res.into());
+            transcript.send_point_to_verifier::<P>(label, res.into());
         }
 
         // Get challenge y
-        let y_challenge = transcript.get_challenge("ZM:y".to_string());
+        let y_challenge = transcript.get_challenge::<P>("ZM:y".to_string());
 
         // Compute the batched, lifted-degree quotient \hat{q}
         let batched_quotient =
@@ -432,11 +428,10 @@ where
 
         // Compute and send the commitment C_q = [\hat{q}]
         let q_commitment = crate::commit(&batched_quotient.coefficients, commitment_key)?;
-        transcript.send_point_to_verifier("ZM:C_q".to_string(), q_commitment.into());
+        transcript.send_point_to_verifier::<P>("ZM:C_q".to_string(), q_commitment.into());
 
         // Get challenges x and z
-        let challs =
-            transcript.get_challenges::<P::ScalarField>(&["ZM:x".to_string(), "ZM:z".to_string()]);
+        let challs = transcript.get_challenges::<P>(&["ZM:x".to_string(), "ZM:z".to_string()]);
         let x_challenge = challs[0];
         let z_challenge = challs[1];
 

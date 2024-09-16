@@ -1,27 +1,18 @@
 use super::{sumcheck::SumcheckOutput, types::ProverMemory};
 use crate::{
-    field_convert::ConvertField,
+    field_convert::HonkCurve,
     prover::HonkProofResult,
-    transcript::{TranscriptType, TranscriptFieldType},
+    transcript::{TranscriptFieldType, TranscriptType},
     types::ProvingKey,
 };
-use ark_ec::{pairing::Pairing, AffineRepr};
 use std::marker::PhantomData;
 
-pub struct Decider<P: Pairing>
-where
-    <P::G1Affine as AffineRepr>::BaseField: ConvertField<TranscriptFieldType>,
-    P::ScalarField: ConvertField<TranscriptFieldType>,
-{
+pub struct Decider<P: HonkCurve<TranscriptFieldType>> {
     pub(super) memory: ProverMemory<P>,
     phantom_data: PhantomData<P>,
 }
 
-impl<P: Pairing> Decider<P>
-where
-    <P::G1Affine as AffineRepr>::BaseField: ConvertField<TranscriptFieldType>,
-    P::ScalarField: ConvertField<TranscriptFieldType>,
-{
+impl<P: HonkCurve<TranscriptFieldType>> Decider<P> {
     pub fn new(memory: ProverMemory<P>) -> Self {
         Self {
             memory,

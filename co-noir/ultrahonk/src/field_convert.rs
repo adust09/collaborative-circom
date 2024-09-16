@@ -1,29 +1,58 @@
+use ark_ec::pairing::Pairing;
 use ark_ff::{One, PrimeField};
 use num_bigint::BigUint;
 
-pub trait ConvertField<Des: PrimeField>: PrimeField {
-    fn convert_field(&self) -> Vec<Des>;
-    fn convert_back(src: &Des) -> Self;
+// Des describes the PrimeField used for the Transcript
+pub trait HonkCurve<Des: PrimeField>: Pairing {
+    const NUM_BASEFIELD_ELEMENTS: usize;
+    const NUM_SCALARFIELD_ELEMENTS: usize;
+
+    fn g1_affine_from_xy(x: Self::BaseField, y: Self::BaseField) -> Self::G1Affine;
+    fn g1_affine_to_xy(p: &Self::G1Affine) -> (Self::BaseField, Self::BaseField);
+
+    fn convert_scalarfield_into(src: &Self::ScalarField) -> Vec<Des>;
+    fn convert_scalarfield_back(src: &[Des]) -> Self::ScalarField;
+
+    fn convert_basefield_into(src: &Self::BaseField) -> Vec<Des>;
+    fn convert_basefield_back(src: &[Des]) -> Self::BaseField;
+
+    // For the challenge
+    fn convert_destinationfield_to_scalarfield(des: &Des) -> Self::ScalarField;
 }
 
-impl ConvertField<ark_bn254::Fr> for ark_bn254::Fr {
-    fn convert_field(&self) -> Vec<ark_bn254::Fr> {
-        vec![self.to_owned()]
+impl HonkCurve<ark_bn254::Fr> for ark_bn254::Bn254 {
+    const NUM_BASEFIELD_ELEMENTS: usize = 2;
+    const NUM_SCALARFIELD_ELEMENTS: usize = 1;
+
+    fn g1_affine_from_xy(x: ark_bn254::Fq, y: ark_bn254::Fq) -> ark_bn254::G1Affine {
+        ark_bn254::G1Affine::new(x, y)
     }
 
-    fn convert_back(src: &ark_bn254::Fr) -> Self {
-        src.to_owned()
+    fn g1_affine_to_xy(p: &Self::G1Affine) -> (Self::BaseField, Self::BaseField) {
+        (p.x, p.y)
     }
-}
 
-impl ConvertField<ark_bn254::Fr> for ark_bn254::Fq {
-    fn convert_field(&self) -> Vec<ark_bn254::Fr> {
-        let (a, b) = bn254_fq_to_fr(self);
+    fn convert_scalarfield_into(src: &ark_bn254::Fr) -> Vec<ark_bn254::Fr> {
+        vec![src.to_owned()]
+    }
+
+    fn convert_scalarfield_back(src: &[ark_bn254::Fr]) -> ark_bn254::Fr {
+        debug_assert_eq!(src.len(), Self::NUM_SCALARFIELD_ELEMENTS);
+        src[0].to_owned()
+    }
+
+    fn convert_basefield_into(src: &ark_bn254::Fq) -> Vec<ark_bn254::Fr> {
+        let (a, b) = bn254_fq_to_fr(src);
         vec![a, b]
     }
 
-    fn convert_back(src: &ark_bn254::Fr) -> Self {
-        bn254_fr_to_fq(src)
+    fn convert_basefield_back(src: &[ark_bn254::Fr]) -> Self::BaseField {
+        debug_assert_eq!(src.len(), Self::NUM_BASEFIELD_ELEMENTS);
+        bn254_fq_to_fr_rev(&src[0], &src[1])
+    }
+
+    fn convert_destinationfield_to_scalarfield(des: &ark_bn254::Fr) -> ark_bn254::Fr {
+        des.to_owned()
     }
 }
 
@@ -63,6 +92,15 @@ fn bn254_fq_to_fr(fq: &ark_bn254::Fq) -> (ark_bn254::Fr, ark_bn254::Fr) {
     (res0, res1)
 }
 
-fn bn254_fr_to_fq(fr: &ark_bn254::Fr) -> ark_bn254::Fq {
-    fr.0.into()
+fn bn254_fq_to_fr_rev(res0: &ark_bn254::Fr, res1: &ark_bn254::Fr) -> ark_bn254::Fq {
+    // Combines the two elements into one uint256_t, and then convert that to a grumpkin::fr
+
+    let res0 = BigUint::from(res0.0);
+    let res1 = BigUint::from(res1.0);
+
+    debug_assert!(res0 < (BigUint::one() << (NUM_LIMB_BITS * 2))); // lower 136 bits
+    debug_assert!(res1 < (BigUint::one() << (TOTAL_BITS - NUM_LIMB_BITS * 2))); // upper 254-136=118 bits
+
+    let value = res0 + (res1 << (NUM_LIMB_BITS * 2));
+    ark_bn254::Fq::from(value)
 }
