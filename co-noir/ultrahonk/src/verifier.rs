@@ -1,4 +1,3 @@
-use crate::decider::types::PowPolynomial;
 use crate::CONST_PROOF_SIZE_LOG_N;
 use crate::{
     get_msb,
