@@ -137,7 +137,12 @@ where
         self.previous_challenge = new_challenge;
         new_challenge
     }
-
+    pub(super) fn receive_from_prover<G>(&mut self, label: String) -> G
+    where
+        G: ConvertField<F>,
+    {
+        todo!()
+    }
     pub(super) fn get_challenge<G>(&mut self, label: String) -> G
     where
         G: ConvertField<F>,

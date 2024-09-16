@@ -1,13 +1,13 @@
-use crate::oink::types::WitnessCommitments;
 use crate::transcript::Poseidon2Transcript;
 use crate::types::VerifyingKey;
+use crate::types::WitnessCommitments;
 use crate::{prover, NUM_ALPHAS};
 use ark_ec::pairing::Pairing;
 use ark_ff::Field;
 use prover::HonkProofError;
 use std::marker::PhantomData;
 
-pub(crate) struct OinkOutput<P: Pairing> {
+pub(crate) struct OinkOutput<P: Pairing + std::default::Default> {
     relation_parameters: RelationParameters<P>,
     commitments: WitnessCommitments<P>,
     public_inputs: Vec<P::ScalarField>,
@@ -16,8 +16,8 @@ pub(crate) struct OinkOutput<P: Pairing> {
 }
 
 // todo: where does the Verifier get the witness_comms from?
-pub(crate) struct OinkVerifier<P: Pairing> {
-    transcript: Poseidon2Transcript<P>,
+pub(crate) struct OinkVerifier<P: Pairing + std::default::Default> {
+    transcript: Poseidon2Transcript<P::ScalarField>,
     key: VerifyingKey<P>,
     relation_parameters: RelationParameters<P>,
     witness_comms: WitnessCommitments<P>,
@@ -34,9 +34,9 @@ pub(crate) struct RelationParameters<P: Pairing> {
     public_input_delta: P::ScalarField,
 }
 
-impl<P: Pairing> OinkVerifier<P> {
+impl<P: Pairing + std::default::Default> OinkVerifier<P> {
     pub fn new(
-        transcript: Poseidon2Transcript<P>,
+        transcript: Poseidon2Transcript<P::ScalarField>,
         key: VerifyingKey<P>,
         relation_parameters: RelationParameters<P>,
         witness_comms: WitnessCommitments<P>,
@@ -67,49 +67,54 @@ impl<P: Pairing> OinkVerifier<P> {
     }
 
     fn execute_preamble_round(&mut self, public_inputs: &[P::ScalarField]) {
-        // tracing::trace!("executing (verifying) preamble round");
+        tracing::trace!("executing (verifying) preamble round");
 
-        self.transcript.add(self.key.circuit_size.to_le_bytes());
-        self.transcript
-            .add(self.key.num_public_inputs.to_le_bytes());
-        self.transcript
-            .add(self.key.pub_inputs_offset.to_le_bytes());
+        let circuit_size = self
+            .transcript
+            .receive_from_prover("circuit_size".to_string());
+        let public_input_size = self
+            .transcript
+            .receive_from_prover("public_input_size".to_string());
+        let pub_inputs_offset = self
+            .transcript
+            .receive_from_prover("pub_inputs_offset".to_string());
 
         // To do / To think: do we want to assert here with key vs transcript?
-        // assert_eq!(circuit_size, self.key.circuit_size);
-        // assert_eq!(public_input_size, self.key.num_public_inputs);
-        // assert_eq!(pub_inputs_offset, self.key.pub_inputs_offset);
+        assert_eq!(circuit_size, self.key.circuit_size); //"OinkVerifier::execute_preamble_round: proof circuit size does not match verification key!"
+        assert_eq!(public_input_size, self.key.num_public_inputs); //"OinkVerifier::execute_preamble_round: public inputs size does not match verification key!"
+        assert_eq!(pub_inputs_offset, self.key.pub_inputs_offset); //"OinkVerifier::execute_preamble_round: public inputs offset does not match verification key!"
 
         if self.key.num_public_inputs as usize != public_inputs.len() {
             todo!() //return error
         }
-
-        for public_input in public_inputs {
-            self.transcript.add_scalar(*public_input);
+        for (i, public_input) in public_inputs.iter().enumerate() {
+            public_inputs[i] = self
+                .transcript
+                .receive_from_prover(format!("public_input_{}", i));
         }
     }
 
     fn execute_wire_commitments_round(&mut self) {
-        // tracing::trace!("executing (verifying) wire commitments round");
+        tracing::trace!("executing (verifying) wire commitments round");
 
-        self.transcript.add_point(self.witness_comms.w_l.into());
-        self.transcript.add_point(self.witness_comms.w_r.into());
-        self.transcript.add_point(self.witness_comms.w_o.into());
+        self.witness_comms.w_l = self.transcript.receive_from_prover("W_L".to_string());
+        self.witness_comms.w_r = self.transcript.receive_from_prover("W_R".to_string());
+        self.witness_comms.w_o = self.transcript.receive_from_prover("W_O".to_string());
     }
 
     fn execute_sorted_list_accumulator_round(&mut self) {
-        // tracing::trace!("executing (verifying) sorted list accumulator round");
+        tracing::trace!("executing (verifying) sorted list accumulator round");
 
-        let mut transcript = Poseidon2Transcript::<P>::default();
+        let mut transcript = Poseidon2Transcript::<P::ScalarField>::default();
         std::mem::swap(&mut transcript, &mut self.transcript);
 
         self.relation_parameters.eta = transcript.get_challenge();
 
-        let mut transcript = Poseidon2Transcript::<P>::default();
+        let mut transcript = Poseidon2Transcript::<P::ScalarField>::default();
         transcript.add_scalar(self.relation_parameters.eta);
         self.relation_parameters.eta_two = transcript.get_challenge();
 
-        let mut transcript = Poseidon2Transcript::<P>::default();
+        let mut transcript = Poseidon2Transcript::<P::ScalarField>::default();
         transcript.add_scalar(self.relation_parameters.eta_two);
         self.relation_parameters.eta_three = transcript.get_challenge();
 
@@ -117,36 +122,35 @@ impl<P: Pairing> OinkVerifier<P> {
             .transcript
             .add_scalar(self.relation_parameters.eta_three);
 
-        &mut self
+        self.witness_comms.lookup_read_counts = self
             .transcript
-            .add_point(self.witness_comms.lookup_read_counts.into());
-        &mut self
+            .receive_from_prover("lookup_read_counts".to_string());
+        self.witness_comms.lookup_read_tags = self
             .transcript
-            .add_point(self.witness_comms.lookup_read_tags.into());
-        &mut self.transcript.add_point(self.witness_comms.w_4.into());
+            .receive_from_prover("lookup_read_tags".to_string());
+        self.witness_comms.w_4 = self.transcript.receive_from_prover("w_4".to_string());
     }
 
     fn execute_log_derivative_inverse_round(&mut self) {
-        // tracing::trace!("executing (verifying) log derivative inverse round");
+        tracing::trace!("executing (verifying) log derivative inverse round");
 
-        let mut transcript = Poseidon2Transcript::<P>::default();
+        let mut transcript = Poseidon2Transcript::<P::ScalarField>::default();
         std::mem::swap(&mut transcript, &mut self.transcript);
 
         self.relation_parameters.beta = transcript.get_challenge();
 
-        let mut transcript = Poseidon2Transcript::<P>::default();
+        let mut transcript = Poseidon2Transcript::<P::ScalarField>::default();
         transcript.add_scalar(self.relation_parameters.beta);
         self.relation_parameters.gamma = transcript.get_challenge();
 
         &mut self.transcript.add_scalar(self.relation_parameters.gamma);
-
-        &mut self
+        self.witness_comms.lookup_inverses = self
             .transcript
-            .add_point(self.witness_comms.lookup_inverses.into());
+            .receive_from_prover("lookup_inverses".to_string());
     }
 
     fn execute_grand_product_computation_round(&mut self, public_inputs: &[P::ScalarField]) {
-        // tracing::trace!("executing (verifying) grand product computation round");
+        tracing::trace!("executing (verifying) grand product computation round");
         self.relation_parameters.public_input_delta = compute_public_input_delta::<P>(
             public_inputs,
             self.relation_parameters.beta,
@@ -154,18 +158,19 @@ impl<P: Pairing> OinkVerifier<P> {
             self.key.circuit_size,
             self.key.pub_inputs_offset as usize,
         );
+        self.witness_comms.z_perm = self.transcript.receive_from_prover("z_perm".to_string());
 
-        self.transcript.add_point(self.witness_comms.z_perm.into());
+        // self.transcript.add_point(self.witness_comms.z_perm.into());
     }
 
     fn generate_alphas_round(&mut self) -> [P::ScalarField; NUM_ALPHAS] {
-        // tracing::trace!("generating (verifying) alphas round");
+        tracing::trace!("generating (verifying) alphas round");
         let mut alphas: [P::ScalarField; NUM_ALPHAS] = [P::ScalarField::default(); NUM_ALPHAS];
-        let mut transcript = Poseidon2Transcript::<P>::default();
+        let mut transcript = Poseidon2Transcript::<P::ScalarField>::default();
         std::mem::swap(&mut transcript, &mut self.transcript);
         alphas[0] = transcript.get_challenge();
         for idx in 1..NUM_ALPHAS {
-            let mut transcript = Poseidon2Transcript::<P>::default();
+            let mut transcript = Poseidon2Transcript::<P::ScalarField>::default();
             transcript.add_scalar(alphas[idx - 1]);
             alphas[idx] = transcript.get_challenge();
         }
@@ -180,7 +185,7 @@ fn compute_public_input_delta<P: Pairing>(
     domain_size: u32,
     offset: usize,
 ) -> P::ScalarField {
-    // tracing::trace!("computing public input delta");
+    tracing::trace!("computing public input delta");
     let mut numerator = P::ScalarField::ONE;
     let mut denominator = P::ScalarField::ONE;
     let mut numerator_acc =
