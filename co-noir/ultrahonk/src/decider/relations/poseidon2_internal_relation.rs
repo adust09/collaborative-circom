@@ -1,34 +1,14 @@
-use std::str::FromStr;
-
 use super::Relation;
-use crate::decider::{
-    sumcheck::sumcheck_round::SumcheckRoundOutput,
-    types::{ProverUnivariates, RelationParameters},
-    univariate::Univariate,
+use crate::{
+    decider::{
+        sumcheck::sumcheck_round::SumcheckRoundOutput,
+        types::{ProverUnivariates, RelationParameters},
+        univariate::Univariate,
+    },
+    poseidon2::poseidon2_bn254,
 };
 use ark_ff::{PrimeField, Zero};
-use lazy_static::lazy_static;
 use num_bigint::BigUint;
-
-// TODO is this the most beatiful way to do this?
-lazy_static! {
-    static ref INTERNAL_MATRIX_DIAG_0: BigUint = BigUint::from_str(
-        "7626475329478847982857743246276194948757851985510858890691733676098590062311"
-    )
-    .unwrap();
-    static ref INTERNAL_MATRIX_DIAG_1: BigUint = BigUint::from_str(
-        "5498568565063849786384470689962419967523752476452646391422913716315471115275"
-    )
-    .unwrap();
-    static ref INTERNAL_MATRIX_DIAG_2: BigUint = BigUint::from_str(
-        "148936322117705719734052984176402258788283488576388928671173547788498414613"
-    )
-    .unwrap();
-    static ref INTERNAL_MATRIX_DIAG_3: BigUint = BigUint::from_str(
-        "15456385653678559339152734484033356164266089951521103188900320352052358038155"
-    )
-    .unwrap();
-}
 
 #[derive(Clone, Debug, Default)]
 pub(crate) struct Poseidon2InternalRelationAcc<F: PrimeField> {
@@ -152,7 +132,13 @@ impl<F: PrimeField> Relation<F> for Poseidon2InternalRelation {
 
         let q_pos_by_scaling = q_poseidon2_internal.to_owned() * scaling_factor;
 
-        let mut v1 = u1 * F::from(INTERNAL_MATRIX_DIAG_0.to_owned());
+        // TODO this poseidon instance is very hardcoded to the bn254 curve
+        let internal_matrix_diag_0 = F::from(BigUint::from(poseidon2_bn254::MAT_DIAG_M_1[0]));
+        let internal_matrix_diag_1 = F::from(BigUint::from(poseidon2_bn254::MAT_DIAG_M_1[1]));
+        let internal_matrix_diag_2 = F::from(BigUint::from(poseidon2_bn254::MAT_DIAG_M_1[2]));
+        let internal_matrix_diag_3 = F::from(BigUint::from(poseidon2_bn254::MAT_DIAG_M_1[3]));
+
+        let mut v1 = u1 * internal_matrix_diag_0;
         v1 += &sum;
         let tmp = (v1 - w_l_shift) * &q_pos_by_scaling;
         for i in 0..univariate_accumulator.r0.evaluations.len() {
@@ -161,7 +147,7 @@ impl<F: PrimeField> Relation<F> for Poseidon2InternalRelation {
 
         ///////////////////////////////////////////////////////////////////////
 
-        let mut v2 = u2 * F::from(INTERNAL_MATRIX_DIAG_1.to_owned());
+        let mut v2 = u2 * internal_matrix_diag_1;
         v2 += &sum;
         let tmp = (v2 - w_r_shift) * &q_pos_by_scaling;
         for i in 0..univariate_accumulator.r1.evaluations.len() {
@@ -170,7 +156,7 @@ impl<F: PrimeField> Relation<F> for Poseidon2InternalRelation {
 
         ///////////////////////////////////////////////////////////////////////
 
-        let mut v3 = u3 * F::from(INTERNAL_MATRIX_DIAG_2.to_owned());
+        let mut v3 = u3 * internal_matrix_diag_2;
         v3 += &sum;
         let tmp = (v3 - w_o_shift) * &q_pos_by_scaling;
         for i in 0..univariate_accumulator.r2.evaluations.len() {
@@ -179,7 +165,7 @@ impl<F: PrimeField> Relation<F> for Poseidon2InternalRelation {
 
         ///////////////////////////////////////////////////////////////////////
 
-        let mut v4 = u4 * F::from(INTERNAL_MATRIX_DIAG_3.to_owned());
+        let mut v4 = u4 * internal_matrix_diag_3;
         v4 += sum;
         let tmp = (v4 - w_4_shift) * q_pos_by_scaling;
         for i in 0..univariate_accumulator.r3.evaluations.len() {
