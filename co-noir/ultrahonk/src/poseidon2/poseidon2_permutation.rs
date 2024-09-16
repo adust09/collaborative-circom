@@ -1,4 +1,5 @@
 use super::poseidon2_params::Poseidon2Params;
+use crate::sponge_hasher::FieldHash;
 use ark_ff::PrimeField;
 use std::sync::Arc;
 
@@ -135,37 +136,35 @@ impl<F: PrimeField, const T: usize, const D: u64> Poseidon2<F, T, D> {
     fn add_rc_internal(&self, input: &mut [F; T], rc_offset: usize) {
         input[0] += &self.params.round_constants_internal[rc_offset];
     }
+}
 
-    pub fn permutation(&self, input: &[F; T]) -> [F; T] {
-        let mut state = *input;
-
+impl<F: PrimeField, const T: usize, const D: u64> FieldHash<F, T> for Poseidon2<F, T, D> {
+    fn permutation_in_place(&self, state: &mut [F; T]) {
         // Linear layer at beginning
-        Self::matmul_external(&mut state);
+        Self::matmul_external(state);
 
         // First set of external rounds
         for r in 0..self.params.rounds_f_beginning {
-            self.add_rc_external(&mut state, r);
-            Self::sbox(&mut state);
-            Self::matmul_external(&mut state);
+            self.add_rc_external(state, r);
+            Self::sbox(state);
+            Self::matmul_external(state);
         }
 
         // Internal rounds
         for r in 0..self.params.rounds_p {
-            self.add_rc_internal(&mut state, r);
+            self.add_rc_internal(state, r);
             Self::single_sbox(&mut state[0]);
-            self.matmul_internal(&mut state);
+            self.matmul_internal(state);
         }
 
         // Remaining external rounds
         for r in self.params.rounds_f_beginning
             ..self.params.rounds_f_beginning + self.params.rounds_f_end
         {
-            self.add_rc_external(&mut state, r);
-            Self::sbox(&mut state);
-            Self::matmul_external(&mut state);
+            self.add_rc_external(state, r);
+            Self::sbox(state);
+            Self::matmul_external(state);
         }
-
-        state
     }
 }
 

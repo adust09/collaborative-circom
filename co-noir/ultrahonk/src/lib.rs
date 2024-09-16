@@ -1,8 +1,9 @@
 pub(crate) mod decider;
 pub mod honk_curve;
 pub(crate) mod oink;
-pub mod poseidon2;
+pub(crate) mod poseidon2;
 pub mod prover;
+pub(crate) mod sponge_hasher;
 mod transcript;
 mod types;
 // pub mod verifier;
