@@ -7,11 +7,11 @@ use ark_ec::VariableBaseMSM;
 use ark_ff::Field;
 
 pub fn zeromorph_verify<P: HonkCurve<TranscriptFieldType>>(
-    circuit_size: u32,
+    circuit_size: &u32,
     unshifted_commitments: Vec<P::G1>,
     to_be_shifted_commitments: Vec<P::G1>,
-    unshifted_evaluations: Vec<P::ScalarField>,
-    shifted_evaluations: Vec<P::ScalarField>,
+    unshifted_evaluations: &Vec<P::ScalarField>,
+    shifted_evaluations: &Vec<P::ScalarField>,
     multivariate_challenge: Vec<P::ScalarField>,
     transcript_inout: &mut TranscriptType,
     // concatenated_evaluations: Vec<P::ScalarField>, // RefSpan<FF> concatenated_evaluations = {}
@@ -93,7 +93,7 @@ fn compute_c_zeta_x<P: Pairing>(
     y_challenge: P::ScalarField,
     x_challenge: P::ScalarField,
     log_circuit_size: u32,
-    circuit_size: u32,
+    circuit_size: &u32,
 ) -> P::G1 {
     let mut scalars: Vec<P::ScalarField> = Vec::new();
     scalars.push(P::ScalarField::ONE);
@@ -135,17 +135,17 @@ fn compute_c_z_x<P: Pairing>(
     x_challenge: P::ScalarField,
     u_challenge: Vec<P::ScalarField>,
     log_circuit_size: u32,
-    circuit_size: u32,
+    circuit_size: &u32,
 ) -> P::G1 {
     let mut scalars: Vec<P::ScalarField> = Vec::new();
     let mut commitments: Vec<P::G1> = Vec::new();
-    let phi_numerator = x_challenge.pow(&[circuit_size as u64]) - P::ScalarField::ONE;
+    let phi_numerator = x_challenge.pow(&[*circuit_size as u64]) - P::ScalarField::ONE;
     let minus_one = P::ScalarField::ZERO - P::ScalarField::ONE;
     //todo
     let phi_n_x = phi_numerator / (x_challenge - P::ScalarField::ONE);
     scalars.push(batched_evaluation * x_challenge * phi_n_x * minus_one);
     //TODO: push g1_identity = first element in the SRS!
-    // commitments.push(P::G1::identity)
+    // commitments.push(P::G1::)
 
     let mut rho_pow = P::ScalarField::ONE;
     for &value in f_commitments.iter() {

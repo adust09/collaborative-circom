@@ -313,7 +313,6 @@ mod tests {
         )
         .unwrap();
         assert_eq!(G1Affine::generator(), monomials[0]);
-
         let mut p: Vec<G1Affine> = vec![monomials[1], G1Affine::generator()];
         let q: Vec<G2Affine> = vec![G2Affine::generator(), g2_x];
         p[0].y.neg_in_place();

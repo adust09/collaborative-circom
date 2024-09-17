@@ -1,13 +1,13 @@
+use crate::decider::types::RelationParameters;
 use crate::honk_curve::HonkCurve;
 use crate::transcript::{TranscriptFieldType, TranscriptType};
 use crate::types::WitnessCommitments;
 use crate::{
     get_msb,
-    oink::{self, verifier::RelationParameters},
+    oink::{self},
     types::VerifyingKey,
 };
-use ark_bn254::G1Affine;
-use ark_ec::pairing::{self, Pairing};
+use ark_ec::pairing::Pairing;
 use ark_ec::{AffineRepr, CurveGroup};
 use ark_ff::Field;
 use std::marker::PhantomData;
@@ -39,9 +39,9 @@ impl<P: HonkCurve<TranscriptFieldType>> DeciderVerifier<P> {
         honk_proof: PhantomData<P>,
         vk: VerifyingKey<P>,
         public_inputs: Vec<P::ScalarField>,
-        transcript: &mut TranscriptType,
-        relation_parameters: RelationParameters<P>, //weg damit
-        witness_comms: WitnessCommitments<P>,       //weg damit
+        mut transcript: &mut TranscriptType,
+        relation_parameters: RelationParameters<P::ScalarField>, //weg damit
+        witness_comms: WitnessCommitments<P>,                    //weg damit
     ) -> bool {
         tracing::trace!("Decider verification");
         let log_circuit_size = get_msb(vk.circuit_size.clone());
@@ -52,22 +52,22 @@ impl<P: HonkCurve<TranscriptFieldType>> DeciderVerifier<P> {
         for idx in 1..log_circuit_size as usize {
             gate_challenges[idx] = transcript.get_challenge::<P>(format!("public_input_{}", idx));
         }
-        let (multivariate_challenge, claimed_evaluations, sumcheck_verified) =
+        let (multivariate_challenge, claimed_evaluations, libra, sumcheck_verified) =
             crate::decider::sumcheck::verifier::sumcheck_verify(
                 relation_parameters,
                 &mut transcript,
                 oink_output.alphas,
-                vk,
+                &vk,
             );
         // to do: build sumcheck verifier, returns (multivariate_challenge, claimed_evaluations, sumcheck_verified)
         // get_unshifted(), get_to_be_shifted(), get_shifted()
 
         let opening_claim: OpeningClaim<P> = crate::decider::zeromorph::verifier::zeromorph_verify(
-            vk.circuit_size,
+            &vk.circuit_size,
             witness_comms.to_vec(),
             witness_comms.to_vec(),
-            claimed_evaluations,
-            claimed_evaluations,
+            &claimed_evaluations,
+            &claimed_evaluations,
             multivariate_challenge,
             &mut transcript,
             // TODO Check these types/shifts
@@ -80,7 +80,8 @@ impl<P: HonkCurve<TranscriptFieldType>> DeciderVerifier<P> {
             // but i dont understand the shift yet
         );
         let pairing_points = reduce_verify(opening_claim, &mut transcript);
-        let pcs_verified = pairing_check(pairing_points[0], pairing_points[1]);
+        let pcs_verified =
+            pairing_check::<P>(pairing_points[0], pairing_points[1], vk.g2_x, vk.g2_gen);
         sumcheck_verified && pcs_verified
     }
 }
@@ -98,30 +99,25 @@ pub fn reduce_verify<P: HonkCurve<TranscriptFieldType>>(
     let quotient_commitment = transcript
         .receive_point_from_prover::<P>("KZG:W".to_string())
         .expect("Failed to receive quotient_commitment \"KZG:W\"");
-    let p_1 = quotient_commitment;
-    // let mut p0 = opening_pair.commitment + quotient_commitment * opening_pair.challenge
-    //     - std::ops::Mul::mul(P::G1::generator(), opening_pair.evaluation);
-    let mut p_0 = opening_pair.commitment.into_affine();
+    let p_1 = std::ops::Neg::neg(quotient_commitment.into_group());
+    let p_0 = opening_pair.commitment.into_affine();
     let first = quotient_commitment.into_group() * opening_pair.challenge;
-    // i dont understand why i have to do this multiplication like this???
+    // i dont understand why i have to do the multiplication like this???
     let second = std::ops::Mul::mul(g1_projective, opening_pair.evaluation);
-    p_0 = (first - second).into();
-    [p_0, p_1]
+    let p_0 = p_0 + first;
+    let p_0 = p_0 - second;
+    [p_0.into(), p_1.into()]
 }
 
 //need (?) the verifier SRS for the following ("https://aztec-ignition.s3.amazonaws.com/MAIN%20IGNITION/flat/g1.dat" and "https://aztec-ignition.s3.amazonaws.com/MAIN%20IGNITION/flat/g2.dat")
 //Check: g1_identity first element in the SRS!
-pub fn pairing_check<P: Pairing>(p0: P::G1Affine, p1: P::G1Affine) -> bool {
+pub fn pairing_check<P: Pairing>(
+    p0: P::G1Affine,
+    p1: P::G1Affine,
+    g2_x: P::G2Affine,
+    g2_gen: P::G2Affine,
+) -> bool {
+    let p: Vec<P::G2Affine> = vec![g2_gen, g2_x];
     let g1_prepared = [P::G1Prepared::from(p0), P::G1Prepared::from(p1)];
-    let precomputedlines: [P::G2Prepared; 2]; //todo: where to get this from
-    let m_loop = P::multi_miller_loop(g1_prepared, precomputedlines);
-    let result = P::final_exponentiation(m_loop);
-    match result {
-        Some(pairing_output) => pairing_output.0 == P::TargetField::ONE,
-        None => false, // todo: what does that mean?
-    }
+    P::multi_pairing(g1_prepared, p).0 == P::TargetField::ONE
 }
-
-/*    pub(crate) challenge: P::ScalarField,
-pub(crate) evaluation: P::ScalarField,
-pub(crate) commitment: P::G1, */

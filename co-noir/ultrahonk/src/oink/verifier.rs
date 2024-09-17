@@ -1,5 +1,5 @@
+use crate::decider::types::RelationParameters;
 use crate::honk_curve::HonkCurve;
-use crate::transcript::Poseidon2Transcript;
 use crate::transcript::TranscriptFieldType;
 use crate::transcript::TranscriptType;
 use crate::types::VerifyingKey;
@@ -9,7 +9,7 @@ use ark_ec::pairing::Pairing;
 use ark_ff::Field;
 
 pub(crate) struct OinkOutput<P: HonkCurve<TranscriptFieldType>> {
-    relation_parameters: RelationParameters<P>,
+    relation_parameters: RelationParameters<P::ScalarField>,
     commitments: WitnessCommitments<P>,
     public_inputs: Vec<P::ScalarField>,
     pub(crate) alphas: [P::ScalarField; NUM_ALPHAS],
@@ -20,20 +20,10 @@ pub(crate) struct OinkOutput<P: HonkCurve<TranscriptFieldType>> {
 pub(crate) struct OinkVerifier<P: HonkCurve<TranscriptFieldType>> {
     transcript: TranscriptType,
     key: VerifyingKey<P>,
-    relation_parameters: RelationParameters<P>,
+    relation_parameters: RelationParameters<P::ScalarField>,
     witness_comms: WitnessCommitments<P>,
 }
 
-// todo: remove(?) this struct from OinkVerifier, these values get computed during verification
-#[derive(Clone)]
-pub(crate) struct RelationParameters<P: Pairing> {
-    eta: P::ScalarField,
-    eta_two: P::ScalarField,
-    eta_three: P::ScalarField,
-    beta: P::ScalarField,
-    gamma: P::ScalarField,
-    public_input_delta: P::ScalarField,
-}
 impl<P: HonkCurve<TranscriptFieldType>> Default for OinkVerifier<P> {
     fn default() -> Self {
         Self::new()
@@ -73,7 +63,7 @@ impl<P: HonkCurve<TranscriptFieldType>> OinkVerifier<P> {
         let alphas = self.generate_alphas_round();
 
         OinkOutput {
-            relation_parameters: self.relation_parameters.clone(),
+            relation_parameters: self.relation_parameters.to_owned(),
             commitments: self.witness_comms.to_owned(),
             public_inputs,
             alphas,
@@ -134,12 +124,11 @@ impl<P: HonkCurve<TranscriptFieldType>> OinkVerifier<P> {
     fn execute_sorted_list_accumulator_round(&mut self) {
         tracing::trace!("executing (verifying) sorted list accumulator round");
 
-        self.relation_parameters.eta = self.transcript.get_challenge::<P>("eta".to_string());
+        self.relation_parameters.eta_1 = self.transcript.get_challenge::<P>("eta".to_string());
 
-        self.relation_parameters.eta_two =
-            self.transcript.get_challenge::<P>("eta_two".to_string());
+        self.relation_parameters.eta_2 = self.transcript.get_challenge::<P>("eta_two".to_string());
 
-        self.relation_parameters.eta_three =
+        self.relation_parameters.eta_3 =
             self.transcript.get_challenge::<P>("eta_three".to_string());
 
         self.witness_comms.lookup_read_counts = self
@@ -194,7 +183,7 @@ impl<P: HonkCurve<TranscriptFieldType>> OinkVerifier<P> {
     fn generate_alphas_round(&mut self) -> [P::ScalarField; NUM_ALPHAS] {
         tracing::trace!("generating (verifying) alphas round");
         let mut alphas = [P::ScalarField::default(); NUM_ALPHAS];
-        let mut transcript = Poseidon2Transcript::<P::ScalarField>::default();
+
         alphas[0] = self.transcript.get_challenge::<P>(format!("alpha_{}", 0));
         for idx in 1..NUM_ALPHAS {
             alphas[idx] = self.transcript.get_challenge::<P>(format!("alpha_{}", idx));

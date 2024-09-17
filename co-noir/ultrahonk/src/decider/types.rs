@@ -31,7 +31,7 @@ pub struct ClaimedEvaluations<F: PrimeField> {
 pub struct MemoryElements<T> {
     pub elements: [T; 4],
 }
-
+#[derive(Clone)]
 pub struct RelationParameters<F: PrimeField> {
     pub eta_1: F,
     pub eta_2: F,

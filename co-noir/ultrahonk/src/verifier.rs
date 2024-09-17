@@ -16,11 +16,7 @@ use std::{io, marker::PhantomData};
 pub struct UltraHonkVerifier<P: Pairing> {
     phantom_data: PhantomData<P>,
 }
-pub struct OpeningClaim<P: Pairing> {
-    pub(crate) challenge: P::ScalarField,
-    pub(crate) evaluation: P::ScalarField,
-    pub(crate) commitment: P::G1,
-}
+
 
 // impl<P: Pairing> Default for UltraHonkVerifier<P> {
 //     fn default() -> Self {

@@ -77,6 +77,8 @@ pub struct VerifyingKey<P: Pairing> {
     pub pub_inputs_offset: u32,
     pub polynomials: Polynomials<P::ScalarField>,
     pub gate_challenges: [P::ScalarField; CONST_PROOF_SIZE_LOG_N],
+    pub g2_x: P::G2Affine,
+    pub g2_gen: P::G2Affine,
 }
 
 #[derive(Default)]

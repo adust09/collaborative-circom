@@ -33,6 +33,7 @@ pub(crate) const NUM_ALPHAS: usize = decider::relations::NUM_SUBRELATIONS - 1;
 // TODO(https://github.com/AztecProtocol/barretenberg/issues/1046): Remove the need for const sized proofs
 pub(crate) const CONST_PROOF_SIZE_LOG_N: usize = 28;
 pub(crate) const N_MAX: usize = 1 << 25;
+pub(crate) const NUM_ALL_ENTITIES: usize = 44;
 
 fn batch_invert<F: PrimeField>(coeffs: &mut [F]) {
     // This better?

@@ -1,60 +1,64 @@
 use crate::decider::types::GateSeparatorPolynomial;
-use crate::transcript::TranscriptType;
-use crate::CONST_PROOF_SIZE_LOG_N;
-use crate::{
-    get_msb,
-    oink::{self, , verifier::RelationParameters},
-    transcript::{self, Poseidon2Transcript},
-    types::VerifyingKey,
-    NUM_ALPHAS,
-};
-use crate::types::WitnessEntities;
-use ark_ec::pairing::{self, Pairing};
-use ark_ec::Group;
-use ark_ec::VariableBaseMSM;
+use crate::decider::types::RelationParameters;
+use crate::honk_curve::HonkCurve;
+use crate::transcript::{TranscriptFieldType, TranscriptType};
+use crate::{get_msb, types::VerifyingKey, NUM_ALPHAS};
+use crate::{CONST_PROOF_SIZE_LOG_N, NUM_ALL_ENTITIES};
+use ark_ec::pairing::Pairing;
 use ark_ff::Field;
-use std::f32::consts::E;
-use std::{io, marker::PhantomData};
 
 pub const HAS_ZK: bool = false;
 
-pub fn sumcheck_verify<P: Pairing>(
-    relation_parameters: RelationParameters<P>,
+pub fn sumcheck_verify<P: HonkCurve<TranscriptFieldType>>(
+    relation_parameters: RelationParameters<P::ScalarField>,
     transcript: &mut TranscriptType,
     alphas: [P::ScalarField; NUM_ALPHAS],
     // gate_challenges: Vec<P::ScalarField>,
-    vk: VerifyingKey<P>,
-) -> (Vec<P::ScalarField>, Vec<P::ScalarField>, bool) {
+    vk: &VerifyingKey<P>,
+) -> (
+    Vec<P::ScalarField>,
+    Vec<P::ScalarField>,
+    Option<Vec<P::ScalarField>>,
+    bool,
+) {
     let mut pow_univariate = GateSeparatorPolynomial::new(vk.gate_challenges.to_vec());
     let multivariate_n = vk.circuit_size;
     let multivariate_d = get_msb(multivariate_n);
     if multivariate_d == 0 {
         todo!("Number of variables in multivariate is 0.");
     }
-    let libra_challenge: P::ScalarField;
+    let mut libra_challenge = P::ScalarField::ZERO;
     let libra_total_sum: P::ScalarField;
+    let mut target_total_sum = P::ScalarField::ZERO; //??????
+
+    // if Flavor has ZK, the target total sum is corrected by Libra total sum multiplied by the Libra challenge
     if HAS_ZK {
         // get the claimed sum of libra masking multivariate over the hypercube
-        libra_total_sum = transcript.receive_from_prover("Libra:Sum");
+        libra_total_sum = transcript
+            .receive_fr_from_prover::<P>("Libra:Sum".to_string())
+            .expect(&format!("Failed to receive Libra:Sum"));
         // get the challenge for the ZK Sumcheck claim
-        // libra_challenge = transcript->template get_challenge<FF>("Libra:Challenge");
+        libra_challenge = transcript
+            .receive_fr_from_prover::<P>("Libra:Challenge".to_string())
+            .expect(&format!("Failed to receive Libra:Challenge"));
+        target_total_sum += libra_total_sum * libra_challenge;
     };
     let mut multivariate_challenge: Vec<P::ScalarField> =
         Vec::with_capacity(CONST_PROOF_SIZE_LOG_N);
-    let target_total_sum = P::ScalarField::ZERO; //??????
     let mut verified: bool = true;
-    if HAS_ZK{
-        target_total_sum += libra_total_sum * libra_challenge;
-    }
+
     for round_idx in 0..CONST_PROOF_SIZE_LOG_N {
         // TODO make this correct: (receive_from_prover<bb::Univariate<FF, BATCHED_RELATION_PARTIAL_LENGTH>>(round_univariate_label);)
         let round_univariate_label = format!("Sumcheck:univariate_{}", round_idx);
-        let round_univariate = Vec::<P::ScalarField>::with_capacity(multivariate_n as usize);
-        let round_univariate = transcript.receive_from_prover(round_univariate_label);
-        let mut transcript = Poseidon2Transcript::<P::ScalarField>::default();
-        // transcript.add_scalar(round_univariate);
 
-        let round_challenge = transcript.get_challenge();
+        let round_univariate = transcript
+            .receive_fr_vec_from_verifier::<P>(round_univariate_label, multivariate_n as usize)
+            .expect(&format!(
+                "Failed to receive round_univariate with idx {}",
+                round_idx
+            ));
+
+        let round_challenge = transcript.get_challenge::<P>(format!("Sumcheck:u_{}", round_idx));
 
         // no recursive flavor I guess, otherwise we need to make some modifications to the following
         if round_idx < multivariate_d as usize {
@@ -68,33 +72,51 @@ pub fn sumcheck_verify<P: Pairing>(
             multivariate_challenge.push(round_challenge);
         }
     }
-    todo!("new Libra stuff (ZK?)");
-    let libra_evaluations =Vec::<P::ScalarField>::with_capacity(multivariate_d as usize);
+    let mut libra_evaluations = Vec::<P::ScalarField>::with_capacity(multivariate_d as usize);
     let mut full_libra_purported_value = P::ScalarField::ZERO;
     if HAS_ZK {
-    for idx in 0..multivariate_d as usize {
-        libra_evaluations[idx] = transcript.receive_from_prover(format!("libra_evaluation{}", idx));
-        full_libra_purported_value += libra_evaluations[idx];
+        for idx in 0..multivariate_d as usize {
+            libra_evaluations[idx] = transcript
+                .receive_fr_from_prover::<P>(format!("libra_evaluation{}", idx))
+                .expect(&format!(
+                    "Failed to receive libra_evaluations with idx {}",
+                    idx
+                ));
+            full_libra_purported_value += libra_evaluations[idx];
+        }
+        full_libra_purported_value *= libra_challenge;
     }
-    full_libra_purported_value *= libra_challenge;
-    }
-    todo!("purported_evaluations");
-    let purported_evaluations: Vec<P::ScalarField>;
-    todo!("get transcript_evaluations from prover");
-    let transcript_evaluations = transcript.receive_from_prover("transcript_evaluations".to_string());
-    let full_honk_relation_purported_value = compute_full_relation_purported_value(
-        purported_evaluations,
+    todo!("purported evaluations");
+    let purported_evaluations = transcript
+        .receive_fr_vec_from_verifier::<P>("Sumcheck:evaluations".to_string(), NUM_ALL_ENTITIES)
+        .expect(&format!("Failed to receive Sumcheck:evaluations"));
+
+    let transcript_evaluations = transcript
+        .receive_fr_vec_from_verifier::<P>("Sumcheck:evaluations".to_string(), NUM_ALL_ENTITIES)
+        .expect(&format!("Failed to receive Sumcheck:evaluations"));
+    let full_honk_relation_purported_value = compute_full_relation_purported_value::<P>(
+        &purported_evaluations,
         relation_parameters,
         pow_univariate,
         alphas,
-        None // TODOOOOO
+        None, // TODOOOOO
     );
     let checked: bool = full_honk_relation_purported_value == target_total_sum;
     verified = verified && checked;
     if HAS_ZK {
-        todo!(); // For ZK Flavors: the evaluations of Libra univariates are included in the Sumcheck Output
-    };
-    todo!("return multivariate_challenge, purported_evaluations, verified");
+        return (
+            multivariate_challenge,
+            purported_evaluations,
+            Some(libra_evaluations),
+            verified,
+        );
+    }
+    return (
+        multivariate_challenge,
+        purported_evaluations,
+        None,
+        verified,
+    );
 }
 
 fn compute_next_target_sum<P: Pairing>(
@@ -115,12 +137,11 @@ fn check_sum<P: Pairing>(univariate: &[P::ScalarField], target_total_sum: &P::Sc
 }
 
 fn compute_full_relation_purported_value<P: Pairing>(
-    purported_evaluations: Vec<P::ScalarField>,
-    relation_parameters: RelationParameters<P>,
+    purported_evaluations: &Vec<P::ScalarField>,
+    relation_parameters: RelationParameters<P::ScalarField>,
     pow_polynomial: GateSeparatorPolynomial<P::ScalarField>,
     alphas: [P::ScalarField; NUM_ALPHAS],
-    full_libra_purported_value: Option<P::ScalarField>
-
+    full_libra_purported_value: Option<P::ScalarField>,
 ) -> P::ScalarField {
     let mut running_challenge = P::ScalarField::ONE;
     let mut output = P::ScalarField::ZERO;
@@ -130,14 +151,17 @@ fn compute_full_relation_purported_value<P: Pairing>(
         running_challenge,
         &mut output,
     );
+    // Only add `full_libra_purported_value` if ZK is enabled
     if HAS_ZK {
-         output += full_libra_purported_value;
-    };
+        if let Some(value) = full_libra_purported_value {
+            output += value;
+        }
+    }
     output
 }
 fn accumulate_relation_evaluations_without_skipping<P: Pairing>(
     purported_evaluations: Vec<P::ScalarField>,
-    relation_parameters: RelationParameters<P>,
+    relation_parameters: RelationParameters<P::ScalarField>,
     pow_polynomial: GateSeparatorPolynomial<P::ScalarField>,
     relation_evaluations: Vec<P::ScalarField>,
 ) -> P::ScalarField {
