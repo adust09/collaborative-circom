@@ -1,5 +1,8 @@
+use crate::decider::types::ClaimedEvaluations;
 use crate::decider::types::GateSeparatorPolynomial;
 use crate::decider::types::RelationParameters;
+use crate::decider::types::MAX_PARTIAL_RELATION_LENGTH;
+use crate::decider::univariate::Univariate;
 use crate::honk_curve::HonkCurve;
 use crate::transcript::{TranscriptFieldType, TranscriptType};
 use crate::{get_msb, types::VerifyingKey, NUM_ALPHAS};
@@ -13,7 +16,12 @@ pub fn sumcheck_verify<P: HonkCurve<TranscriptFieldType>>(
     relation_parameters: RelationParameters<P::ScalarField>,
     transcript: &mut TranscriptType,
     alphas: [P::ScalarField; NUM_ALPHAS],
-    // gate_challenges: Vec<P::ScalarField>,
+    // claimed_evaluations: ClaimedEvaluations<P::ScalarField>, dont know if i need them
+    relation_evaluations: (
+        &mut Vec<P::ScalarField>,
+        &mut Vec<P::ScalarField>,
+        &mut Vec<P::ScalarField>,
+    ),
     vk: &VerifyingKey<P>,
 ) -> (
     Vec<P::ScalarField>,
@@ -51,22 +59,26 @@ pub fn sumcheck_verify<P: HonkCurve<TranscriptFieldType>>(
         // TODO make this correct: (receive_from_prover<bb::Univariate<FF, BATCHED_RELATION_PARTIAL_LENGTH>>(round_univariate_label);)
         let round_univariate_label = format!("Sumcheck:univariate_{}", round_idx);
 
-        let round_univariate = transcript
-            .receive_fr_vec_from_verifier::<P>(round_univariate_label, multivariate_n as usize)
+        let evaluations = transcript
+            .receive_fr_array_from_verifier::<P, { MAX_PARTIAL_RELATION_LENGTH + 1 }>(
+                round_univariate_label,
+            )
             .expect(&format!(
                 "Failed to receive round_univariate with idx {}",
                 round_idx
             ));
+        let round_univariate =
+            Univariate::<P::ScalarField, { MAX_PARTIAL_RELATION_LENGTH + 1 }>::new(evaluations);
 
         let round_challenge = transcript.get_challenge::<P>(format!("Sumcheck:u_{}", round_idx));
 
         // no recursive flavor I guess, otherwise we need to make some modifications to the following
         if round_idx < multivariate_d as usize {
-            let checked = check_sum::<P>(&round_univariate, &target_total_sum); //round-check_sum?
+            let checked = check_sum::<P>(&round_univariate.evaluations, &target_total_sum); //round-check_sum?
             verified = verified && checked;
             multivariate_challenge.push(round_challenge);
 
-            compute_next_target_sum::<P>(round_univariate.to_vec(), round_challenge); //round.compute_next_target_sum
+            compute_next_target_sum::<P>(round_univariate, round_challenge); //round.compute_next_target_sum
             pow_univariate.partially_evaluate(round_challenge);
         } else {
             multivariate_challenge.push(round_challenge);
@@ -86,44 +98,49 @@ pub fn sumcheck_verify<P: HonkCurve<TranscriptFieldType>>(
         }
         full_libra_purported_value *= libra_challenge;
     }
-    todo!("purported evaluations");
-    let purported_evaluations = transcript
-        .receive_fr_vec_from_verifier::<P>("Sumcheck:evaluations".to_string(), NUM_ALL_ENTITIES)
-        .expect(&format!("Failed to receive Sumcheck:evaluations"));
+    // todo!("I think these come from the below, check again with barretenberg");
+    // let purported_evaluations = transcript
+    //     .receive_fr_vec_from_verifier::<P>("Sumcheck:evaluations".to_string(), NUM_ALL_ENTITIES)
+    //     .expect(&format!("Failed to receive Sumcheck:evaluations"));
 
     let transcript_evaluations = transcript
         .receive_fr_vec_from_verifier::<P>("Sumcheck:evaluations".to_string(), NUM_ALL_ENTITIES)
         .expect(&format!("Failed to receive Sumcheck:evaluations"));
     let full_honk_relation_purported_value = compute_full_relation_purported_value::<P>(
-        &purported_evaluations,
+        &transcript_evaluations,
         relation_parameters,
         pow_univariate,
+        relation_evaluations,
         alphas,
-        None, // TODOOOOO
+        if HAS_ZK {
+            Some(full_libra_purported_value)
+        } else {
+            None
+        },
     );
     let checked: bool = full_honk_relation_purported_value == target_total_sum;
     verified = verified && checked;
     if HAS_ZK {
         return (
             multivariate_challenge,
-            purported_evaluations,
+            transcript_evaluations,
             Some(libra_evaluations),
             verified,
         );
     }
     return (
         multivariate_challenge,
-        purported_evaluations,
+        transcript_evaluations,
         None,
         verified,
     );
 }
 
 fn compute_next_target_sum<P: Pairing>(
-    univariate: Vec<P::ScalarField>,
+    mut univariate: Univariate<P::ScalarField, { MAX_PARTIAL_RELATION_LENGTH + 1 }>,
     round_challenge: P::ScalarField,
 ) -> P::ScalarField {
-    todo!("return evalution of univariate on round_challenge");
+    univariate.evaluate(round_challenge)
 }
 
 fn check_sum<P: Pairing>(univariate: &[P::ScalarField], target_total_sum: &P::ScalarField) -> bool {
@@ -139,13 +156,24 @@ fn check_sum<P: Pairing>(univariate: &[P::ScalarField], target_total_sum: &P::Sc
 fn compute_full_relation_purported_value<P: Pairing>(
     purported_evaluations: &Vec<P::ScalarField>,
     relation_parameters: RelationParameters<P::ScalarField>,
-    pow_polynomial: GateSeparatorPolynomial<P::ScalarField>,
+    gate_sparators: GateSeparatorPolynomial<P::ScalarField>,
+    relation_evaluations: (
+        &mut Vec<P::ScalarField>,
+        &mut Vec<P::ScalarField>,
+        &mut Vec<P::ScalarField>,
+    ),
     alphas: [P::ScalarField; NUM_ALPHAS],
     full_libra_purported_value: Option<P::ScalarField>,
 ) -> P::ScalarField {
-    let mut running_challenge = P::ScalarField::ONE;
+    accumulate_relation_evaluations_without_skipping::<P>(
+        purported_evaluations,
+        relation_parameters,
+        &relation_evaluations,
+        gate_sparators.partial_evaluation_result,
+    );
+    let running_challenge = P::ScalarField::ONE;
     let mut output = P::ScalarField::ZERO;
-    scale_by_challenge_and_batch(
+    scale_by_challenge_and_batch::<P>(
         relation_evaluations,
         &alphas,
         running_challenge,
@@ -160,10 +188,14 @@ fn compute_full_relation_purported_value<P: Pairing>(
     output
 }
 fn accumulate_relation_evaluations_without_skipping<P: Pairing>(
-    purported_evaluations: Vec<P::ScalarField>,
+    purported_evaluations: &Vec<P::ScalarField>,
     relation_parameters: RelationParameters<P::ScalarField>,
-    pow_polynomial: GateSeparatorPolynomial<P::ScalarField>,
-    relation_evaluations: Vec<P::ScalarField>,
+    relation_evaluations: &(
+        &mut Vec<P::ScalarField>,
+        &mut Vec<P::ScalarField>,
+        &mut Vec<P::ScalarField>,
+    ),
+    partial_evaluation_result: P::ScalarField,
 ) -> P::ScalarField {
     todo!()
 }

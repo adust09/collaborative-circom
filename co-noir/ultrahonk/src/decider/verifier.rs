@@ -36,12 +36,16 @@ impl<P: HonkCurve<TranscriptFieldType>> DeciderVerifier<P> {
     }
     pub fn verify(
         self,
-        honk_proof: PhantomData<P>,
         vk: VerifyingKey<P>,
         public_inputs: Vec<P::ScalarField>,
         mut transcript: &mut TranscriptType,
         relation_parameters: RelationParameters<P::ScalarField>, //weg damit
         witness_comms: WitnessCommitments<P>,                    //weg damit
+        relation_evaluations: (
+            &mut Vec<P::ScalarField>,
+            &mut Vec<P::ScalarField>,
+            &mut Vec<P::ScalarField>,
+        ),
     ) -> bool {
         tracing::trace!("Decider verification");
         let log_circuit_size = get_msb(vk.circuit_size.clone());
@@ -57,6 +61,7 @@ impl<P: HonkCurve<TranscriptFieldType>> DeciderVerifier<P> {
                 relation_parameters,
                 &mut transcript,
                 oink_output.alphas,
+                relation_evaluations,
                 &vk,
             );
         // to do: build sumcheck verifier, returns (multivariate_challenge, claimed_evaluations, sumcheck_verified)
