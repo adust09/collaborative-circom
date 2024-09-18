@@ -17,6 +17,10 @@ use std::io::SeekFrom;
 use std::marker::PhantomData;
 use std::path::Path;
 
+use crate::types::ProverCrs;
+
+pub type CrsParser<P> = NewFileStructure<P>;
+
 const BLAKE2B_CHECKSUM_LENGTH: usize = 64;
 #[derive(Debug, Default)]
 struct Manifest {
@@ -33,8 +37,19 @@ struct Manifest {
 // the new one (when installing) barretenberg can be found under ~/.bb-crs (or downloaded from https://aztec-ignition.s3.amazonaws.com/MAIN%20IGNITION/flat/g1.dat or g2.dat, but the first one is 6 gb large)
 // the older ones can be downloaded with ~/aztec-packages/barretenberg/cpp/srs_db/download_srs.sh (iirc), these are separated into 20 files, for info see also ~/aztec-packages/barretenberg/cpp/srs_db/transcript_spec.md
 
-struct NewFileStructure<P: Pairing> {
+pub struct NewFileStructure<P: Pairing> {
     phantom_data: PhantomData<P>,
+}
+
+impl<P: Pairing> NewFileStructure<P> {
+    pub fn get_crs(path_g1: &str, path_g2: &str) -> ProverCrs<P> {
+        let degree = 1000;
+        let mut monomials: Vec<P::G1Affine> = vec![P::G1Affine::default(); degree + 2];
+        let mut g2_x = P::G2Affine::default();
+        Self::read_transcript(&mut monomials, &mut g2_x, degree, path_g1, path_g2).unwrap();
+
+        ProverCrs { monomials, g2_x }
+    }
 }
 
 struct OldFileStructure<P: Pairing> {

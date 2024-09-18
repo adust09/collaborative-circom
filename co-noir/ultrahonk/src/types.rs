@@ -15,6 +15,7 @@ pub struct ProvingKey<P: Pairing> {
 
 pub struct ProverCrs<P: Pairing> {
     pub monomials: Vec<P::G1Affine>,
+    pub g2_x: P::G2Affine,
 }
 
 pub struct HonkProof<F: PrimeField> {
