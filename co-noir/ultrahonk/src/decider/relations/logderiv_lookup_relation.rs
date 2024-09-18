@@ -19,6 +19,14 @@ pub(crate) struct LogDerivLookupRelationEvals<F: PrimeField> {
     pub(crate) r0: F,
     pub(crate) r1: F,
 }
+impl<F: PrimeField> LogDerivLookupRelationEvals<F> {
+    pub(crate) fn zero() -> Self {
+        LogDerivLookupRelationEvals {
+            r0: F::zero(),
+            r1: F::zero(),
+        }
+    }
+}
 
 impl<F: PrimeField> LogDerivLookupRelationAcc<F> {
     pub fn scale(&mut self, elements: &[F]) {

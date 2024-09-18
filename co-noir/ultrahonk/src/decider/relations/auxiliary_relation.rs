@@ -38,6 +38,18 @@ pub(crate) struct AuxiliaryRelationEvals<F: PrimeField> {
     pub(crate) r4: F,
     pub(crate) r5: F,
 }
+impl<F: PrimeField> AuxiliaryRelationEvals<F> {
+    pub(crate) fn zero() -> Self {
+        AuxiliaryRelationEvals {
+            r0: F::zero(),
+            r1: F::zero(),
+            r2: F::zero(),
+            r3: F::zero(),
+            r4: F::zero(),
+            r5: F::zero(),
+        }
+    }
+}
 
 impl<F: PrimeField> AuxiliaryRelationAcc<F> {
     pub fn scale(&mut self, elements: &[F]) {

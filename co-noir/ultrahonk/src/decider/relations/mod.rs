@@ -7,7 +7,7 @@ pub(crate) mod poseidon2_external_relation;
 pub(crate) mod poseidon2_internal_relation;
 pub(crate) mod ultra_arithmetic_relation;
 
-use crate::NUM_ALPHAS;
+use crate::{honk_curve::HonkCurve, transcript::TranscriptFieldType};
 
 use super::{
     sumcheck::sumcheck_round::SumcheckRoundOutput,
@@ -163,8 +163,21 @@ impl<F: PrimeField> AllRelationAcc<F> {
     }
 }
 impl<F: PrimeField> AllRelationEvaluations<F> {
-    fn scale_and_batch_elements_all(
-        mut self,
+    pub(crate) fn zero() -> Self {
+        AllRelationEvaluations {
+            r_arith: UltraArithmeticRelationEvals::zero(),
+            r_perm: UltraPermutationRelationEvals::zero(),
+            r_delta: DeltaRangeConstraintRelationEvals::zero(),
+            r_elliptic: EllipticRelationEvals::zero(),
+            r_aux: AuxiliaryRelationEvals::zero(),
+            r_lookup: LogDerivLookupRelationEvals::zero(),
+            r_pos_ext: Poseidon2ExternalRelationEvals::zero(),
+            r_pos_int: Poseidon2InternalRelationEvals::zero(),
+        }
+    }
+
+    pub(crate) fn scale_and_batch_elements_all(
+        &mut self,
         current_scalar: &mut F,
         running_challenge: &mut F,
         result: &mut F,

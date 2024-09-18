@@ -3,6 +3,7 @@ use crate::decider::types::{ClaimedEvaluations, RelationParameters};
 use crate::decider::{types::ProverUnivariates, univariate::Univariate};
 use crate::honk_curve::HonkCurve;
 use crate::transcript::TranscriptFieldType;
+use ark_ec::pairing::Pairing;
 use ark_ff::{Field, PrimeField, Zero};
 
 #[derive(Clone, Debug, Default)]
@@ -13,6 +14,14 @@ pub(crate) struct EllipticRelationAcc<F: PrimeField> {
 pub(crate) struct EllipticRelationEvals<F: PrimeField> {
     pub(crate) r0: F,
     pub(crate) r1: F,
+}
+impl<F: PrimeField> EllipticRelationEvals<F> {
+    pub(crate) fn zero() -> Self {
+        EllipticRelationEvals {
+            r0: F::zero(),
+            r1: F::zero(),
+        }
+    }
 }
 
 impl<F: PrimeField> EllipticRelationAcc<F> {
@@ -149,12 +158,14 @@ impl EllipticRelation {
             univariate_accumulator.r1.evaluations[i] += tmp_2.evaluations[i];
         }
     }
-    pub(crate) fn accumulate_verify<P: HonkCurve<TranscriptFieldType>>(
+    pub(crate) fn verify_accumulate<P: HonkCurve<TranscriptFieldType>>(
         univariate_accumulator: &mut EllipticRelationEvals<P::ScalarField>,
         input: &ClaimedEvaluations<P::ScalarField>,
         _relation_parameters: &RelationParameters<P::ScalarField>,
         scaling_factor: &P::ScalarField,
-    ) {
+    ) where
+        P::ScalarField: PrimeField,
+    {
         tracing::trace!("Accumulate EllipticRelation");
 
         // TODO(@zac - williamson #2608 when Pedersen refactor is completed,

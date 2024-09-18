@@ -1,27 +1,33 @@
-use super::super::{
-    types::{
-        GateSeparatorPolynomial, MemoryElements, RelationParameters, MAX_PARTIAL_RELATION_LENGTH,
+use super::{
+    super::{
+        types::{
+            GateSeparatorPolynomial, MemoryElements, RelationParameters,
+            MAX_PARTIAL_RELATION_LENGTH,
+        },
+        univariate::Univariate,
     },
-    univariate::Univariate,
+    verifier::HAS_ZK,
 };
 use crate::{
     decider::{
+        self,
         relations::{
             auxiliary_relation::AuxiliaryRelation,
             delta_range_constraint_relation::DeltaRangeConstraintRelation,
-            elliptic_relation::{EllipticRelation, EllipticRelationAcc},
+            elliptic_relation::{EllipticRelation, EllipticRelationAcc, EllipticRelationEvals},
             logderiv_lookup_relation::LogDerivLookupRelation,
             permutation_relation::UltraPermutationRelation,
             poseidon2_external_relation::Poseidon2ExternalRelation,
             poseidon2_internal_relation::Poseidon2InternalRelation,
             ultra_arithmetic_relation::UltraArithmeticRelation,
-            AllRelationAcc, Relation,
+            AllRelationAcc, AllRelationEvaluations, Relation,
         },
-        types::ProverUnivariates,
+        types::{ClaimedEvaluations, ProverUnivariates},
     },
     honk_curve::HonkCurve,
     transcript::TranscriptFieldType,
     types::Polynomials,
+    NUM_ALPHAS,
 };
 use ark_ff::PrimeField;
 
@@ -31,6 +37,69 @@ pub(crate) struct SumcheckRound {
     pub(crate) round_size: usize,
 }
 
+pub(crate) struct SumcheckVerifierRound<F: PrimeField> {
+    pub(crate) sumcheck_round: SumcheckRound,
+    pub(crate) target_total_sum: F,
+    pub(crate) round_failed: bool,
+}
+
+impl<F: PrimeField> SumcheckVerifierRound<F> {
+    pub(crate) fn new(initial_round_size: usize) -> Self {
+        Self {
+            sumcheck_round: SumcheckRound {
+                round_size: initial_round_size,
+            },
+            target_total_sum: F::ZERO,
+            round_failed: false,
+        }
+    }
+    pub fn compute_next_target_sum(
+        mut self, // Move self instead of borrowing
+        mut univariate: Univariate<F, { MAX_PARTIAL_RELATION_LENGTH + 1 }>,
+        round_challenge: F,
+    ) {
+        self.target_total_sum = univariate.evaluate(round_challenge);
+    }
+    pub fn check_sum(mut self, univariate: &[F]) -> bool {
+        let total_sum = univariate[0] + univariate[1]; //TODO Are these really the values at 0 and 1?
+        let sumcheck_round_failed = self.target_total_sum != total_sum;
+
+        self.round_failed = self.round_failed || sumcheck_round_failed;
+        !sumcheck_round_failed
+    }
+    fn compute_full_relation_purported_value<P: HonkCurve<TranscriptFieldType>>(
+        mut self,
+        purported_evaluations: &ClaimedEvaluations<F>,
+        relation_parameters: RelationParameters<F>,
+        gate_sparators: GateSeparatorPolynomial<F>,
+        relation_evaluations: &mut AllRelationEvaluations<F>,
+        alphas: [F; NUM_ALPHAS],
+        full_libra_purported_value: Option<F>,
+    ) -> F {
+        decider::sumcheck::sumcheck_round::SumcheckRound::accumulate_relation_evaluations::<P>(
+            relation_evaluations,
+            purported_evaluations,
+            &relation_parameters,
+            &gate_sparators.partial_evaluation_result,
+        );
+        let running_challenge = F::ONE;
+        let mut output = F::ZERO;
+        //todo!("FIX scale_and_batch_elements_all to take an array of alphas");
+        AllRelationEvaluations::<F>::scale_and_batch_elements_all(
+            relation_evaluations,
+            &mut &alphas[0],
+            &mut running_challenge,
+            &mut output,
+        );
+        // Only add `full_libra_purported_value` if ZK is enabled
+        if HAS_ZK {
+            if let Some(value) = full_libra_purported_value {
+                output += value;
+            }
+        }
+        output
+    }
+}
 impl SumcheckRound {
     pub(crate) fn new(initial_round_size: usize) -> Self {
         SumcheckRound {
@@ -133,6 +202,23 @@ impl SumcheckRound {
             scaling_factor,
         );
     }
+    fn accumulate_one_relation_evaluations<F: PrimeField, R: Relation<F>>(
+        univariate_accumulator: &mut R::AccVerify,
+        extended_edges: &ClaimedEvaluations<F>,
+        relation_parameters: &RelationParameters<F>,
+        scaling_factor: &F,
+    ) {
+        // if R::SKIPPABLE && R::skip(extended_edges) {
+        //     return;
+        // }
+
+        R::verify_accumulate(
+            univariate_accumulator,
+            extended_edges,
+            relation_parameters,
+            scaling_factor,
+        );
+    }
 
     fn accumulate_elliptic_curve_relation_univariates<P: HonkCurve<TranscriptFieldType>>(
         univariate_accumulator: &mut EllipticRelationAcc<P::ScalarField>,
@@ -145,6 +231,23 @@ impl SumcheckRound {
         }
 
         EllipticRelation::accumulate::<P>(
+            univariate_accumulator,
+            extended_edges,
+            relation_parameters,
+            scaling_factor,
+        );
+    }
+    fn accumulate_elliptic_curve_relation_evaluations<P: HonkCurve<TranscriptFieldType>>(
+        univariate_accumulator: &mut EllipticRelationEvals<P::ScalarField>,
+        extended_edges: &ClaimedEvaluations<P::ScalarField>,
+        relation_parameters: &RelationParameters<P::ScalarField>,
+        scaling_factor: &P::ScalarField,
+    ) {
+        // if EllipticRelation::SKIPPABLE && EllipticRelation::skip(extended_edges) {
+        //     return;
+        // }
+
+        EllipticRelation::verify_accumulate::<P>(
             univariate_accumulator,
             extended_edges,
             relation_parameters,
@@ -203,6 +306,64 @@ impl SumcheckRound {
             scaling_factor,
         );
         Self::accumulate_one_relation_univariates::<P::ScalarField, Poseidon2InternalRelation>(
+            &mut univariate_accumulators.r_pos_int,
+            extended_edges,
+            relation_parameters,
+            scaling_factor,
+        );
+    }
+
+    fn accumulate_relation_evaluations<P: HonkCurve<TranscriptFieldType>>(
+        univariate_accumulators: &mut AllRelationEvaluations<P::ScalarField>,
+        extended_edges: &ClaimedEvaluations<P::ScalarField>,
+        relation_parameters: &RelationParameters<P::ScalarField>,
+        scaling_factor: &P::ScalarField,
+    ) {
+        tracing::trace!("Accumulate relation evaluations");
+
+        Self::accumulate_one_relation_evaluations::<P::ScalarField, UltraArithmeticRelation>(
+            &mut univariate_accumulators.r_arith,
+            extended_edges,
+            relation_parameters,
+            scaling_factor,
+        );
+        Self::accumulate_one_relation_evaluations::<P::ScalarField, UltraPermutationRelation>(
+            &mut univariate_accumulators.r_perm,
+            extended_edges,
+            relation_parameters,
+            scaling_factor,
+        );
+        Self::accumulate_one_relation_evaluations::<P::ScalarField, DeltaRangeConstraintRelation>(
+            &mut univariate_accumulators.r_delta,
+            extended_edges,
+            relation_parameters,
+            scaling_factor,
+        );
+        Self::accumulate_elliptic_curve_relation_evaluations::<P>(
+            &mut univariate_accumulators.r_elliptic,
+            extended_edges,
+            relation_parameters,
+            scaling_factor,
+        );
+        Self::accumulate_one_relation_evaluations::<P::ScalarField, AuxiliaryRelation>(
+            &mut univariate_accumulators.r_aux,
+            extended_edges,
+            relation_parameters,
+            scaling_factor,
+        );
+        Self::accumulate_one_relation_evaluations::<P::ScalarField, LogDerivLookupRelation>(
+            &mut univariate_accumulators.r_lookup,
+            extended_edges,
+            relation_parameters,
+            scaling_factor,
+        );
+        Self::accumulate_one_relation_evaluations::<P::ScalarField, Poseidon2ExternalRelation>(
+            &mut univariate_accumulators.r_pos_ext,
+            extended_edges,
+            relation_parameters,
+            scaling_factor,
+        );
+        Self::accumulate_one_relation_evaluations::<P::ScalarField, Poseidon2InternalRelation>(
             &mut univariate_accumulators.r_pos_int,
             extended_edges,
             relation_parameters,

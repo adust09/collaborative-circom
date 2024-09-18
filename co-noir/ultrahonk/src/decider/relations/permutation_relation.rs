@@ -16,6 +16,15 @@ pub(crate) struct UltraPermutationRelationEvals<F: PrimeField> {
     pub(crate) r0: F,
     pub(crate) r1: F,
 }
+impl<F: PrimeField> UltraPermutationRelationEvals<F> {
+    pub(crate) fn zero() -> Self {
+        UltraPermutationRelationEvals {
+            r0: F::zero(),
+            r1: F::zero(),
+        
+        }
+    }
+}
 
 impl<F: PrimeField> UltraPermutationRelationAcc<F> {
     pub fn scale(&mut self, elements: &[F]) {

@@ -16,6 +16,14 @@ pub(crate) struct UltraArithmeticRelationEvals<F: PrimeField> {
     pub(crate) r0: F,
     pub(crate) r1: F,
 }
+impl<F: PrimeField> UltraArithmeticRelationEvals<F> {
+    pub(crate) fn zero() -> Self {
+        UltraArithmeticRelationEvals {
+            r0: F::zero(),
+            r1: F::zero(),
+        }
+    }
+}
 
 impl<F: PrimeField> UltraArithmeticRelationAcc<F> {
     pub fn scale(&mut self, elements: &[F]) {

@@ -1,5 +1,4 @@
-use crate::decider::relations::AllRelationAcc;
-use crate::decider::relations::Relation;
+use crate::decider::relations::AllRelationEvaluations;
 use crate::decider::types::ClaimedEvaluations;
 use crate::decider::types::GateSeparatorPolynomial;
 use crate::decider::types::RelationParameters;
@@ -11,6 +10,8 @@ use crate::{get_msb, types::VerifyingKey, NUM_ALPHAS};
 use crate::{CONST_PROOF_SIZE_LOG_N, NUM_ALL_ENTITIES};
 use ark_ec::pairing::Pairing;
 use ark_ff::Field;
+
+use super::sumcheck_round::SumcheckVerifierRound;
 
 pub const HAS_ZK: bool = false;
 
@@ -32,14 +33,16 @@ pub fn sumcheck_verify<P: HonkCurve<TranscriptFieldType>>(
     bool,
 ) {
     let mut pow_univariate = GateSeparatorPolynomial::new(vk.gate_challenges.to_vec());
+    let relation_evaluations=AllRelationEvaluations::<P::ScalarField>::zero();
     let multivariate_n = vk.circuit_size;
     let multivariate_d = get_msb(multivariate_n);
     if multivariate_d == 0 {
         todo!("Number of variables in multivariate is 0.");
     }
+    let mut sum_check_round = SumcheckVerifierRound::new(multivariate_n as usize);
     let mut libra_challenge = P::ScalarField::ZERO;
     let libra_total_sum: P::ScalarField;
-    let mut target_total_sum = P::ScalarField::ZERO; //??????
+    
 
     // if Flavor has ZK, the target total sum is corrected by Libra total sum multiplied by the Libra challenge
     if HAS_ZK {
@@ -51,7 +54,7 @@ pub fn sumcheck_verify<P: HonkCurve<TranscriptFieldType>>(
         libra_challenge = transcript
             .receive_fr_from_prover::<P>("Libra:Challenge".to_string())
             .unwrap_or_else(|_| panic!("Failed to receive Libra:Challenge"));
-        target_total_sum += libra_total_sum * libra_challenge;
+        sum_check_round.target_total_sum += libra_total_sum * libra_challenge;
     };
     let mut multivariate_challenge: Vec<P::ScalarField> =
         Vec::with_capacity(CONST_PROOF_SIZE_LOG_N);
@@ -75,11 +78,11 @@ pub fn sumcheck_verify<P: HonkCurve<TranscriptFieldType>>(
 
         // no recursive flavor I guess, otherwise we need to make some modifications to the following
         if round_idx < multivariate_d as usize {
-            let checked = check_sum::<P>(&round_univariate.evaluations, &target_total_sum); //round-check_sum?
+            let checked = sum_check_round.check_sum(&round_univariate.evaluations); //round-check_sum?
             verified = verified && checked;
             multivariate_challenge.push(round_challenge);
 
-            compute_next_target_sum::<P>(round_univariate, round_challenge); //round.compute_next_target_sum
+            sum_check_round.compute_next_target_sum(round_univariate, round_challenge); //round.compute_next_target_sum
             pow_univariate.partially_evaluate(round_challenge);
         } else {
             multivariate_challenge.push(round_challenge);
@@ -122,7 +125,7 @@ pub fn sumcheck_verify<P: HonkCurve<TranscriptFieldType>>(
         },
     );
 
-    let checked: bool = full_honk_relation_purported_value == target_total_sum;
+    let checked: bool = full_honk_relation_purported_value == sum_check_round.target_total_sum;
     verified = verified && checked;
     if HAS_ZK {
         return (
@@ -140,44 +143,24 @@ pub fn sumcheck_verify<P: HonkCurve<TranscriptFieldType>>(
     );
 }
 
-fn compute_next_target_sum<P: Pairing>(
-    mut univariate: Univariate<P::ScalarField, { MAX_PARTIAL_RELATION_LENGTH + 1 }>,
-    round_challenge: P::ScalarField,
-) -> P::ScalarField {
-    univariate.evaluate(round_challenge)
-}
-
-fn check_sum<P: Pairing>(univariate: &[P::ScalarField], target_total_sum: &P::ScalarField) -> bool {
-    let total_sum = univariate[0] + univariate[1];
-    let mut sumcheck_round_failed = false;
-    sumcheck_round_failed = target_total_sum != &total_sum;
-    todo!("where does round_failed come from? is false per default, where should we save this? in a struct? I guess we maybe need something like a round struct");
-    let mut round_failed = false;
-    round_failed = round_failed || sumcheck_round_failed;
-    !sumcheck_round_failed
-}
 
 fn compute_full_relation_purported_value<P: Pairing>(
     purported_evaluations: &Vec<P::ScalarField>,
     relation_parameters: RelationParameters<P::ScalarField>,
     gate_sparators: GateSeparatorPolynomial<P::ScalarField>,
-    relation_evaluations: (
-        &mut Vec<P::ScalarField>,
-        &mut Vec<P::ScalarField>,
-        &mut Vec<P::ScalarField>,
-    ),
+    relation_evaluations: AllRelationEvaluations<P::ScalarField>,
     alphas: [P::ScalarField; NUM_ALPHAS],
     full_libra_purported_value: Option<P::ScalarField>,
 ) -> P::ScalarField {
-    accumulate_relation_evaluations_without_skipping::<P>(
-        purported_evaluations,
+    
+    accumulate_relation_evaluations(purported_evaluations,
         relation_parameters,
         &relation_evaluations,
         gate_sparators.partial_evaluation_result,
     );
     let running_challenge = P::ScalarField::ONE;
     let mut output = P::ScalarField::ZERO;
-    scale_by_challenge_and_batch::<P>(
+    AllRelationEvaluations<P::ScalarField>::scale_and_batch_elements_all::<P::ScalarField>(
         relation_evaluations,
         &alphas,
         running_challenge,
@@ -191,41 +174,8 @@ fn compute_full_relation_purported_value<P: Pairing>(
     }
     output
 }
-fn accumulate_relation_evaluations_without_skipping<P: Pairing>(
-    purported_evaluations: &Vec<P::ScalarField>,
-    relation_parameters: RelationParameters<P::ScalarField>,
-    partial_evaluation_result: P::ScalarField,
-) -> P::ScalarField {
-    todo!()
-}
 
-fn accumulate_single_relation<P: Pairing>(
-    PolynomialEvaluations: &Vec<P::ScalarField>,
-    // RelationEvaluations& relation_evaluations, maybe relation type
-    relation_parameters: RelationParameters<P::ScalarField>,
-    partial_evaluation_result: P::ScalarField,
-) {
-}
 
-fn scale_by_challenge_and_batch<P: Pairing, R: Relation<P::ScalarField>>(
-    tuple: (
-        &mut Vec<P::ScalarField>,
-        &mut Vec<P::ScalarField>,
-        &mut Vec<P::ScalarField>,
-    ),
-    challenge: &[P::ScalarField; NUM_ALPHAS],
-    mut current_scalar: P::ScalarField,
-    result: &mut P::ScalarField,
-) -> P::ScalarField {
-    let (vec1, vec2, vec3) = tuple;
-    for vec in [&mut *vec1, &mut *vec2, &mut *vec3].iter_mut() {
-        for entry in vec.iter() {
-            *result += *entry * current_scalar;
-            for &alpha in challenge.iter() {
-                current_scalar *= alpha;
-            }
-        }
-    }
 
-    *result
-}
+
+

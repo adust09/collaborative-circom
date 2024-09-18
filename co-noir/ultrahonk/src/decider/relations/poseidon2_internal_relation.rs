@@ -44,6 +44,16 @@ pub(crate) struct Poseidon2InternalRelationEvals<F: PrimeField> {
     pub(crate) r2: F,
     pub(crate) r3: F,
 }
+impl<F: PrimeField> Poseidon2InternalRelationEvals<F> {
+    pub(crate) fn zero() -> Self {
+        Poseidon2InternalRelationEvals {
+            r0: F::zero(),
+            r1: F::zero(),
+            r2: F::zero(),
+            r3: F::zero(),
+        }
+    }
+}
 
 impl<F: PrimeField> Poseidon2InternalRelationAcc<F> {
     pub fn scale(&mut self, elements: &[F]) {

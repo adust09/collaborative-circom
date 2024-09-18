@@ -24,6 +24,16 @@ pub(crate) struct DeltaRangeConstraintRelationEvals<F: PrimeField> {
     pub(crate) r2: F,
     pub(crate) r3: F,
 }
+impl<F: PrimeField> DeltaRangeConstraintRelationEvals<F> {
+    pub(crate) fn zero() -> Self {
+        DeltaRangeConstraintRelationEvals {
+            r0: F::zero(),
+            r1: F::zero(),
+            r2: F::zero(),
+            r3: F::zero(),
+        }
+    }
+}
 
 impl<F: PrimeField> DeltaRangeConstraintRelationAcc<F> {
     pub fn scale(&mut self, elements: &[F]) {
