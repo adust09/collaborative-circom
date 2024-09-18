@@ -1,7 +1,9 @@
 use super::Relation;
 use crate::decider::{
     sumcheck::sumcheck_round::SumcheckRoundOutput,
-    types::{ProverUnivariates, RelationParameters, MAX_PARTIAL_RELATION_LENGTH},
+    types::{
+        ClaimedEvaluations, ProverUnivariates, RelationParameters, MAX_PARTIAL_RELATION_LENGTH,
+    },
     univariate::Univariate,
 };
 use ark_ff::{PrimeField, Zero};
@@ -10,6 +12,12 @@ use ark_ff::{PrimeField, Zero};
 pub(crate) struct LogDerivLookupRelationAcc<F: PrimeField> {
     pub(crate) r0: Univariate<F, 5>,
     pub(crate) r1: Univariate<F, 5>,
+}
+#[derive(Clone, Debug, Default)]
+
+pub(crate) struct LogDerivLookupRelationEvals<F: PrimeField> {
+    pub(crate) r0: F,
+    pub(crate) r1: F,
 }
 
 impl<F: PrimeField> LogDerivLookupRelationAcc<F> {
@@ -57,11 +65,51 @@ impl LogDerivLookupRelation {
 
         -(row_has_write.to_owned() * row_has_read) + row_has_write + row_has_read
     }
+    fn compute_inverse_exists_verifier<F: PrimeField>(input: &ClaimedEvaluations<F>) -> F {
+        let row_has_write = input.polys.witness.lookup_read_tags();
+        let row_has_read = input.polys.precomputed.q_lookup();
+
+        -(row_has_write.to_owned() * row_has_read) + row_has_write + row_has_read
+    }
 
     fn compute_read_term<F: PrimeField>(
         input: &ProverUnivariates<F>,
         relation_parameters: &RelationParameters<F>,
     ) -> Univariate<F, MAX_PARTIAL_RELATION_LENGTH> {
+        let gamma = &relation_parameters.gamma;
+        let eta_1 = &relation_parameters.eta_1;
+        let eta_2 = &relation_parameters.eta_2;
+        let eta_3 = &relation_parameters.eta_3;
+        let w_1 = input.polys.witness.w_l();
+        let w_2 = input.polys.witness.w_r();
+        let w_3 = input.polys.witness.w_o();
+        let w_1_shift = input.polys.shifted_witness.w_l();
+        let w_2_shift = input.polys.shifted_witness.w_r();
+        let w_3_shift = input.polys.shifted_witness.w_o();
+        let table_index = input.polys.precomputed.q_o();
+        let negative_column_1_step_size = input.polys.precomputed.q_r();
+        let negative_column_2_step_size = input.polys.precomputed.q_m();
+        let negative_column_3_step_size = input.polys.precomputed.q_c();
+
+        // The wire values for lookup gates are accumulators structured in such a way that the differences w_i -
+        // step_size*w_i_shift result in values present in column i of a corresponding table. See the documentation in
+        // method get_lookup_accumulators() in  for a detailed explanation.
+        let derived_table_entry_1 =
+            w_1.to_owned() + gamma + negative_column_1_step_size.to_owned() * w_1_shift;
+        let derived_table_entry_2 = negative_column_2_step_size.to_owned() * w_2_shift + w_2;
+        let derived_table_entry_3 = negative_column_3_step_size.to_owned() * w_3_shift + w_3;
+
+        // (w_1 + \gamma q_2*w_1_shift) + η(w_2 + q_m*w_2_shift) + η₂(w_3 + q_c*w_3_shift) + η₃q_index.
+        // deg 2 or 3
+        derived_table_entry_1
+            + derived_table_entry_2 * eta_1
+            + derived_table_entry_3 * eta_2
+            + table_index.to_owned() * eta_3
+    }
+    fn compute_read_term_verifier<F: PrimeField>(
+        input: &ClaimedEvaluations<F>,
+        relation_parameters: &RelationParameters<F>,
+    ) -> F {
         let gamma = &relation_parameters.gamma;
         let eta_1 = &relation_parameters.eta_1;
         let eta_2 = &relation_parameters.eta_2;
@@ -114,10 +162,31 @@ impl LogDerivLookupRelation {
             + table_3.to_owned() * eta_2
             + table_4.to_owned() * eta_3
     }
+    fn compute_write_term_verifier<F: PrimeField>(
+        input: &ClaimedEvaluations<F>,
+        relation_parameters: &RelationParameters<F>,
+    ) -> F {
+        let gamma = &relation_parameters.gamma;
+        let eta_1 = &relation_parameters.eta_1;
+        let eta_2 = &relation_parameters.eta_2;
+        let eta_3 = &relation_parameters.eta_3;
+
+        let table_1 = input.polys.precomputed.table_1();
+        let table_2 = input.polys.precomputed.table_2();
+        let table_3 = input.polys.precomputed.table_3();
+        let table_4 = input.polys.precomputed.table_4();
+
+        table_1.to_owned()
+            + gamma
+            + table_2.to_owned() * eta_1
+            + table_3.to_owned() * eta_2
+            + table_4.to_owned() * eta_3
+    }
 }
 
 impl<F: PrimeField> Relation<F> for LogDerivLookupRelation {
     type Acc = LogDerivLookupRelationAcc<F>;
+    type AccVerify = LogDerivLookupRelationEvals<F>;
     const SKIPPABLE: bool = true;
 
     fn skip(input: &ProverUnivariates<F>) -> bool {
@@ -197,6 +266,53 @@ impl<F: PrimeField> Relation<F> for LogDerivLookupRelation {
         let tmp = read_inverse * read_selector - write_inverse * read_counts; // Deg 4 (5)
         for i in 0..univariate_accumulator.r1.evaluations.len() {
             univariate_accumulator.r1.evaluations[i] += tmp.evaluations[i];
+        }
+    }
+
+    fn verify_accumulate(
+        univariate_accumulator: &mut Self::AccVerify,
+        input: &crate::decider::types::ClaimedEvaluations<F>,
+        relation_parameters: &RelationParameters<F>,
+        scaling_factor: &F,
+    ) {
+        tracing::trace!("Accumulate LogDerivLookupRelation");
+
+        let inverses = input.memory.lookup_inverses(); // Degree 1
+        let read_counts = input.polys.witness.lookup_read_counts(); // Degree 1
+        let read_selector = input.polys.precomputed.q_lookup(); // Degree 1
+
+        let inverse_exists = Self::compute_inverse_exists_verifier(input); // Degree 2
+        let read_term = Self::compute_read_term_verifier(input, relation_parameters); // Degree 2 (3)
+        let write_term = Self::compute_write_term_verifier(input, relation_parameters); // Degree 1 (2)
+        let write_inverse = read_term.to_owned() * inverses; // Degree 3 (4)
+        let read_inverse = write_term.to_owned() * inverses; // Degree 2 (3)
+
+        // Establish the correctness of the polynomial of inverses I. Note: inverses is computed so that the value is 0
+        // if !inverse_exists.
+        // Degrees:                     2 (3)       1 (2)        1              1
+        let tmp = (read_term * write_term * inverses - inverse_exists) * scaling_factor; // Deg 4 (6)
+        univariate_accumulator.r0 += tmp;
+
+        ///////////////////////////////////////////////////////////////////////
+
+        // Establish validity of the read. Note: no scaling factor here since this constraint is 'linearly dependent,
+        // i.e. enforced across the entire trace, not on a per-row basis.
+        // Degrees:                       1            2 (3)            1            3 (4)
+        let tmp = read_inverse * read_selector - write_inverse * read_counts; // Deg 4 (5)
+        univariate_accumulator.r1 += tmp;
+    }
+
+    fn scale_and_batch_elements(
+        univariate_accumulator: &mut Self::AccVerify,
+        current_scalar: &mut F,
+        running_challenge: &mut F,
+        result: &mut F,
+    ) {
+        let array = [univariate_accumulator.r0, univariate_accumulator.r1];
+
+        for entry in array.iter() {
+            *result += *entry * *current_scalar;
+            *current_scalar *= *running_challenge;
         }
     }
 }

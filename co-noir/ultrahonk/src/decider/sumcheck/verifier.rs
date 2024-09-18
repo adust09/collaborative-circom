@@ -1,3 +1,5 @@
+use crate::decider::relations::AllRelationAcc;
+use crate::decider::relations::Relation;
 use crate::decider::types::ClaimedEvaluations;
 use crate::decider::types::GateSeparatorPolynomial;
 use crate::decider::types::RelationParameters;
@@ -44,11 +46,11 @@ pub fn sumcheck_verify<P: HonkCurve<TranscriptFieldType>>(
         // get the claimed sum of libra masking multivariate over the hypercube
         libra_total_sum = transcript
             .receive_fr_from_prover::<P>("Libra:Sum".to_string())
-            .expect(&format!("Failed to receive Libra:Sum"));
+            .unwrap_or_else(|_| panic!("Failed to receive Libra:Sum"));
         // get the challenge for the ZK Sumcheck claim
         libra_challenge = transcript
             .receive_fr_from_prover::<P>("Libra:Challenge".to_string())
-            .expect(&format!("Failed to receive Libra:Challenge"));
+            .unwrap_or_else(|_| panic!("Failed to receive Libra:Challenge"));
         target_total_sum += libra_total_sum * libra_challenge;
     };
     let mut multivariate_challenge: Vec<P::ScalarField> =
@@ -63,10 +65,9 @@ pub fn sumcheck_verify<P: HonkCurve<TranscriptFieldType>>(
             .receive_fr_array_from_verifier::<P, { MAX_PARTIAL_RELATION_LENGTH + 1 }>(
                 round_univariate_label,
             )
-            .expect(&format!(
-                "Failed to receive round_univariate with idx {}",
-                round_idx
-            ));
+            .unwrap_or_else(|_| {
+                panic!("Failed to receive round_univariate with idx {}", round_idx)
+            });
         let round_univariate =
             Univariate::<P::ScalarField, { MAX_PARTIAL_RELATION_LENGTH + 1 }>::new(evaluations);
 
@@ -87,15 +88,17 @@ pub fn sumcheck_verify<P: HonkCurve<TranscriptFieldType>>(
     let mut libra_evaluations = Vec::<P::ScalarField>::with_capacity(multivariate_d as usize);
     let mut full_libra_purported_value = P::ScalarField::ZERO;
     if HAS_ZK {
-        for idx in 0..multivariate_d as usize {
-            libra_evaluations[idx] = transcript
+        for (idx, evaluation) in libra_evaluations
+            .iter_mut()
+            .enumerate()
+            .take(multivariate_d as usize)
+        {
+            *evaluation = transcript
                 .receive_fr_from_prover::<P>(format!("libra_evaluation{}", idx))
-                .expect(&format!(
-                    "Failed to receive libra_evaluations with idx {}",
-                    idx
-                ));
-            full_libra_purported_value += libra_evaluations[idx];
+                .unwrap_or_else(|_| panic!("Failed to receive libra_evaluations with idx {}", idx));
+            full_libra_purported_value += *evaluation;
         }
+
         full_libra_purported_value *= libra_challenge;
     }
     // todo!("I think these come from the below, check again with barretenberg");
@@ -105,7 +108,7 @@ pub fn sumcheck_verify<P: HonkCurve<TranscriptFieldType>>(
 
     let transcript_evaluations = transcript
         .receive_fr_vec_from_verifier::<P>("Sumcheck:evaluations".to_string(), NUM_ALL_ENTITIES)
-        .expect(&format!("Failed to receive Sumcheck:evaluations"));
+        .unwrap_or_else(|_| panic!("Failed to receive Sumcheck:evaluations"));
     let full_honk_relation_purported_value = compute_full_relation_purported_value::<P>(
         &transcript_evaluations,
         relation_parameters,
@@ -118,6 +121,7 @@ pub fn sumcheck_verify<P: HonkCurve<TranscriptFieldType>>(
             None
         },
     );
+
     let checked: bool = full_honk_relation_purported_value == target_total_sum;
     verified = verified && checked;
     if HAS_ZK {
@@ -190,17 +194,20 @@ fn compute_full_relation_purported_value<P: Pairing>(
 fn accumulate_relation_evaluations_without_skipping<P: Pairing>(
     purported_evaluations: &Vec<P::ScalarField>,
     relation_parameters: RelationParameters<P::ScalarField>,
-    relation_evaluations: &(
-        &mut Vec<P::ScalarField>,
-        &mut Vec<P::ScalarField>,
-        &mut Vec<P::ScalarField>,
-    ),
     partial_evaluation_result: P::ScalarField,
 ) -> P::ScalarField {
     todo!()
 }
 
-fn scale_by_challenge_and_batch<P: Pairing>(
+fn accumulate_single_relation<P: Pairing>(
+    PolynomialEvaluations: &Vec<P::ScalarField>,
+    // RelationEvaluations& relation_evaluations, maybe relation type
+    relation_parameters: RelationParameters<P::ScalarField>,
+    partial_evaluation_result: P::ScalarField,
+) {
+}
+
+fn scale_by_challenge_and_batch<P: Pairing, R: Relation<P::ScalarField>>(
     tuple: (
         &mut Vec<P::ScalarField>,
         &mut Vec<P::ScalarField>,

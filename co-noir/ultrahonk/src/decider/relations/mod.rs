@@ -7,24 +7,38 @@ pub(crate) mod poseidon2_external_relation;
 pub(crate) mod poseidon2_internal_relation;
 pub(crate) mod ultra_arithmetic_relation;
 
+use crate::NUM_ALPHAS;
+
 use super::{
     sumcheck::sumcheck_round::SumcheckRoundOutput,
-    types::{ProverUnivariates, RelationParameters},
+    types::{ClaimedEvaluations, ProverUnivariates, RelationParameters},
 };
 use ark_ff::PrimeField;
-use auxiliary_relation::{AuxiliaryRelation, AuxiliaryRelationAcc};
+use auxiliary_relation::{AuxiliaryRelation, AuxiliaryRelationAcc, AuxiliaryRelationEvals};
 use delta_range_constraint_relation::{
     DeltaRangeConstraintRelation, DeltaRangeConstraintRelationAcc,
+    DeltaRangeConstraintRelationEvals,
 };
-use elliptic_relation::{EllipticRelation, EllipticRelationAcc};
-use logderiv_lookup_relation::{LogDerivLookupRelation, LogDerivLookupRelationAcc};
-use permutation_relation::{UltraPermutationRelation, UltraPermutationRelationAcc};
-use poseidon2_external_relation::{Poseidon2ExternalRelation, Poseidon2ExternalRelationAcc};
-use poseidon2_internal_relation::{Poseidon2InternalRelation, Poseidon2InternalRelationAcc};
-use ultra_arithmetic_relation::{UltraArithmeticRelation, UltraArithmeticRelationAcc};
+use elliptic_relation::{EllipticRelation, EllipticRelationAcc, EllipticRelationEvals};
+use logderiv_lookup_relation::{
+    LogDerivLookupRelation, LogDerivLookupRelationAcc, LogDerivLookupRelationEvals,
+};
+use permutation_relation::{
+    UltraPermutationRelation, UltraPermutationRelationAcc, UltraPermutationRelationEvals,
+};
+use poseidon2_external_relation::{
+    Poseidon2ExternalRelation, Poseidon2ExternalRelationAcc, Poseidon2ExternalRelationEvals,
+};
+use poseidon2_internal_relation::{
+    Poseidon2InternalRelation, Poseidon2InternalRelationAcc, Poseidon2InternalRelationEvals,
+};
+use ultra_arithmetic_relation::{
+    UltraArithmeticRelation, UltraArithmeticRelationAcc, UltraArithmeticRelationEvals,
+};
 
 pub(crate) trait Relation<F: PrimeField> {
     type Acc: Default;
+    type AccVerify: Default;
     const SKIPPABLE: bool;
 
     fn check_skippable() {
@@ -39,6 +53,18 @@ pub(crate) trait Relation<F: PrimeField> {
         input: &ProverUnivariates<F>,
         relation_parameters: &RelationParameters<F>,
         scaling_factor: &F,
+    );
+    fn verify_accumulate(
+        univariate_accumulator: &mut Self::AccVerify,
+        input: &ClaimedEvaluations<F>,
+        _relation_parameters: &RelationParameters<F>,
+        scaling_factor: &F,
+    );
+    fn scale_and_batch_elements(
+        univariate_accumulator: &mut Self::AccVerify,
+        current_scalar: &mut F,
+        running_challenge: &mut F,
+        result: &mut F,
     );
 }
 
@@ -61,6 +87,18 @@ pub(crate) struct AllRelationAcc<F: PrimeField> {
     pub(crate) r_lookup: LogDerivLookupRelationAcc<F>,
     pub(crate) r_pos_ext: Poseidon2ExternalRelationAcc<F>,
     pub(crate) r_pos_int: Poseidon2InternalRelationAcc<F>,
+}
+
+// #[derive(Default)]
+pub(crate) struct AllRelationEvaluations<F: PrimeField> {
+    pub(crate) r_arith: UltraArithmeticRelationEvals<F>,
+    pub(crate) r_perm: UltraPermutationRelationEvals<F>,
+    pub(crate) r_delta: DeltaRangeConstraintRelationEvals<F>,
+    pub(crate) r_elliptic: EllipticRelationEvals<F>,
+    pub(crate) r_aux: AuxiliaryRelationEvals<F>,
+    pub(crate) r_lookup: LogDerivLookupRelationEvals<F>,
+    pub(crate) r_pos_ext: Poseidon2ExternalRelationEvals<F>,
+    pub(crate) r_pos_int: Poseidon2InternalRelationEvals<F>,
 }
 
 impl<F: PrimeField> AllRelationAcc<F> {
@@ -121,6 +159,63 @@ impl<F: PrimeField> AllRelationAcc<F> {
             result,
             extended_random_poly,
             partial_evaluation_result,
+        );
+    }
+}
+impl<F: PrimeField> AllRelationEvaluations<F> {
+    fn scale_and_batch_elements_all(
+        mut self,
+        current_scalar: &mut F,
+        running_challenge: &mut F,
+        result: &mut F,
+    ) {
+        AuxiliaryRelation::scale_and_batch_elements(
+            &mut self.r_aux,
+            current_scalar,
+            running_challenge,
+            result,
+        );
+        UltraArithmeticRelation::scale_and_batch_elements(
+            &mut self.r_arith,
+            current_scalar,
+            running_challenge,
+            result,
+        );
+        DeltaRangeConstraintRelation::scale_and_batch_elements(
+            &mut self.r_delta,
+            current_scalar,
+            running_challenge,
+            result,
+        );
+        EllipticRelation::scale_and_batch_elements(
+            &mut self.r_elliptic,
+            current_scalar,
+            running_challenge,
+            result,
+        );
+        LogDerivLookupRelation::scale_and_batch_elements(
+            &mut self.r_lookup,
+            current_scalar,
+            running_challenge,
+            result,
+        );
+        Poseidon2ExternalRelation::scale_and_batch_elements(
+            &mut self.r_pos_ext,
+            current_scalar,
+            running_challenge,
+            result,
+        );
+        Poseidon2InternalRelation::scale_and_batch_elements(
+            &mut self.r_pos_int,
+            current_scalar,
+            running_challenge,
+            result,
+        );
+        UltraPermutationRelation::scale_and_batch_elements(
+            &mut self.r_perm,
+            current_scalar,
+            running_challenge,
+            result,
         );
     }
 }

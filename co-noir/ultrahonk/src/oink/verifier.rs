@@ -96,7 +96,7 @@ impl<P: HonkCurve<TranscriptFieldType>> OinkVerifier<P> {
             let public_input = self
                 .transcript
                 .receive_fr_from_prover::<P>(format!("public_input_{}", i))
-                .expect(&format!("Failed to receive public input at index {}", i));
+                .unwrap_or_else(|_| panic!("Failed to receive public input at index {}", i));
             public_inputs.push(public_input);
         }
     }

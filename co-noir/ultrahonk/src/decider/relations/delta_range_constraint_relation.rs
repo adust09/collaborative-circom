@@ -1,4 +1,7 @@
-use super::Relation;
+use super::{
+    permutation_relation::{UltraPermutationRelationAcc, UltraPermutationRelationEvals},
+    Relation,
+};
 use crate::decider::{
     sumcheck::sumcheck_round::SumcheckRoundOutput,
     types::{ProverUnivariates, RelationParameters},
@@ -12,6 +15,14 @@ pub(crate) struct DeltaRangeConstraintRelationAcc<F: PrimeField> {
     pub(crate) r1: Univariate<F, 6>,
     pub(crate) r2: Univariate<F, 6>,
     pub(crate) r3: Univariate<F, 6>,
+}
+#[derive(Clone, Debug, Default)]
+
+pub(crate) struct DeltaRangeConstraintRelationEvals<F: PrimeField> {
+    pub(crate) r0: F,
+    pub(crate) r1: F,
+    pub(crate) r2: F,
+    pub(crate) r3: F,
 }
 
 impl<F: PrimeField> DeltaRangeConstraintRelationAcc<F> {
@@ -67,6 +78,7 @@ impl DeltaRangeConstraintRelation {
 
 impl<F: PrimeField> Relation<F> for DeltaRangeConstraintRelation {
     type Acc = DeltaRangeConstraintRelationAcc<F>;
+    type AccVerify = DeltaRangeConstraintRelationEvals<F>;
     const SKIPPABLE: bool = true;
 
     fn skip(input: &ProverUnivariates<F>) -> bool {
@@ -153,6 +165,84 @@ impl<F: PrimeField> Relation<F> for DeltaRangeConstraintRelation {
 
         for i in 0..univariate_accumulator.r3.evaluations.len() {
             univariate_accumulator.r3.evaluations[i] += tmp_4.evaluations[i];
+        }
+    }
+
+    fn verify_accumulate(
+        univariate_accumulator: &mut Self::AccVerify,
+        input: &crate::decider::types::ClaimedEvaluations<F>,
+        _relation_parameters: &RelationParameters<F>,
+        scaling_factor: &F,
+    ) {
+        tracing::trace!("Accumulate DeltaRangeConstraintRelation");
+
+        let w_1 = input.polys.witness.w_l();
+        let w_2 = input.polys.witness.w_r();
+        let w_3 = input.polys.witness.w_o();
+        let w_4 = input.memory.w_4();
+        let w_1_shift = input.polys.shifted_witness.w_l();
+        let q_delta_range = input.polys.precomputed.q_delta_range();
+        let minus_one = -F::one();
+        let minus_two = -F::from(2u64);
+
+        // Compute wire differences
+        let delta_1 = w_2.to_owned() - w_1;
+        let delta_2 = w_3.to_owned() - w_2;
+        let delta_3 = w_4.to_owned() - w_3;
+        let delta_4 = w_1_shift.to_owned() - w_4;
+
+        // Contribution (1)
+        let mut tmp_1 = (delta_1.to_owned() + &minus_one).square() + &minus_one;
+        tmp_1 *= (delta_1.to_owned() + &minus_two).square() + &minus_one;
+        tmp_1 *= q_delta_range;
+        tmp_1 *= scaling_factor;
+
+        univariate_accumulator.r0 += tmp_1;
+
+        ///////////////////////////////////////////////////////////////////////
+        // Contribution (2)
+        let mut tmp_2 = (delta_2.to_owned() + &minus_one).square() + &minus_one;
+        tmp_2 *= (delta_2.to_owned() + &minus_two).square() + &minus_one;
+        tmp_2 *= q_delta_range;
+        tmp_2 *= scaling_factor;
+
+        univariate_accumulator.r1 += tmp_2;
+
+        ///////////////////////////////////////////////////////////////////////
+        // Contribution (3)
+        let mut tmp_3 = (delta_3.to_owned() + &minus_one).square() + &minus_one;
+        tmp_3 *= (delta_3.to_owned() + &minus_two).square() + &minus_one;
+        tmp_3 *= q_delta_range;
+        tmp_3 *= scaling_factor;
+
+        univariate_accumulator.r2 += tmp_3;
+
+        ///////////////////////////////////////////////////////////////////////
+        // Contribution (4)
+        let mut tmp_4 = (delta_4.to_owned() + &minus_one).square() + &minus_one;
+        tmp_4 *= (delta_4.to_owned() + &minus_two).square() + &minus_one;
+        tmp_4 *= q_delta_range;
+        tmp_4 *= scaling_factor;
+
+        univariate_accumulator.r3 += tmp_4;
+    }
+
+    fn scale_and_batch_elements(
+        univariate_accumulator: &mut Self::AccVerify,
+        current_scalar: &mut F,
+        running_challenge: &mut F,
+        result: &mut F,
+    ) {
+        let array = [
+            univariate_accumulator.r0,
+            univariate_accumulator.r1,
+            univariate_accumulator.r2,
+            univariate_accumulator.r3,
+        ];
+
+        for entry in array.iter() {
+            *result += *entry * *current_scalar;
+            *current_scalar *= *running_challenge;
         }
     }
 }

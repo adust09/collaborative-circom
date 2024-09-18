@@ -59,7 +59,7 @@ impl<P: HonkCurve<TranscriptFieldType>> DeciderVerifier<P> {
         let (multivariate_challenge, claimed_evaluations, libra, sumcheck_verified) =
             crate::decider::sumcheck::verifier::sumcheck_verify(
                 relation_parameters,
-                &mut transcript,
+                transcript,
                 oink_output.alphas,
                 relation_evaluations,
                 &vk,

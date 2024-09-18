@@ -37,6 +37,13 @@ pub(crate) struct Poseidon2InternalRelationAcc<F: PrimeField> {
     pub(crate) r2: Univariate<F, 7>,
     pub(crate) r3: Univariate<F, 7>,
 }
+#[derive(Clone, Debug, Default)]
+pub(crate) struct Poseidon2InternalRelationEvals<F: PrimeField> {
+    pub(crate) r0: F,
+    pub(crate) r1: F,
+    pub(crate) r2: F,
+    pub(crate) r3: F,
+}
 
 impl<F: PrimeField> Poseidon2InternalRelationAcc<F> {
     pub fn scale(&mut self, elements: &[F]) {
@@ -91,6 +98,7 @@ impl Poseidon2InternalRelation {
 
 impl<F: PrimeField> Relation<F> for Poseidon2InternalRelation {
     type Acc = Poseidon2InternalRelationAcc<F>;
+    type AccVerify = Poseidon2InternalRelationEvals<F>;
     const SKIPPABLE: bool = true;
 
     fn skip(input: &ProverUnivariates<F>) -> bool {
@@ -184,6 +192,87 @@ impl<F: PrimeField> Relation<F> for Poseidon2InternalRelation {
         let tmp = (v4 - w_4_shift) * q_pos_by_scaling;
         for i in 0..univariate_accumulator.r3.evaluations.len() {
             univariate_accumulator.r3.evaluations[i] += tmp.evaluations[i];
+        }
+    }
+
+    fn verify_accumulate(
+        univariate_accumulator: &mut Self::AccVerify,
+        input: &crate::decider::types::ClaimedEvaluations<F>,
+        _relation_parameters: &RelationParameters<F>,
+        scaling_factor: &F,
+    ) {
+        tracing::trace!("Accumulate Poseidon2InternalRelation");
+
+        let w_l = input.polys.witness.w_l();
+        let w_r = input.polys.witness.w_r();
+        let w_o = input.polys.witness.w_o();
+        let w_4 = input.memory.w_4();
+        let w_l_shift = input.polys.shifted_witness.w_l();
+        let w_r_shift = input.polys.shifted_witness.w_r();
+        let w_o_shift = input.polys.shifted_witness.w_o();
+        let w_4_shift = input.polys.shifted_witness.w_4();
+        let q_l = input.polys.precomputed.q_l();
+        let q_poseidon2_internal = input.polys.precomputed.q_poseidon2_internal();
+
+        // add round constants
+        let s1 = w_l.to_owned() + q_l;
+
+        // apply s-box round
+        let mut u1 = s1.to_owned().square();
+        u1 = u1.square();
+        u1 *= s1;
+        let u2 = w_r.to_owned();
+        let u3 = w_o.to_owned();
+        let u4 = w_4.to_owned();
+
+        // matrix mul with v = M_I * u 4 muls and 7 additions
+        let sum = u1.to_owned() + &u2 + &u3 + &u4;
+
+        let q_pos_by_scaling = q_poseidon2_internal.to_owned() * scaling_factor;
+
+        let mut v1 = u1 * F::from(INTERNAL_MATRIX_DIAG_0.to_owned());
+        v1 += &sum;
+        let tmp = (v1 - w_l_shift) * &q_pos_by_scaling;
+        univariate_accumulator.r0 += tmp;
+
+        ///////////////////////////////////////////////////////////////////////
+
+        let mut v2 = u2 * F::from(INTERNAL_MATRIX_DIAG_1.to_owned());
+        v2 += &sum;
+        let tmp = (v2 - w_r_shift) * &q_pos_by_scaling;
+        univariate_accumulator.r1 += tmp;
+
+        ///////////////////////////////////////////////////////////////////////
+
+        let mut v3 = u3 * F::from(INTERNAL_MATRIX_DIAG_2.to_owned());
+        v3 += &sum;
+        let tmp = (v3 - w_o_shift) * &q_pos_by_scaling;
+        univariate_accumulator.r2 += tmp;
+
+        ///////////////////////////////////////////////////////////////////////
+
+        let mut v4 = u4 * F::from(INTERNAL_MATRIX_DIAG_3.to_owned());
+        v4 += sum;
+        let tmp = (v4 - w_4_shift) * q_pos_by_scaling;
+        univariate_accumulator.r3 += tmp;
+    }
+
+    fn scale_and_batch_elements(
+        univariate_accumulator: &mut Self::AccVerify,
+        current_scalar: &mut F,
+        running_challenge: &mut F,
+        result: &mut F,
+    ) {
+        let array = [
+            univariate_accumulator.r0,
+            univariate_accumulator.r1,
+            univariate_accumulator.r2,
+            univariate_accumulator.r3,
+        ];
+
+        for entry in array.iter() {
+            *result += *entry * *current_scalar;
+            *current_scalar *= *running_challenge;
         }
     }
 }
