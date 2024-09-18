@@ -1,7 +1,7 @@
 pub(crate) mod decider;
 pub mod honk_curve;
 pub(crate) mod oink;
-pub(crate) mod parse;
+pub mod parse;
 pub(crate) mod poseidon2;
 pub mod prover;
 pub(crate) mod sponge_hasher;
