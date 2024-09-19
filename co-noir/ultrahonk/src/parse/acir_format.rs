@@ -6,7 +6,7 @@ use acir::{
         opcodes::{BlackBoxFuncCall, MemOp},
         Circuit,
     },
-    native_types::{Expression, Witness},
+    native_types::{Expression, Witness, WitnessMap},
     AcirField,
 };
 use ark_ff::{PrimeField, Zero};
@@ -69,6 +69,25 @@ pub struct AcirFormat<F: PrimeField> {
 }
 
 impl<F: PrimeField> AcirFormat<F> {
+    pub fn witness_map_to_witness_vector(
+        witness_map: WitnessMap<GenericFieldElement<F>>,
+    ) -> Vec<F> {
+        let mut wv = Vec::new();
+        let mut index = 0;
+        for (w, f) in witness_map.into_iter() {
+            // ACIR uses a sparse format for WitnessMap where unused witness indices may be left unassigned.
+            // To ensure that witnesses sit at the correct indices in the `WitnessVector`, we fill any indices
+            // which do not exist within the `WitnessMap` with the dummy value of zero.
+            while index < w.0 {
+                wv.push(F::zero());
+                index += 1;
+            }
+            wv.push(f.into_repr());
+            index += 1;
+        }
+        wv
+    }
+
     #[allow(clippy::field_reassign_with_default)]
     pub fn circuit_serde_to_acir_format(
         circuit: Circuit<GenericFieldElement<F>>,

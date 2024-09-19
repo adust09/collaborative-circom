@@ -1,7 +1,8 @@
+use super::types::{UltraTraceBlock, UltraTraceBlocks};
+use ark_ff::PrimeField;
 use std::collections::HashMap;
 
-use acir::{acir_field::GenericFieldElement, native_types::WitnessStack};
-use ark_ff::PrimeField;
+type GateBlocks<F> = UltraTraceBlocks<UltraTraceBlock<F>>;
 
 pub struct UltraCircuitBuilder<F: PrimeField> {
     variables: Vec<F>,
@@ -12,9 +13,18 @@ pub struct UltraCircuitBuilder<F: PrimeField> {
     real_variable_tags: Vec<u32>,
     public_inputs: Vec<u32>,
     is_recursive_circuit: bool,
+    tau: HashMap<u32, u32>,
+    constant_variable_indices: HashMap<F, u32>,
+    zero_idx: u32,
+    blocks: GateBlocks<F>, // Storage for wires and selectors for all gate types
+    num_gates: usize,
 }
 
 impl<F: PrimeField> UltraCircuitBuilder<F> {
+    const DUMMY_TAG: u32 = 0;
+    const REAL_VARIABLE: u32 = u32::MAX - 1;
+    const FIRST_VARIABLE_IN_CLASS: u32 = u32::MAX - 2;
+
     pub(crate) fn new(size_hint: usize) -> Self {
         let variables = Vec::with_capacity(size_hint * 3);
         let variable_names = HashMap::with_capacity(size_hint * 3);
@@ -32,6 +42,11 @@ impl<F: PrimeField> UltraCircuitBuilder<F> {
             real_variable_tags,
             public_inputs: Vec::new(),
             is_recursive_circuit: false,
+            tau: HashMap::new(),
+            constant_variable_indices: HashMap::new(),
+            zero_idx: 0,
+            blocks: GateBlocks::default(),
+            num_gates: 0,
         }
     }
 
@@ -76,11 +91,83 @@ impl<F: PrimeField> UltraCircuitBuilder<F> {
 
         // Add the const zero variable after the acir witness has been
         // incorporated into variables.
-        todo!("Add the const zero variable after the acir witness has been incorporated into variables.");
-        // builder.zero_idx = put_constant_variable(FF::zero());
-        // builder.tau.insert({ DUMMY_TAG, DUMMY_TAG }); // TODO(luke): explain this
+        builder.zero_idx = builder.put_constant_variable(F::zero());
+        builder.tau.insert(Self::DUMMY_TAG, Self::DUMMY_TAG); // TODO(luke): explain this
 
         builder.is_recursive_circuit = recursive;
         builder
+    }
+
+    fn add_variable(&mut self, value: F) -> u32 {
+        let idx = self.variables.len() as u32;
+        self.variables.push(value);
+        self.real_variable_index.push(idx);
+        self.next_var_index.push(Self::REAL_VARIABLE);
+        self.prev_var_index.push(Self::FIRST_VARIABLE_IN_CLASS);
+        self.real_variable_tags.push(Self::DUMMY_TAG);
+        idx
+    }
+
+    fn put_constant_variable(&mut self, variable: F) -> u32 {
+        if let Some(val) = self.constant_variable_indices.get(&variable) {
+            *val
+        } else {
+            let variable_index = self.add_variable(variable);
+            self.fix_witness(variable_index, variable);
+            self.constant_variable_indices
+                .insert(variable, variable_index);
+            variable_index
+        }
+    }
+
+    fn fix_witness(&mut self, witness_index: u32, witness_value: F) {
+        self.assert_valid_variables(&[witness_index]);
+
+        self.blocks.arithmetic.populate_wires(
+            witness_index,
+            self.zero_idx,
+            self.zero_idx,
+            self.zero_idx,
+        );
+        self.blocks.arithmetic.q_m().push(F::zero());
+        self.blocks.arithmetic.q_1().push(F::one());
+        self.blocks.arithmetic.q_2().push(F::zero());
+        self.blocks.arithmetic.q_3().push(F::zero());
+        self.blocks.arithmetic.q_c().push(-witness_value);
+        self.blocks.arithmetic.q_arith().push(F::one());
+        self.blocks.arithmetic.q_4().push(F::zero());
+        self.blocks.arithmetic.q_delta_range().push(F::zero());
+        self.blocks.arithmetic.q_lookup_type().push(F::zero());
+        self.blocks.arithmetic.q_elliptic().push(F::zero());
+        self.blocks.arithmetic.q_aux().push(F::zero());
+        self.blocks
+            .arithmetic
+            .q_poseidon2_external()
+            .push(F::zero());
+        self.blocks
+            .arithmetic
+            .q_poseidon2_internal()
+            .push(F::zero());
+        self.check_selector_length_consistency();
+        self.num_gates += 1;
+    }
+
+    fn assert_valid_variables(&self, variable_indices: &[u32]) {
+        for variable_index in variable_indices.iter().cloned() {
+            assert!(self.is_valid_variable(variable_index as usize));
+        }
+    }
+
+    fn is_valid_variable(&self, variable_index: usize) -> bool {
+        variable_index < self.variables.len()
+    }
+
+    fn check_selector_length_consistency(&self) {
+        for block in self.blocks.get() {
+            let nominal_size = block.selectors[0].len();
+            for selector in block.selectors.iter().skip(1) {
+                debug_assert_eq!(selector.len(), nominal_size);
+            }
+        }
     }
 }
