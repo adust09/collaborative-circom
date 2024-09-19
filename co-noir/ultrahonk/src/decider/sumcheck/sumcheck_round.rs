@@ -29,14 +29,15 @@ use crate::{
     types::Polynomials,
     NUM_ALPHAS,
 };
+use ark_ff::Field;
 use ark_ff::PrimeField;
 
 pub(crate) type SumcheckRoundOutput<F> = Univariate<F, { MAX_PARTIAL_RELATION_LENGTH + 1 }>;
-
+#[derive(Clone, Copy)]
 pub(crate) struct SumcheckRound {
     pub(crate) round_size: usize,
 }
-
+#[derive(Clone, Copy)]
 pub(crate) struct SumcheckVerifierRound<F: PrimeField> {
     pub(crate) sumcheck_round: SumcheckRound,
     pub(crate) target_total_sum: F,
@@ -55,39 +56,42 @@ impl<F: PrimeField> SumcheckVerifierRound<F> {
     }
     pub fn compute_next_target_sum(
         mut self, // Move self instead of borrowing
-        mut univariate: Univariate<F, { MAX_PARTIAL_RELATION_LENGTH + 1 }>,
+        univariate: &Univariate<F, { MAX_PARTIAL_RELATION_LENGTH + 1 }>,
         round_challenge: F,
     ) {
         self.target_total_sum = univariate.evaluate(round_challenge);
     }
-    pub fn check_sum(mut self, univariate: &[F]) -> bool {
-        let total_sum = univariate[0] + univariate[1]; //TODO Are these really the values at 0 and 1?
+    pub fn check_sum(
+        mut self,
+        univariate: &Univariate<F, { MAX_PARTIAL_RELATION_LENGTH + 1 }>,
+    ) -> bool {
+        let total_sum = univariate.evaluate(F::ZERO) + univariate.evaluate(F::ONE);
         let sumcheck_round_failed = self.target_total_sum != total_sum;
 
         self.round_failed = self.round_failed || sumcheck_round_failed;
         !sumcheck_round_failed
     }
-    fn compute_full_relation_purported_value<P: HonkCurve<TranscriptFieldType>>(
-        mut self,
-        purported_evaluations: &ClaimedEvaluations<F>,
-        relation_parameters: RelationParameters<F>,
-        gate_sparators: GateSeparatorPolynomial<F>,
-        relation_evaluations: &mut AllRelationEvaluations<F>,
-        alphas: [F; NUM_ALPHAS],
-        full_libra_purported_value: Option<F>,
-    ) -> F {
+    pub fn compute_full_relation_purported_value<P: HonkCurve<TranscriptFieldType>>(
+        //mut self, Todo:
+        purported_evaluations: &ClaimedEvaluations<P::ScalarField>,
+        relation_parameters: RelationParameters<P::ScalarField>,
+        gate_sparators: GateSeparatorPolynomial<P::ScalarField>,
+        relation_evaluations: &mut AllRelationEvaluations<P::ScalarField>,
+        alphas: &mut [P::ScalarField; NUM_ALPHAS],
+        full_libra_purported_value: Option<P::ScalarField>,
+    ) -> P::ScalarField {
         decider::sumcheck::sumcheck_round::SumcheckRound::accumulate_relation_evaluations::<P>(
             relation_evaluations,
             purported_evaluations,
             &relation_parameters,
             &gate_sparators.partial_evaluation_result,
         );
-        let running_challenge = F::ONE;
-        let mut output = F::ZERO;
+        let mut running_challenge = P::ScalarField::ONE;
+        let mut output = P::ScalarField::ZERO;
         //todo!("FIX scale_and_batch_elements_all to take an array of alphas");
-        AllRelationEvaluations::<F>::scale_and_batch_elements_all(
+        AllRelationEvaluations::<P::ScalarField>::scale_and_batch_elements_all(
             relation_evaluations,
-            &mut &alphas[0],
+            &mut alphas[0],
             &mut running_challenge,
             &mut output,
         );

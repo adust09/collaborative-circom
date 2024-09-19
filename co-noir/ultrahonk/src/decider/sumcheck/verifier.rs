@@ -18,13 +18,8 @@ pub const HAS_ZK: bool = false;
 pub fn sumcheck_verify<P: HonkCurve<TranscriptFieldType>>(
     relation_parameters: RelationParameters<P::ScalarField>,
     transcript: &mut TranscriptType,
-    alphas: [P::ScalarField; NUM_ALPHAS],
-    // claimed_evaluations: ClaimedEvaluations<P::ScalarField>, dont know if i need them
-    relation_evaluations: (
-        &mut Vec<P::ScalarField>,
-        &mut Vec<P::ScalarField>,
-        &mut Vec<P::ScalarField>,
-    ),
+    alphas: &mut [P::ScalarField; NUM_ALPHAS],
+    claimed_evaluations: ClaimedEvaluations<P::ScalarField>,
     vk: &VerifyingKey<P>,
 ) -> (
     Vec<P::ScalarField>,
@@ -33,7 +28,7 @@ pub fn sumcheck_verify<P: HonkCurve<TranscriptFieldType>>(
     bool,
 ) {
     let mut pow_univariate = GateSeparatorPolynomial::new(vk.gate_challenges.to_vec());
-    let relation_evaluations=AllRelationEvaluations::<P::ScalarField>::zero();
+    let mut relation_evaluations = AllRelationEvaluations::<P::ScalarField>::zero();
     let multivariate_n = vk.circuit_size;
     let multivariate_d = get_msb(multivariate_n);
     if multivariate_d == 0 {
@@ -42,7 +37,6 @@ pub fn sumcheck_verify<P: HonkCurve<TranscriptFieldType>>(
     let mut sum_check_round = SumcheckVerifierRound::new(multivariate_n as usize);
     let mut libra_challenge = P::ScalarField::ZERO;
     let libra_total_sum: P::ScalarField;
-    
 
     // if Flavor has ZK, the target total sum is corrected by Libra total sum multiplied by the Libra challenge
     if HAS_ZK {
@@ -78,11 +72,11 @@ pub fn sumcheck_verify<P: HonkCurve<TranscriptFieldType>>(
 
         // no recursive flavor I guess, otherwise we need to make some modifications to the following
         if round_idx < multivariate_d as usize {
-            let checked = sum_check_round.check_sum(&round_univariate.evaluations); //round-check_sum?
+            let checked = sum_check_round.check_sum(&round_univariate); //round-check_sum?
             verified = verified && checked;
             multivariate_challenge.push(round_challenge);
 
-            sum_check_round.compute_next_target_sum(round_univariate, round_challenge); //round.compute_next_target_sum
+            sum_check_round.compute_next_target_sum(&round_univariate, round_challenge); //round.compute_next_target_sum
             pow_univariate.partially_evaluate(round_challenge);
         } else {
             multivariate_challenge.push(round_challenge);
@@ -112,18 +106,19 @@ pub fn sumcheck_verify<P: HonkCurve<TranscriptFieldType>>(
     let transcript_evaluations = transcript
         .receive_fr_vec_from_verifier::<P>("Sumcheck:evaluations".to_string(), NUM_ALL_ENTITIES)
         .unwrap_or_else(|_| panic!("Failed to receive Sumcheck:evaluations"));
-    let full_honk_relation_purported_value = compute_full_relation_purported_value::<P>(
-        &transcript_evaluations,
-        relation_parameters,
-        pow_univariate,
-        relation_evaluations,
-        alphas,
-        if HAS_ZK {
-            Some(full_libra_purported_value)
-        } else {
-            None
-        },
-    );
+    let full_honk_relation_purported_value =
+        SumcheckVerifierRound::<P::ScalarField>::compute_full_relation_purported_value::<P>(
+            &claimed_evaluations,
+            relation_parameters,
+            pow_univariate,
+            &mut relation_evaluations,
+            alphas,
+            if HAS_ZK {
+                Some(full_libra_purported_value)
+            } else {
+                None
+            },
+        );
 
     let checked: bool = full_honk_relation_purported_value == sum_check_round.target_total_sum;
     verified = verified && checked;
@@ -142,40 +137,3 @@ pub fn sumcheck_verify<P: HonkCurve<TranscriptFieldType>>(
         verified,
     );
 }
-
-
-fn compute_full_relation_purported_value<P: Pairing>(
-    purported_evaluations: &Vec<P::ScalarField>,
-    relation_parameters: RelationParameters<P::ScalarField>,
-    gate_sparators: GateSeparatorPolynomial<P::ScalarField>,
-    relation_evaluations: AllRelationEvaluations<P::ScalarField>,
-    alphas: [P::ScalarField; NUM_ALPHAS],
-    full_libra_purported_value: Option<P::ScalarField>,
-) -> P::ScalarField {
-    
-    accumulate_relation_evaluations(purported_evaluations,
-        relation_parameters,
-        &relation_evaluations,
-        gate_sparators.partial_evaluation_result,
-    );
-    let running_challenge = P::ScalarField::ONE;
-    let mut output = P::ScalarField::ZERO;
-    AllRelationEvaluations<P::ScalarField>::scale_and_batch_elements_all::<P::ScalarField>(
-        relation_evaluations,
-        &alphas,
-        running_challenge,
-        &mut output,
-    );
-    // Only add `full_libra_purported_value` if ZK is enabled
-    if HAS_ZK {
-        if let Some(value) = full_libra_purported_value {
-            output += value;
-        }
-    }
-    output
-}
-
-
-
-
-

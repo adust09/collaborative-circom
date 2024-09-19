@@ -196,7 +196,7 @@ impl<F: PrimeField, const SIZE: usize> Univariate<F, SIZE> {
         }
     }
 
-    pub(crate) fn evaluate(&mut self, u: F) -> F {
+    pub(crate) fn evaluate(&self, u: F) -> F {
         let mut full_numerator_value = F::one();
         for i in 0..SIZE {
             full_numerator_value *= u - F::from(i as u64);

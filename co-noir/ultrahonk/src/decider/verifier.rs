@@ -12,6 +12,8 @@ use ark_ec::{AffineRepr, CurveGroup};
 use ark_ff::Field;
 use std::marker::PhantomData;
 
+use super::types::ClaimedEvaluations;
+
 pub struct DeciderVerifier<P: HonkCurve<TranscriptFieldType>> {
     phantom_data: PhantomData<P>,
 }
@@ -38,33 +40,34 @@ impl<P: HonkCurve<TranscriptFieldType>> DeciderVerifier<P> {
         self,
         vk: VerifyingKey<P>,
         public_inputs: Vec<P::ScalarField>,
-        mut transcript: &mut TranscriptType,
+        transcript: &mut TranscriptType,
         relation_parameters: RelationParameters<P::ScalarField>, //weg damit
         witness_comms: WitnessCommitments<P>,                    //weg damit
-        relation_evaluations: (
-            &mut Vec<P::ScalarField>,
-            &mut Vec<P::ScalarField>,
-            &mut Vec<P::ScalarField>,
-        ),
+        claimed_evaluations: ClaimedEvaluations<P::ScalarField>,
     ) -> bool {
         tracing::trace!("Decider verification");
-        let log_circuit_size = get_msb(vk.circuit_size.clone());
-        let oink_output = oink::verifier::OinkVerifier::<P>::new().verify(public_inputs);
+        let log_circuit_size = get_msb(vk.circuit_size);
+        let mut oink_output = oink::verifier::OinkVerifier::<P>::new().verify(public_inputs);
 
         let mut gate_challenges = Vec::with_capacity(log_circuit_size as usize);
         gate_challenges[0] = transcript.get_challenge::<P>(format!("public_input_{}", 0));
-        for idx in 1..log_circuit_size as usize {
-            gate_challenges[idx] = transcript.get_challenge::<P>(format!("public_input_{}", idx));
-        }
+        gate_challenges
+            .iter_mut()
+            .enumerate()
+            .take(log_circuit_size as usize)
+            .skip(1)
+            .for_each(|(idx, gate_challenge)| {
+                *gate_challenge = transcript.get_challenge::<P>(format!("public_input_{}", idx));
+            });
         let (multivariate_challenge, claimed_evaluations, libra, sumcheck_verified) =
             crate::decider::sumcheck::verifier::sumcheck_verify(
                 relation_parameters,
                 transcript,
-                oink_output.alphas,
-                relation_evaluations,
+                &mut oink_output.alphas,
+                claimed_evaluations,
                 &vk,
             );
-        // to do: build sumcheck verifier, returns (multivariate_challenge, claimed_evaluations, sumcheck_verified)
+
         // get_unshifted(), get_to_be_shifted(), get_shifted()
 
         let opening_claim: OpeningClaim<P> = crate::decider::zeromorph::verifier::zeromorph_verify(
@@ -74,7 +77,7 @@ impl<P: HonkCurve<TranscriptFieldType>> DeciderVerifier<P> {
             &claimed_evaluations,
             &claimed_evaluations,
             multivariate_challenge,
-            &mut transcript,
+            transcript,
             // TODO Check these types/shifts
             // concatenated_evaluations
             // actually it is
@@ -84,7 +87,7 @@ impl<P: HonkCurve<TranscriptFieldType>> DeciderVerifier<P> {
             // claimed_evaluations.get_shifted()
             // but i dont understand the shift yet
         );
-        let pairing_points = reduce_verify(opening_claim, &mut transcript);
+        let pairing_points = reduce_verify(opening_claim, transcript);
         let pcs_verified =
             pairing_check::<P>(pairing_points[0], pairing_points[1], vk.g2_x, vk.g2_gen);
         sumcheck_verified && pcs_verified

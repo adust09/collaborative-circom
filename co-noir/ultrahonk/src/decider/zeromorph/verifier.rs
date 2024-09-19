@@ -16,7 +16,7 @@ pub fn zeromorph_verify<P: HonkCurve<TranscriptFieldType>>(
     transcript_inout: &mut TranscriptType,
     // concatenated_evaluations: Vec<P::ScalarField>, // RefSpan<FF> concatenated_evaluations = {}
 ) -> crate::decider::verifier::OpeningClaim<P> {
-    let log_n = get_msb(circuit_size.clone()); //TODO: check this
+    let log_n = get_msb(*circuit_size); //TODO: check this
 
     let rho = transcript_inout.get_challenge::<P>("rho".to_string());
 
@@ -38,7 +38,7 @@ pub fn zeromorph_verify<P: HonkCurve<TranscriptFieldType>>(
         c_q_k.push(
             transcript_inout
                 .receive_point_from_prover::<P>(format!("ZM:C_q_{}", i))
-                .expect(&format!("Failed to receive ZM:C_q_{}", i))
+                .unwrap_or_else(|_| panic!("Failed to receive ZM:C_q_{}", i))
                 .into(),
         );
     }
@@ -49,7 +49,7 @@ pub fn zeromorph_verify<P: HonkCurve<TranscriptFieldType>>(
     //  auto c_q = transcript->template receive_from_prover<Commitment>("ZM:C_q");
     let c_q = transcript_inout
         .receive_point_from_prover::<P>("ZM:C_q".to_string())
-        .expect(&format!("Failed to receive ZM:C_q"))
+        .unwrap_or_else(|_| panic!("Failed to receive ZM:C_q"))
         .into();
 
     let x_challenge = transcript_inout.get_challenge::<P>("x_challenge".to_string());
@@ -78,11 +78,11 @@ pub fn zeromorph_verify<P: HonkCurve<TranscriptFieldType>>(
     );
     let c_zeta_z = c_zeta_x + c_z_x * z_challenge;
 
-    return crate::decider::verifier::OpeningClaim {
+    crate::decider::verifier::OpeningClaim {
         challenge: x_challenge,
         evaluation: P::ScalarField::ZERO,
         commitment: c_zeta_z,
-    };
+    }
 }
 
 // (compare cpp/src/barretenberg/commitment_schemes/zeromorph/zeromorph.hpp or https://hackmd.io/dlf9xEwhTQyE3hiGbq4FsA?view)
@@ -101,27 +101,31 @@ fn compute_c_zeta_x<P: Pairing>(
     commitments.push(P::G1Affine::from(c_q));
 
     // Contribution from C_q_k, k = 0,...,log_N-1
-    for k in 0..CONST_PROOF_SIZE_LOG_N {
-        // Utilize dummy rounds in order to make verifier circuit independent of proof size
-        let is_dummy_round = k >= log_circuit_size as usize;
-        let deg_k = (1 << k) - 1;
-        // Compute scalar y^k * x^{N - deg_k - 1}
-        let mut scalar = y_challenge.pow([k as u64]);
-        let x_exponent = if is_dummy_round {
-            0
-        } else {
-            circuit_size - deg_k - 1
-        };
-        scalar *= x_challenge.pow([x_exponent as u64]);
-        scalar *= P::ScalarField::ZERO - P::ScalarField::ONE;
+    c_q_k
+        .iter()
+        .enumerate()
+        .take(CONST_PROOF_SIZE_LOG_N)
+        .for_each(|(k, &c_q_k_item)| {
+            // Utilize dummy rounds in order to make verifier circuit independent of proof size
+            let is_dummy_round = k >= log_circuit_size as usize;
+            let deg_k = (1 << k) - 1;
+            // Compute scalar y^k * x^{N - deg_k - 1}
+            let mut scalar = y_challenge.pow([k as u64]);
+            let x_exponent = if is_dummy_round {
+                0
+            } else {
+                circuit_size - deg_k - 1
+            };
+            scalar *= x_challenge.pow([x_exponent as u64]);
+            scalar *= P::ScalarField::ZERO - P::ScalarField::ONE;
 
-        if is_dummy_round {
-            scalar = P::ScalarField::ZERO;
-        }
+            if is_dummy_round {
+                scalar = P::ScalarField::ZERO;
+            }
 
-        scalars.push(scalar);
-        commitments.push(P::G1Affine::from(c_q_k[k]));
-    }
+            scalars.push(scalar);
+            commitments.push(P::G1Affine::from(c_q_k_item));
+        });
 
     P::G1::msm_unchecked(&commitments, &scalars)
 }
@@ -139,7 +143,7 @@ fn compute_c_z_x<P: Pairing>(
 ) -> P::G1 {
     let mut scalars: Vec<P::ScalarField> = Vec::new();
     let mut commitments: Vec<P::G1> = Vec::new();
-    let phi_numerator = x_challenge.pow(&[*circuit_size as u64]) - P::ScalarField::ONE;
+    let phi_numerator = x_challenge.pow([*circuit_size as u64]) - P::ScalarField::ONE;
     let minus_one = P::ScalarField::ZERO - P::ScalarField::ONE;
     //todo
     let phi_n_x = phi_numerator / (x_challenge - P::ScalarField::ONE);
