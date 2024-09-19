@@ -5,7 +5,7 @@ pub(crate) mod oink;
 pub mod prover;
 mod transcript;
 mod types;
-// pub mod verifier;
+pub mod verifier;
 
 use ark_ec::{pairing::Pairing, VariableBaseMSM};
 use ark_ff::PrimeField;

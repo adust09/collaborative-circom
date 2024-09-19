@@ -16,7 +16,7 @@ pub fn zeromorph_verify<P: HonkCurve<TranscriptFieldType>>(
     transcript_inout: &mut TranscriptType,
     // concatenated_evaluations: Vec<P::ScalarField>, // RefSpan<FF> concatenated_evaluations = {}
 ) -> crate::decider::verifier::OpeningClaim<P> {
-    let log_n = get_msb(*circuit_size); //TODO: check this
+    let log_n = get_msb(*circuit_size);
 
     let rho = transcript_inout.get_challenge::<P>("rho".to_string());
 
@@ -33,7 +33,7 @@ pub fn zeromorph_verify<P: HonkCurve<TranscriptFieldType>>(
     }
 
     let mut c_q_k: Vec<P::G1> = Vec::with_capacity(CONST_PROOF_SIZE_LOG_N);
-    // todo: where do we get the commitments [q_k] from? rsp. which commitments are these? fill above vector with these
+
     for i in 0..CONST_PROOF_SIZE_LOG_N {
         c_q_k.push(
             transcript_inout

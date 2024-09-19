@@ -1,3 +1,5 @@
+use std::default;
+
 use crate::decider::types::RelationParameters;
 use crate::honk_curve::HonkCurve;
 use crate::transcript::TranscriptFieldType;
@@ -26,7 +28,7 @@ pub(crate) struct OinkVerifier<P: HonkCurve<TranscriptFieldType>> {
 
 impl<P: HonkCurve<TranscriptFieldType>> Default for OinkVerifier<P> {
     fn default() -> Self {
-        Self::new()
+        todo!()
     }
 }
 impl<P: HonkCurve<TranscriptFieldType>> Default for OinkOutput<P> {
@@ -45,12 +47,17 @@ impl<P: HonkCurve<TranscriptFieldType>> OinkOutput<P> {
     }
 }
 impl<P: HonkCurve<TranscriptFieldType>> OinkVerifier<P> {
-    pub fn new() -> Self {
+    pub fn new(
+        transcript: TranscriptType,
+        key: VerifyingKey<P>,
+        relation_parameters: RelationParameters<P::ScalarField>,
+        witness_comms: WitnessCommitments<P>,
+    ) -> Self {
         Self {
-            transcript: todo!(),
-            key: todo!(),
-            relation_parameters: todo!(),
-            witness_comms: todo!(),
+            transcript,
+            key,
+            relation_parameters,
+            witness_comms,
         }
     }
     //todo: maybe we also have to return the transcript (I think ultaverifier needs it?)
