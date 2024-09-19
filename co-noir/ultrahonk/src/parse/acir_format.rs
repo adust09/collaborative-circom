@@ -15,16 +15,16 @@ use std::collections::{HashMap, HashSet};
 #[derive(Default)]
 pub struct AcirFormat<F: PrimeField> {
     // The number of witnesses in the circuit
-    varnum: u32,
+    pub(crate) varnum: u32,
     // Specifies whether a prover that produces SNARK recursion friendly proofs should be used.
     // The proof produced when this flag is true should be friendly for recursive verification inside
     // of another SNARK. For example, a recursive friendly proof may use Blake3Pedersen for
     // hashing in its transcript, while we still want a prove that uses Keccak for its transcript in order
     // to be able to verify SNARKs on Ethereum.
-    recursive: bool,
-    num_acir_opcodes: u32,
+    pub(crate) recursive: bool,
+    pub(crate) num_acir_opcodes: u32,
     //  using PolyTripleConstraint = bb::poly_triple_<bb::curve::BN254::ScalarField>;
-    public_inputs: Vec<u32>,
+    pub(crate) public_inputs: Vec<u32>,
     //  std::vector<LogicConstraint> logic_constraints;
     //  std::vector<RangeConstraint> range_constraints;
     //  std::vector<AES128Constraint> aes128_constraints;
@@ -48,24 +48,24 @@ pub struct AcirFormat<F: PrimeField> {
     //  std::vector<BigIntFromLeBytes> bigint_from_le_bytes_constraints;
     //  std::vector<BigIntToLeBytes> bigint_to_le_bytes_constraints;
     //  std::vector<BigIntOperation> bigint_operations;
-    assert_equalities: Vec<PolyTriple<F>>,
+    pub(crate) assert_equalities: Vec<PolyTriple<F>>,
 
     // A standard plonk arithmetic constraint, as defined in the poly_triple struct, consists of selector values
     // for q_M,q_L,q_R,q_O,q_C and indices of three variables taking the role of left, right and output wire
     // This could be a large vector, we don't expect the blackbox implementations to be so large.
-    poly_triple_constraints: Vec<PolyTriple<F>>,
-    quad_constraints: Vec<MulQuad<F>>,
-    block_constraints: Vec<BlockConstraint<F>>,
+    pub(crate) poly_triple_constraints: Vec<PolyTriple<F>>,
+    pub(crate) quad_constraints: Vec<MulQuad<F>>,
+    pub(crate) block_constraints: Vec<BlockConstraint<F>>,
 
     //  // Number of gates added to the circuit per original opcode.
     //  // Has length equal to num_acir_opcodes.
     //  std::vector<size_t> gates_per_opcode = {};
 
     // Set of constrained witnesses
-    constrained_witness: HashSet<u32>,
+    pub(crate) constrained_witness: HashSet<u32>,
 
     // Indices of the original opcode that originated each constraint in AcirFormat.
-    original_opcode_indices: AcirFormatOriginalOpcodeIndices,
+    pub(crate) original_opcode_indices: AcirFormatOriginalOpcodeIndices,
 }
 
 impl<F: PrimeField> AcirFormat<F> {

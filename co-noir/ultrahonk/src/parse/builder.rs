@@ -1,4 +1,7 @@
-use super::types::{UltraTraceBlock, UltraTraceBlocks};
+use super::{
+    acir_format::AcirFormat,
+    types::{UltraTraceBlock, UltraTraceBlocks},
+};
 use ark_ff::PrimeField;
 use std::collections::HashMap;
 
@@ -25,7 +28,34 @@ impl<F: PrimeField> UltraCircuitBuilder<F> {
     const REAL_VARIABLE: u32 = u32::MAX - 1;
     const FIRST_VARIABLE_IN_CLASS: u32 = u32::MAX - 2;
 
-    pub(crate) fn new(size_hint: usize) -> Self {
+    pub fn create_circuit(
+        constraint_system: AcirFormat<F>,
+        size_hint: usize,
+        witness: Vec<F>,
+        honk_recursion: bool,           // true for ultrahonk
+        collect_gates_per_opcode: bool, // false for ultrahonk
+    ) -> Self {
+        let has_valid_witness_assignments = !witness.is_empty();
+
+        let mut builder = Self::init(
+            size_hint,
+            witness,
+            constraint_system.public_inputs.to_owned(),
+            constraint_system.varnum as usize,
+            constraint_system.recursive,
+        );
+
+        builder.build_constraints(
+            constraint_system,
+            has_valid_witness_assignments,
+            honk_recursion,
+            collect_gates_per_opcode,
+        );
+
+        builder
+    }
+
+    fn new(size_hint: usize) -> Self {
         let variables = Vec::with_capacity(size_hint * 3);
         let variable_names = HashMap::with_capacity(size_hint * 3);
         let next_var_index = Vec::with_capacity(size_hint * 3);
@@ -64,7 +94,7 @@ impl<F: PrimeField> UltraCircuitBuilder<F> {
      * number of variables/witnesses that might be present for a circuit generated from acir, since many gates will
      * depend on the details of the bberg implementation (or more generally on the backend used to process acir).
      */
-    pub fn init(
+    fn init(
         size_hint: usize,
         witness_values: Vec<F>,
         public_inputs: Vec<u32>,
@@ -169,5 +199,15 @@ impl<F: PrimeField> UltraCircuitBuilder<F> {
                 debug_assert_eq!(selector.len(), nominal_size);
             }
         }
+    }
+
+    fn build_constraints(
+        &mut self,
+        constraint_system: AcirFormat<F>,
+        has_valid_witness_assignments: bool,
+        honk_recursion: bool,
+        collect_gates_per_opcode: bool,
+    ) {
+        todo!()
     }
 }
