@@ -2,6 +2,7 @@ use super::{
     acir_format::AcirFormat,
     types::{UltraTraceBlock, UltraTraceBlocks},
 };
+use crate::parse::types::GateCounter;
 use ark_ff::PrimeField;
 use std::collections::HashMap;
 
@@ -203,11 +204,154 @@ impl<F: PrimeField> UltraCircuitBuilder<F> {
 
     fn build_constraints(
         &mut self,
-        constraint_system: AcirFormat<F>,
+        mut constraint_system: AcirFormat<F>,
         has_valid_witness_assignments: bool,
         honk_recursion: bool,
         collect_gates_per_opcode: bool,
     ) {
-        todo!()
+        if collect_gates_per_opcode {
+            constraint_system
+                .gates_per_opcode
+                .resize(constraint_system.num_acir_opcodes as usize, 0);
+        }
+
+        let mut gate_counter = GateCounter::new(collect_gates_per_opcode);
+
+        //
+        // Add arithmetic gates
+        for (i, constraint) in constraint_system
+            .poly_triple_constraints
+            .into_iter()
+            .enumerate()
+        {
+            todo!("Arithmetic gates triple");
+        }
+        for (i, constraint) in constraint_system.quad_constraints.into_iter().enumerate() {
+            todo!("Arithmetic gates quad");
+        }
+
+        // Add logic constraint
+        // for (i, constraint) in constraint_system.logic_constraints.into_iter().enumerate() {
+        //     todo!("Logic gates");
+        // }
+
+        // Add range constraint
+        // for (i, constraint) in constraint_system.range_constraints.into_iter().enumerate() {
+        //     todo!("rage gates");
+        // }
+
+        // Add aes128 constraints
+        // for (i, constraint) in constraint_system.aes128_constraints.into_iter().enumerate() {
+        //     todo!("aes128 gates");
+        // }
+
+        // Add sha256 constraints
+        // for (i, constraint) in constraint_system.sha256_constraints.into_iter().enumerate() {
+        //     todo!("sha256 gates");
+        // }
+
+        // for (i, constraint) in constraint_system.sha256_compression.into_iter().enumerate() {
+        //     todo!("sha256 compression gates");
+        // }
+
+        // Add schnorr constraints
+        // for (i, constraint) in constraint_system.schnorr_constraints.into_iter().enumerate() {
+        //     todo!("schnorr gates");
+        // }
+
+        // Add ECDSA k1 constraints
+        // for (i, constraint) in constraint_system.ecdsa_k1_constraints.into_iter().enumerate() {
+        //     todo!("ecdsa k1 gates");
+        // }
+
+        // Add ECDSA r1 constraints
+        // for (i, constraint) in constraint_system.ecdsa_r1_constraints.into_iter().enumerate() {
+        //     todo!("ecdsa r1 gates");
+        // }
+
+        // Add blake2s constraints
+        // for (i, constraint) in constraint_system.blake2s_constraints.into_iter().enumerate() {
+        //     todo!("blake2s gates");
+        // }
+
+        // Add blake3 constraints
+        // for (i, constraint) in constraint_system.blake3_constraints.into_iter().enumerate() {
+        //     todo!("blake3 gates");
+        // }
+
+        // Add keccak constraints
+        // for (i, constraint) in constraint_system.keccak_constraints.into_iter().enumerate() {
+        //     todo!("keccak gates");
+        // }
+
+        // for (i, constraint) in constraint_system.keccak_permutations.into_iter().enumerate() {
+        //     todo!("keccak permutation gates");
+        // }
+
+        // Add pedersen constraints
+        // for (i, constraint) in constraint_system.pedersen_constraints.into_iter().enumerate() {
+        //     todo!("pederson gates");
+        // }
+
+        // for (i, constraint) in constraint_system.pedersen_hash_constraints.into_iter().enumerate() {
+        //     todo!("pedersen hash gates");
+        // }
+
+        // Add poseidon2 constraints
+        // for (i, constraint) in constraint_system.poseidon2_constraints.into_iter().enumerate() {
+        //     todo!("poseidon2 gates");
+        // }
+
+        // Add multi scalar mul constraints
+        // for (i, constraint) in constraint_system.multi_scalar_mul_constraints.into_iter().enumerate() {
+        //     todo!("multi scalar mul gates");
+        // }
+
+        // Add ec add constraints
+        // for (i, constraint) in constraint_system.ec_add_constraints.into_iter().enumerate() {
+        //     todo!("ec add gates");
+        // }
+
+        // Add block constraints
+        for (i, constraint) in constraint_system.block_constraints.into_iter().enumerate() {
+            todo!("block constraints gates");
+        }
+
+        // Add big_int constraints
+        // for (i, constraint) in constraint_system.bigint_from_le_bytes_constraints.into_iter().enumerate() {
+        //     todo!("bigint from le bytes gates");
+        // }
+
+        // for (i, constraint) in constraint_system.bigint_operations.into_iter().enumerate() {
+        //     todo!("bigint operations gates");
+        // }
+
+        // for (i, constraint) in constraint_system.bigint_to_le_bytes_constraints.into_iter().enumerate() {
+        //     todo!("bigint to le bytes gates");
+        // }
+
+        // assert equals
+        for (i, constraint) in constraint_system.assert_equalities.into_iter().enumerate() {
+            todo!("assert equalities gates");
+        }
+
+        // RecursionConstraints
+        todo!("Recursion");
+        //     process_plonk_recursion_constraints(builder, constraint_system, has_valid_witness_assignments, gate_counter);
+        //     process_honk_recursion_constraints(builder, constraint_system, has_valid_witness_assignments, gate_counter);
+
+        //     // If the circuit does not itself contain honk recursion constraints but is going to be
+        //     // proven with honk then recursively verified, add a default aggregation object
+        //     if (constraint_system.honk_recursion_constraints.empty() && honk_recursion &&
+        //         builder.is_recursive_circuit) { // Set a default aggregation object if we don't have
+        //                                         // one.
+        //         AggregationObjectIndices current_aggregation_object =
+        //             stdlib::recursion::init_default_agg_obj_indices<Builder>(builder);
+        //         // Make sure the verification key records the public input indices of the
+        //         // final recursion output.
+        //         builder.add_recursive_proof(current_aggregation_object);
+
+        // }
+        todo!("Recursion");
     }
 }

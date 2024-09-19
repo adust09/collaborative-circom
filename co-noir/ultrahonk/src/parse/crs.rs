@@ -1,5 +1,6 @@
 //  modified from barustenberg:
 
+use crate::types::Crs;
 use ark_ec::pairing::Pairing;
 use ark_ec::AffineRepr;
 use ark_ec::CurveGroup;
@@ -16,8 +17,6 @@ use std::io::Seek;
 use std::io::SeekFrom;
 use std::marker::PhantomData;
 use std::path::Path;
-
-use crate::types::ProverCrs;
 
 pub type CrsParser<P> = NewFileStructure<P>;
 
@@ -42,13 +41,13 @@ pub struct NewFileStructure<P: Pairing> {
 }
 
 impl<P: Pairing> NewFileStructure<P> {
-    pub fn get_crs(path_g1: &str, path_g2: &str) -> ProverCrs<P> {
+    pub fn get_crs(path_g1: &str, path_g2: &str) -> Crs<P> {
         let degree = 1000;
         let mut monomials: Vec<P::G1Affine> = vec![P::G1Affine::default(); degree + 2];
         let mut g2_x = P::G2Affine::default();
         Self::read_transcript(&mut monomials, &mut g2_x, degree, path_g1, path_g2).unwrap();
 
-        ProverCrs { monomials, g2_x }
+        Crs { monomials, g2_x }
     }
 }
 

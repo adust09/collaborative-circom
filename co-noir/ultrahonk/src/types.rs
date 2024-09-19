@@ -13,9 +13,13 @@ pub struct ProvingKey<P: Pairing> {
     pub memory_write_records: Vec<u32>,
 }
 
-pub struct ProverCrs<P: Pairing> {
+pub struct Crs<P: Pairing> {
     pub monomials: Vec<P::G1Affine>,
     pub g2_x: P::G2Affine,
+}
+
+pub struct ProverCrs<P: Pairing> {
+    pub monomials: Vec<P::G1Affine>,
 }
 
 pub struct HonkProof<F: PrimeField> {

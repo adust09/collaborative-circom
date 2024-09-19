@@ -234,3 +234,17 @@ impl<F: PrimeField> UltraTraceBlock<F> {
         self.w_4().push(idx4);
     }
 }
+
+pub struct GateCounter {
+    collect_gates_per_opcode: bool,
+    prev_gate_count: usize,
+}
+
+impl GateCounter {
+    pub fn new(collect_gates_per_opcode: bool) -> Self {
+        Self {
+            collect_gates_per_opcode,
+            prev_gate_count: 0,
+        }
+    }
+}
