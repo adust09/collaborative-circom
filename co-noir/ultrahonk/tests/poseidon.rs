@@ -15,7 +15,8 @@ fn poseidon_test() {
     let constraint_system = get_constraint_system_from_file(CIRCUIT_FILE, true).unwrap();
     let witness = get_witness_from_file(WITNESS_FILE).unwrap();
 
-    let builder = UltraCircuitBuilder::create_circuit(constraint_system, 0, witness, true, false);
+    let builder =
+        UltraCircuitBuilder::<Bn254>::create_circuit(constraint_system, 0, witness, true, false);
 
     todo!("Continue with the testcase")
 }

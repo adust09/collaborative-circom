@@ -1,6 +1,9 @@
 use std::array;
 
+use ark_ec::pairing::Pairing;
 use ark_ff::PrimeField;
+
+use super::builder::UltraCircuitBuilder;
 
 #[derive(Default, PartialEq, Eq)]
 pub struct PolyTriple<F: PrimeField> {
@@ -247,4 +250,43 @@ impl GateCounter {
             prev_gate_count: 0,
         }
     }
+
+    pub fn compute_diff<P: Pairing>(&mut self, builder: &UltraCircuitBuilder<P>) -> usize {
+        if !self.collect_gates_per_opcode {
+            return 0;
+        }
+        let new_gate_count = builder.get_num_gates();
+        let diff = new_gate_count - self.prev_gate_count;
+        self.prev_gate_count = new_gate_count;
+        return diff;
+    }
+
+    fn track_diff<P: Pairing>(
+        &mut self,
+        builder: &UltraCircuitBuilder<P>,
+        gates_per_opcode: &mut [usize],
+        opcode_index: usize,
+    ) {
+        if self.collect_gates_per_opcode {
+            gates_per_opcode[opcode_index] = self.compute_diff(builder);
+        }
+    }
 }
+
+pub struct RecursionConstraint {
+    // An aggregation state is represented by two G1 affine elements. Each G1 point has
+    // two field element coordinates (x, y). Thus, four field elements
+    key: Vec<u32>,
+    proof: Vec<u32>,
+    public_inputs: Vec<u32>,
+    key_hash: u32,
+    proof_type: u32,
+}
+
+impl RecursionConstraint {
+    const NUM_AGGREGATION_ELEMENTS: usize = 4;
+}
+
+pub const AGGREGATION_OBJECT_SIZE: usize = 16;
+pub type AggregationObjectIndices = [u32; AGGREGATION_OBJECT_SIZE];
+pub type AggregationObjectPubInputIndices = [u32; AGGREGATION_OBJECT_SIZE];
